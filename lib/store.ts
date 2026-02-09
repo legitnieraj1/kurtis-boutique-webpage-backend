@@ -69,28 +69,6 @@ interface StoreState {
     // Combined sync
     syncAllData: () => Promise<void>;
     logout: () => void;
-
-    // Customisation queries (legacy support)
-    customisationQueries: CustomisationRequest[];
-    addCustomisationQuery: (query: CustomisationRequest) => void;
-    deleteCustomisationQuery: (id: string) => void;
-    updateCustomisationStatus: (id: string, status: 'New' | 'In Progress' | 'Closed') => void;
-}
-
-// Customisation request type
-export interface CustomisationRequest {
-    id: string;
-    productId: string;
-    productName: string;
-    userId: string;
-    userEmail: string;
-    status: 'New' | 'In Progress' | 'Closed';
-    createdAt: string;
-    customisationTypes: string[];
-    message: string;
-    preferredSize?: string;
-    contactPreference: 'WhatsApp' | 'Email' | 'Call';
-    mobileNumber?: string;
 }
 
 export const useStore = create<StoreState>()((set, get) => ({
@@ -341,25 +319,7 @@ export const useStore = create<StoreState>()((set, get) => ({
             wishlistItems: [],
             cart: [],
             orders: [],
-            customisationQueries: []
         });
     },
-
-    // Customisation queries (legacy support)
-    customisationQueries: [],
-
-    addCustomisationQuery: (query) => set((state) => ({
-        customisationQueries: [...state.customisationQueries, query]
-    })),
-
-    deleteCustomisationQuery: (id) => set((state) => ({
-        customisationQueries: state.customisationQueries.filter(q => q.id !== id)
-    })),
-
-    updateCustomisationStatus: (id, status) => set((state) => ({
-        customisationQueries: state.customisationQueries.map(q =>
-            q.id === id ? { ...q, status } : q
-        )
-    })),
 }));
 

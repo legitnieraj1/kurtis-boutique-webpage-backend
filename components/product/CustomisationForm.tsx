@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useStore, CustomisationRequest } from "@/lib/store";
+import { useStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
-import { Check, Lock } from "lucide-react";
+import { Check, Lock, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { toast } from "sonner";
 
 interface CustomisationFormProps {
     productId: string;
@@ -24,16 +25,17 @@ const CUSTOMISATION_TYPES = [
 const PREFERRED_SIZES = ["XS", "S", "M", "L", "XL", "XXL", "Custom Measurement"];
 
 export function CustomisationForm({ productId, productName }: CustomisationFormProps) {
-    const { user, addCustomisationQuery } = useStore();
+    const { user } = useStore();
     const [isOpen, setIsOpen] = useState(false);
 
     // Form State
     const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
     const [message, setMessage] = useState("");
     const [preferredSize, setPreferredSize] = useState("");
-    const [contactPreference, setContactPreference] = useState<"WhatsApp" | "Email" | "Call">("WhatsApp");
+    const [contactPreference, setContactPreference] = useState<"whatsapp" | "email" | "call">("whatsapp");
     const [mobileNumber, setMobileNumber] = useState("");
     const [isSubmitted, setIsSubmitted] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     if (!user) {
         return (
@@ -56,32 +58,51 @@ export function CustomisationForm({ productId, productName }: CustomisationFormP
         );
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
         if (selectedTypes.length === 0 && !message.trim()) {
-            alert("Please select a customisation type or describe your request.");
+            toast.error("Please select a customisation type or describe your request.");
             return;
         }
 
-        const newQuery: CustomisationRequest = {
-            id: Date.now().toString(),
-            productId,
-            productName,
-            userId: user.email, // Using email as ID for demo simplicity
-            userEmail: user.email,
-            status: "New",
-            createdAt: new Date().toISOString(),
-            customisationTypes: selectedTypes,
-            message,
-            preferredSize,
-            contactPreference,
-            mobileNumber: (contactPreference === 'WhatsApp' || contactPreference === 'Call') ? mobileNumber : undefined
-        };
+        if ((contactPreference === 'whatsapp' || contactPreference === 'call') && !mobileNumber) {
+            toast.error("Please enter your mobile number for us to contact you.");
+            return;
+        }
 
-        addCustomisationQuery(newQuery);
-        setIsSubmitted(true);
-        // Don't auto-close to let them read the success message
+        setIsSubmitting(true);
+
+        try {
+            const response = await fetch('/api/customisation-queries', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    product_id: productId,
+                    product_name: productName,
+                    customisation_types: selectedTypes,
+                    message,
+                    preferred_size: preferredSize || undefined,
+                    contact_preference: contactPreference,
+                    mobile_number: mobileNumber || undefined
+                }),
+            });
+
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || 'Failed to submit request');
+            }
+
+            setIsSubmitted(true);
+            toast.success("Customisation request sent successfully!");
+        } catch (error) {
+            console.error('Submission error:', error);
+            toast.error("Failed to submit request. Please try again.");
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     if (isSubmitted) {
@@ -169,13 +190,13 @@ export function CustomisationForm({ productId, productName }: CustomisationFormP
                                 <div className="space-y-2">
                                     <label className="text-sm font-medium">Contact Preference</label>
                                     <div className="flex bg-background border border-input rounded-md p-1 h-10 items-center">
-                                        {["WhatsApp", "Email", "Call"].map((method) => (
+                                        {["whatsapp", "email", "call"].map((method) => (
                                             <button
                                                 key={method}
                                                 type="button"
                                                 onClick={() => setContactPreference(method as any)}
                                                 className={cn(
-                                                    "flex-1 text-sm font-medium rounded-sm h-full transition-all",
+                                                    "flex-1 text-sm font-medium rounded-sm h-full transition-all capitalize",
                                                     contactPreference === method
                                                         ? "bg-stone-200 text-stone-900 shadow-sm"
                                                         : "text-muted-foreground hover:text-foreground"
@@ -189,7 +210,7 @@ export function CustomisationForm({ productId, productName }: CustomisationFormP
                             </div>
 
                             {/* Mobile Number Input - Visible for WhatsApp/Call */}
-                            {(contactPreference === 'WhatsApp' || contactPreference === 'Call') && (
+                            {(contactPreference === 'whatsapp' || contactPreference === 'call') && (
                                 <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
                                     <label className="text-sm font-medium">Mobile Number <span className="text-red-500">*</span></label>
                                     <input
@@ -203,7 +224,7 @@ export function CustomisationForm({ productId, productName }: CustomisationFormP
                                             setMobileNumber(val);
                                         }}
                                     />
-                                    <p className="text-xs text-muted-foreground">We'll contact you on this number.</p>
+                                    <p className="text-xs text-muted-foreground">We&apos;ll contact you on this number.</p>
                                 </div>
                             )}
 
@@ -221,8 +242,20 @@ export function CustomisationForm({ productId, productName }: CustomisationFormP
                             </div>
 
                             <div className="pt-2">
-                                <Button type="submit" size="lg" className="w-full md:w-auto bg-[#801848] hover:bg-[#6b143c]">
-                                    Submit Request
+                                <Button
+                                    type="submit"
+                                    size="lg"
+                                    disabled={isSubmitting}
+                                    className="w-full md:w-auto bg-[#801848] hover:bg-[#6b143c]"
+                                >
+                                    {isSubmitting ? (
+                                        <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            Sending...
+                                        </>
+                                    ) : (
+                                        "Submit Request"
+                                    )}
                                 </Button>
                             </div>
 

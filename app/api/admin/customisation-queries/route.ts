@@ -39,3 +39,41 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }
+
+// PATCH /api/admin/customisation-queries/[id] - Update query status/notes
+export async function PATCH(request: NextRequest) {
+    try {
+        await requireAdmin();
+        const supabase = await createSupabaseServerClient();
+        const body = await request.json();
+        const { id, status, admin_notes } = body;
+
+        if (!id) {
+            return NextResponse.json({ error: 'Query ID is required' }, { status: 400 });
+        }
+
+        const updates: any = {};
+        if (status) updates.status = status;
+        if (admin_notes !== undefined) updates.admin_notes = admin_notes;
+
+        const { data: query, error } = await supabase
+            .from('customisation_queries')
+            .update(updates)
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Query update error:', error);
+            return NextResponse.json({ error: error.message }, { status: 500 });
+        }
+
+        return NextResponse.json({ query });
+    } catch (error) {
+        if (error instanceof Error && error.message === 'Forbidden: Admin access required') {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+        }
+        console.error('Query update API error:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
+}
