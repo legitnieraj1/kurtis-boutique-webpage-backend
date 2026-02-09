@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { useStore } from "@/lib/store";
 import { CartSheet } from "@/components/cart/CartSheet";
 import { SearchSheet } from "@/components/layout/SearchSheet";
+import { usePathname } from "next/navigation";
 
 const links = [
     { href: "/", label: "Home" },
@@ -24,6 +25,7 @@ export function Navbar() {
     const { cart, user, logout } = useStore();
     const [mounted, setMounted] = useState(false);
     const accountRef = useRef<HTMLDivElement>(null);
+    const pathname = usePathname();
 
     useEffect(() => {
         setMounted(true);
@@ -59,6 +61,10 @@ export function Navbar() {
         setIsAccountOpen(false);
     };
 
+    // Calculate redirect URL
+    const isAuthPage = pathname?.startsWith('/login') || pathname?.startsWith('/signup');
+    const loginHref = isAuthPage ? '/login' : `/login?next=${encodeURIComponent(pathname || '/')}`;
+
     return (
         <>
             <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-white shadow-sm">
@@ -67,7 +73,7 @@ export function Navbar() {
                         {/* Mobile Left Icons: Login & Wishlist */}
                         <div className="flex items-center gap-3 md:hidden z-40">
                             {!user && (
-                                <Link href="/login">
+                                <Link href={loginHref}>
                                     <Button variant="ghost" size="icon">
                                         <UserIcon className="h-5 w-5" />
                                     </Button>
@@ -151,7 +157,7 @@ export function Navbar() {
                                     )}
                                 </div>
                             ) : (
-                                <Link href="/login" className="hidden md:block">
+                                <Link href={loginHref} className="hidden md:block">
                                     <Button variant="ghost" size="sm" className="font-medium">
                                         Login
                                     </Button>
@@ -215,7 +221,7 @@ export function Navbar() {
                         <div className="pt-8 border-t border-border/40 mt-4 space-y-4">
                             {!user ? (
                                 <Link
-                                    href="/login"
+                                    href={loginHref}
                                     onClick={() => setIsOpen(false)}
                                     className="text-lg font-medium text-muted-foreground hover:text-primary flex items-center gap-2"
                                 >

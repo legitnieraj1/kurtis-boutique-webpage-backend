@@ -40,7 +40,8 @@ export default function SignupPage() {
 
             toast.success("Account created! You can now login.");
             router.refresh();
-            router.push("/login?signup=success");
+            const nextParam = new URLSearchParams(window.location.search).get("next");
+            router.push(`/login?signup=success${nextParam ? `&next=${encodeURIComponent(nextParam)}` : ""}`);
         } catch (error) {
             toast.error("An unexpected error occurred");
         } finally {
