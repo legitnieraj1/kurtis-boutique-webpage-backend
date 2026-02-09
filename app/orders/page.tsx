@@ -10,6 +10,7 @@ import Link from "next/link";
 import { cn, formatPrice } from "@/lib/utils";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import { OrderStatusAnimation } from "@/components/orders/OrderStatusAnimation";
 
 interface Order {
     id: string;
@@ -90,6 +91,39 @@ export default function OrdersPage() {
     return (
         <div className="min-h-screen flex flex-col bg-gradient-to-br from-stone-50 via-rose-50/30 to-stone-100">
             <Navbar />
+
+            {/* Order Status Animation Overlay */}
+            {orders.length > 0 && ['confirmed', 'processing'].includes(orders[0].status) && (
+                <div id="order-animation-overlay" className="fixed inset-0 z-50 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center animate-in fade-in duration-500">
+                    <div className="relative w-full max-w-md bg-white p-8 rounded-3xl shadow-2xl border border-stone-100">
+                        <button
+                            onClick={() => {
+                                // Simple way to dismiss - just hide this overlay or filter the list
+                                // for better UX, we might want to store "seen" in local storage or state
+                                const el = document.getElementById('order-animation-overlay');
+                                if (el) el.style.display = 'none';
+                            }}
+                            className="absolute top-4 right-4 p-2 hover:bg-stone-100 rounded-full text-stone-400 hover:text-stone-600 transition-colors"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 18 18" /></svg>
+                        </button>
+                        <OrderStatusAnimation />
+                        <div className="mt-8 flex justify-center">
+                            <Button
+                                onClick={(e) => {
+                                    // Find parent overlay and hide
+                                    const overlay = e.currentTarget.closest('.fixed');
+                                    if (overlay) (overlay as HTMLElement).style.display = 'none';
+                                }}
+                                className="bg-[#801848] text-white hover:bg-[#6b143c] rounded-xl px-8"
+                            >
+                                View My Orders
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="flex-1 py-12 px-4 sm:px-6 lg:px-8">
                 <div className="container max-w-4xl mx-auto space-y-8">
 

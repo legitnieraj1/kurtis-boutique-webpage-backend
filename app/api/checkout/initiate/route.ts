@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth, createSupabaseServerClient } from '@/lib/supabase/server';
 import { RazorpayService } from '@/lib/razorpay';
+import { ShiprocketService } from '@/lib/shiprocket';
 
 export async function POST(request: NextRequest) {
     console.log('[Checkout] Starting Razorpay checkout initiation...');
@@ -68,6 +69,45 @@ export async function POST(request: NextRequest) {
                 total: itemTotal,
             };
         });
+
+        // 2.1 Calculate Shipping (Dynamic via Shiprocket)
+        let shippingCost = 0;
+        const deliveryPincode = shippingAddress?.pincode;
+
+        if (deliveryPincode) {
+            try {
+                // Default pickup postcode
+                const pickupPostcode = process.env.SHIPROCKET_PICKUP_POSTCODE ?
+                    parseInt(process.env.SHIPROCKET_PICKUP_POSTCODE) : 110001;
+
+                // Check serviceability
+                const serviceResponse: any = await ShiprocketService.checkServiceability({
+                    pickup_postcode: pickupPostcode,
+                    delivery_postcode: parseInt(deliveryPincode),
+                    weight: 0.5, // Default weight, should ideally verify from product weight
+                    cod: 0 // Prepaid
+                });
+
+                if (serviceResponse.status === 200 && serviceResponse.data?.available_courier_companies?.length > 0) {
+                    const couriers = serviceResponse.data.available_courier_companies;
+                    couriers.sort((a: any, b: any) => a.rate - b.rate);
+                    shippingCost = couriers[0].rate;
+                    console.log(`[Checkout] Dynamic Shipping Cost for ${deliveryPincode}: ₹${shippingCost}`);
+                } else {
+                    console.warn('[Checkout] Shiprocket serviceability check failed/empty, falling back');
+                    // Fallback logic could go here (e.g., standard flat rate)
+                    shippingCost = totalAmount >= 999 ? 0 : 99;
+                }
+            } catch (srError) {
+                console.error('[Checkout] Shiprocket error:', srError);
+                // Fallback on error
+                shippingCost = totalAmount >= 999 ? 0 : 99;
+            }
+        } else {
+            shippingCost = totalAmount >= 999 ? 0 : 99;
+        }
+
+        totalAmount += shippingCost;
 
         // Generate unique order ID
         const orderId = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;

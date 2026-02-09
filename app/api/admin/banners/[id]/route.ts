@@ -86,12 +86,15 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
             return NextResponse.json({ banner });
         }
-    } catch (error) {
+    } catch (error: any) {
         if (error instanceof Error && error.message === 'Forbidden: Admin access required') {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
         }
         console.error('Admin banner update error:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+        return NextResponse.json({
+            error: error.message || 'Internal server error',
+            details: error.toString()
+        }, { status: 500 });
     }
 }
 
@@ -127,11 +130,14 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
         }
 
         return NextResponse.json({ success: true });
-    } catch (error) {
+    } catch (error: any) {
         if (error instanceof Error && error.message === 'Forbidden: Admin access required') {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
         }
         console.error('Admin banner delete error:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+        return NextResponse.json({
+            error: error.message || 'Internal server error',
+            details: error.toString()
+        }, { status: 500 });
     }
 }

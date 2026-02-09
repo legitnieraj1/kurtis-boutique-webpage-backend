@@ -108,11 +108,14 @@ export async function POST(request: NextRequest) {
 
             return NextResponse.json({ banner }, { status: 201 });
         }
-    } catch (error) {
+    } catch (error: any) {
         if (error instanceof Error && error.message === 'Forbidden: Admin access required') {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
         }
         console.error('Admin banners API error:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+        return NextResponse.json({
+            error: error.message || 'Internal server error',
+            details: error.toString()
+        }, { status: 500 });
     }
 }
