@@ -6,7 +6,7 @@ import { useStore } from "@/lib/store";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
-export function LoginForm() {
+export function LoginForm({ redirectTo }: { redirectTo?: string }) {
     const [loading, setLoading] = useState(false);
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -82,7 +82,7 @@ export function LoginForm() {
 
             // Use window.location for a hard redirect that ensures full page refresh
             // This will pick up the session from cookies
-            window.location.href = '/';
+            window.location.href = redirectTo || '/';
         } catch (error) {
             console.error('Login error:', error);
             if (error instanceof Error) {
