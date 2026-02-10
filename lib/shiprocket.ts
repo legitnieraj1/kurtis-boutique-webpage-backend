@@ -10,7 +10,16 @@ import {
     GenerateLabelResponse,
 } from './shiprocket-types';
 
-const BASE_URL = process.env.SHIPROCKET_BASE_URL || 'https://apiv2.shiprocket.in/v1/external';
+// Helper to sanitize URL
+const getBaseUrl = () => {
+    let url = process.env.SHIPROCKET_BASE_URL || 'https://apiv2.shiprocket.in/v1/external';
+    // Remove wrapping quotes if present (common env var mistake)
+    url = url.replace(/^['"]|['"]$/g, '').trim();
+    // Remove trailing slash if present
+    return url.replace(/\/$/, '');
+};
+
+const BASE_URL = getBaseUrl();
 
 export class ShiprocketService {
     private static token: string | null = null;
@@ -31,9 +40,12 @@ export class ShiprocketService {
         const password = process.env.SHIPROCKET_PASSWORD;
 
         if (!email || !password) {
-            console.warn('Shiprocket credentials not configured. Skipping Shiprocket calls.');
+            console.warn('Shiprocket credentials not configured. Skipping Shiprocket calls. Email:', !!email, 'Password:', !!password);
             return ''; // Return empty to allow graceful degradation
         }
+
+        console.log('[Shiprocket] Attempting to generate token with email:', email);
+        console.log('[Shiprocket] Using Base URL:', BASE_URL);
 
         try {
             const response = await fetch(`${BASE_URL}/auth/login`, {
@@ -43,7 +55,9 @@ export class ShiprocketService {
             });
 
             if (!response.ok) {
-                throw new Error(`Auth failed: ${response.statusText}`);
+                const errorText = await response.text();
+                console.error(`[Shiprocket] Auth failed: ${response.status} ${response.statusText}`, errorText);
+                throw new Error(`Auth failed: ${response.statusText} - ${errorText}`);
             }
 
             const data: ShiprocketAuthResponse = await response.json();
@@ -54,7 +68,7 @@ export class ShiprocketService {
             console.log('Shiprocket auth token generated successfully');
             return this.token;
         } catch (error) {
-            console.error('Error generating Shiprocket token:', error);
+            console.error('[Shiprocket] Error generating Shiprocket token:', error);
             throw error;
         }
     }
@@ -75,10 +89,15 @@ export class ShiprocketService {
             method,
             headers,
             body: body ? JSON.stringify(body) : undefined,
+            cache: 'no-store' // Ensure we don't cache Shiprocket responses
         });
+
+        console.log(`[Shiprocket] Request to ${endpoint} status:`, response.status);
+
 
         // Handle 401 specifically to retry once with new token could be added here
         if (response.status === 401) {
+            console.error('[Shiprocket] Unauthorized access. Token might be expired or invalid.');
             this.token = null; // Clear token
             // Retry logic could go here, but for now throwing error to let caller handle or fail
             throw new Error('Shiprocket Unauthorized - Token might be expired');
@@ -86,6 +105,7 @@ export class ShiprocketService {
 
         if (!response.ok) {
             const errorText = await response.text();
+            console.error(`[Shiprocket] API Error [${response.status}] for ${endpoint}:`, errorText);
             throw new Error(`Shiprocket API Error [${response.status}]: ${errorText}`);
         }
 

@@ -196,6 +196,9 @@ export async function POST(request: NextRequest) {
 
         } catch (srError) {
             console.error("Shiprocket creation failed:", srError);
+            if (srError instanceof Error) {
+                console.error("Shiprocket error stack:", srError.stack);
+            }
             // We continue success response because the order IS created in our system.
             // Admin needs to handle sync later.
         }

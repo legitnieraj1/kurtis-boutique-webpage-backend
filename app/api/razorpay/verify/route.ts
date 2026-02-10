@@ -242,6 +242,9 @@ export async function POST(request: NextRequest) {
 
         } catch (srError) {
             console.error('[Shiprocket] ❌ Creation Error:', srError);
+            if (srError instanceof Error) {
+                console.error("[Shiprocket] Error stack:", srError.stack);
+            }
             // Don't fail the request, just log it. Admin can sync later.
         }
 

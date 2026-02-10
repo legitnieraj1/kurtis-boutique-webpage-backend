@@ -51,9 +51,16 @@ export async function GET(request: NextRequest) {
 
     } catch (error: any) {
         console.error('Serviceability check error:', error);
+        console.error('Serviceability check error payload:', {
+            pickup_postcode: parseInt(process.env.SHIPROCKET_PICKUP_POSTCODE || '110001'),
+            delivery_postcode: parseInt(delivery_postcode),
+            weight: parseFloat(weight),
+            cod: parseInt(cod),
+        });
         return NextResponse.json({
             error: error.message || 'Failed to check serviceability',
-            success: false
+            success: false,
+            details: process.env.NODE_ENV === 'development' ? error.toString() : undefined
         }, { status: 500 });
     }
 }
