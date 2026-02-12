@@ -193,8 +193,16 @@ export default function OrdersPage() {
                                         </div>
 
                                         <div className="flex flex-col sm:flex-row gap-3">
-                                            <Link href={`/orders/${order.id}`}>
-                                                <Button className="w-full sm:w-auto gap-2 bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20 rounded-xl">
+                                            <Link href={order.tracking?.awb ? `/orders/${order.id}` : '#'}>
+                                                <Button
+                                                    disabled={!order.tracking?.awb}
+                                                    className={cn(
+                                                        "w-full sm:w-auto gap-2 rounded-xl shadow-lg transition-all",
+                                                        order.tracking?.awb
+                                                            ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-primary/20"
+                                                            : "bg-stone-200 text-stone-400 cursor-not-allowed shadow-none"
+                                                    )}
+                                                >
                                                     View Order <ChevronRight className="w-4 h-4" />
                                                 </Button>
                                             </Link>

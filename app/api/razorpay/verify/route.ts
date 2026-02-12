@@ -236,7 +236,11 @@ export async function POST(request: NextRequest) {
             if (shiprocketOrder.order_id) {
                 await supabase
                     .from('orders')
-                    .update({ shipment_id: String(shiprocketOrder.order_id) }) // Storing SR Order ID in shipment_id for reference
+                    .update({
+                        shiprocket_order_id: shiprocketOrder.order_id,
+                        shiprocket_shipment_id: shiprocketOrder.shipment_id,
+                        awb_code: shiprocketOrder.awb_code
+                    })
                     .eq('id', order.id);
             }
 
