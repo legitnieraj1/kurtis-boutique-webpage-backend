@@ -10,7 +10,9 @@ import Link from "next/link";
 import { cn, formatPrice } from "@/lib/utils";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
-import { OrderStatusAnimation } from "@/components/orders/OrderStatusAnimation";
+
+
+import { ShiprocketTimeline } from "@/components/orders/ShiprocketTimeline";
 
 interface Order {
     id: string;
@@ -19,6 +21,11 @@ interface Order {
     total: number;
     date: string;
     items: { product_name: string; quantity: number }[];
+    tracking?: {
+        awb: string | null;
+        courier: string | null;
+        trackingUrl?: string; // Optional, can be constructed from AWB
+    };
 }
 
 export default function OrdersPage() {
@@ -27,6 +34,7 @@ export default function OrdersPage() {
     const [mounted, setMounted] = useState(false);
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
+    const [activeTrackingAwb, setActiveTrackingAwb] = useState<string | null>(null);
 
     useEffect(() => {
         setMounted(true);
@@ -92,34 +100,33 @@ export default function OrdersPage() {
         <div className="min-h-screen flex flex-col bg-gradient-to-br from-stone-50 via-rose-50/30 to-stone-100">
             <Navbar />
 
-            {/* Order Status Animation Overlay */}
-            {orders.length > 0 && ['confirmed', 'processing'].includes(orders[0].status) && (
-                <div id="order-animation-overlay" className="fixed inset-0 z-50 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center animate-in fade-in duration-500">
-                    <div className="relative w-full max-w-md bg-white p-8 rounded-3xl shadow-2xl border border-stone-100">
-                        <button
-                            onClick={() => {
-                                // Simple way to dismiss - just hide this overlay or filter the list
-                                // for better UX, we might want to store "seen" in local storage or state
-                                const el = document.getElementById('order-animation-overlay');
-                                if (el) el.style.display = 'none';
-                            }}
-                            className="absolute top-4 right-4 p-2 hover:bg-stone-100 rounded-full text-stone-400 hover:text-stone-600 transition-colors"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 18 18" /></svg>
-                        </button>
-                        <OrderStatusAnimation />
-                        <div className="mt-8 flex justify-center">
-                            <Button
-                                onClick={(e) => {
-                                    // Find parent overlay and hide
-                                    const overlay = e.currentTarget.closest('.fixed');
-                                    if (overlay) (overlay as HTMLElement).style.display = 'none';
-                                }}
-                                className="bg-[#801848] text-white hover:bg-[#6b143c] rounded-xl px-8"
-                            >
-                                View My Orders
-                            </Button>
+            {/* Order Status Message & Tracking */}
+            {orders.length > 0 && orders[0].status !== 'delivered' && orders[0].status !== 'cancelled' && (
+                <div className="mb-8 p-6 bg-white/60 backdrop-blur-md border border-white/60 rounded-2xl shadow-sm">
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                        <div className="space-y-1 text-center md:text-left">
+                            <h2 className="text-xl font-serif font-bold text-stone-800">
+                                {orders[0].tracking?.awb ? "Track your order" : "Your order is getting sewed!"}
+                            </h2>
+                            <p className="text-stone-500 text-sm">
+                                {orders[0].tracking?.awb
+                                    ? "Track your package in real-time."
+                                    : "We appreciate your patience. Your order is being crafted with care."}
+                            </p>
                         </div>
+
+                        {orders[0].tracking?.awb ? (
+                            <Button
+                                onClick={() => setActiveTrackingAwb(orders[0].tracking?.awb || null)}
+                                className="bg-stone-800 text-white hover:bg-stone-700 rounded-xl px-8"
+                            >
+                                Track Now <PackageSearch className="w-4 h-4 ml-2" />
+                            </Button>
+                        ) : (
+                            <div className="px-4 py-2 bg-stone-100 text-stone-600 rounded-lg text-sm font-medium">
+                                Order Confirmed
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
@@ -199,6 +206,12 @@ export default function OrdersPage() {
                     )}
                 </div>
             </div>
+            {activeTrackingAwb && (
+                <ShiprocketTimeline
+                    awb={activeTrackingAwb}
+                    onClose={() => setActiveTrackingAwb(null)}
+                />
+            )}
             <Footer />
         </div>
     );

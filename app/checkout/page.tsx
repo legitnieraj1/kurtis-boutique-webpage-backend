@@ -11,6 +11,8 @@ import { formatPrice } from '@/lib/utils';
 import { toast } from 'sonner';
 import Script from 'next/script';
 
+import { PaymentProcessingLoader } from '@/components/orders/PaymentProcessingLoader';
+
 declare global {
     interface Window {
         Razorpay: new (options: RazorpayOptions) => RazorpayInstance;
@@ -54,6 +56,7 @@ export default function CheckoutPage() {
     const { cart, isAuthenticated, isLoading, cartLoading, getCartTotal, syncCart, clearCart } = useStore();
     const router = useRouter();
     const [isInitiating, setIsInitiating] = useState(false);
+    const [isProcessingPayment, setIsProcessingPayment] = useState(false);
     const [hydrated, setHydrated] = useState(false);
     const [razorpayLoaded, setRazorpayLoaded] = useState(false);
 
@@ -191,9 +194,12 @@ export default function CheckoutPage() {
                 const data = await response.json();
 
                 if (data.success) {
+                    setIsProcessingPayment(true);
                     toast.success('Order placed successfully!');
                     clearCart();
-                    router.push(`/checkout/success?order_id=${data.orderNumber}`);
+                    setTimeout(() => {
+                        router.push(`/checkout/success?order_id=${data.orderNumber}`);
+                    }, 2000); // Wait for animation
                 } else {
                     toast.error(data.error || 'Failed to place COD order');
                 }
@@ -248,9 +254,12 @@ export default function CheckoutPage() {
                         });
                         const verifyData = await verifyResponse.json();
                         if (verifyData.success) {
+                            setIsProcessingPayment(true);
                             toast.success('Payment successful! Redirecting...');
                             clearCart();
-                            router.push(`/checkout/success?order_id=${verifyData.orderNumber}`);
+                            setTimeout(() => {
+                                router.push(`/checkout/success?order_id=${verifyData.orderNumber}`);
+                            }, 2000);
                         } else {
                             toast.error(verifyData.error || 'Payment verification failed');
                             router.push('/checkout/cancel');
@@ -300,6 +309,7 @@ export default function CheckoutPage() {
 
     return (
         <>
+            {isProcessingPayment && <PaymentProcessingLoader />}
             <Script
                 src="https://checkout.razorpay.com/v1/checkout.js"
                 onLoad={() => setRazorpayLoaded(true)}

@@ -22,6 +22,7 @@ interface Order {
     tracking: {
         awb: string | null;
         courier: string | null;
+        shiprocketOrderId?: number | string;
     };
 }
 
@@ -146,12 +147,42 @@ export default function AdminOrdersPage() {
                                             )}
                                         </td>
                                         <td className="px-6 py-4 text-right">
-                                            <Link href={`/admin/orders/${order.id}`}>
-                                                <Button variant="ghost" size="sm">
-                                                    <Eye className="w-4 h-4 mr-2" />
-                                                    View
+                                            <div className="flex justify-end gap-2">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={async () => {
+                                                        if (!order.tracking?.shiprocketOrderId) {
+                                                            alert("Order not synced with Shiprocket (No ID)");
+                                                            return;
+                                                        }
+                                                        try {
+                                                            const res = await fetch('/api/shiprocket/invoice', {
+                                                                method: 'POST',
+                                                                headers: { 'Content-Type': 'application/json' },
+                                                                body: JSON.stringify({ orderId: order.tracking.shiprocketOrderId })
+                                                            });
+                                                            const data = await res.json();
+                                                            if (data.success && data.invoice_url) {
+                                                                window.open(data.invoice_url, '_blank');
+                                                            } else {
+                                                                alert("Failed to get invoice: " + (data.error || "Unknown error"));
+                                                            }
+                                                        } catch (e) {
+                                                            console.error(e);
+                                                            alert("Error fetching invoice");
+                                                        }
+                                                    }}
+                                                >
+                                                    Invoice
                                                 </Button>
-                                            </Link>
+                                                <Link href={`/admin/orders/${order.id}`}>
+                                                    <Button variant="ghost" size="sm">
+                                                        <Eye className="w-4 h-4 mr-2" />
+                                                        View
+                                                    </Button>
+                                                </Link>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))

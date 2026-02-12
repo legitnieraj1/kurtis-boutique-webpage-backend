@@ -8,6 +8,8 @@ import {
     GeneratePickupResponse,
     GenerateLabelPayload,
     GenerateLabelResponse,
+    GenerateInvoicePayload,
+    GenerateInvoiceResponse,
 } from './shiprocket-types';
 
 // Helper to sanitize URL
@@ -36,8 +38,9 @@ export class ShiprocketService {
             return this.token;
         }
 
-        const email = process.env.SHIPROCKET_EMAIL;
-        const password = process.env.SHIPROCKET_PASSWORD;
+        // Sanitize credentials
+        const email = (process.env.SHIPROCKET_EMAIL || '').replace(/^['"]|['"]$/g, '').trim();
+        const password = (process.env.SHIPROCKET_PASSWORD || '').replace(/^['"]|['"]$/g, '').trim();
 
         if (!email || !password) {
             console.warn('Shiprocket credentials not configured. Skipping Shiprocket calls. Email:', !!email, 'Password:', !!password);
@@ -147,6 +150,10 @@ export class ShiprocketService {
 
     static async generateManifest(shipmentIds: string[]) {
         return this.request('/manifests/generate', 'POST', { shipment_id: shipmentIds });
+    }
+
+    static async generateInvoice(payload: GenerateInvoicePayload): Promise<GenerateInvoiceResponse> {
+        return this.request<GenerateInvoiceResponse>('/orders/print/invoice', 'POST', payload);
     }
 
     static async trackByAWB(awb: string) {

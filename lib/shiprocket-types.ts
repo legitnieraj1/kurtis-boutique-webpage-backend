@@ -134,3 +134,13 @@ export interface ShiprocketServiceabilityResponse {
         recommended_courier_company_id: number;
     };
 }
+
+export interface GenerateInvoicePayload {
+    ids: number[] | string[];
+}
+
+export interface GenerateInvoiceResponse {
+    is_invoice_created: boolean;
+    invoice_url: string;
+    not_created: any[];
+}
