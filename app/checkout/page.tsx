@@ -197,9 +197,7 @@ export default function CheckoutPage() {
                     setIsProcessingPayment(true);
                     toast.success('Order placed successfully!');
                     clearCart();
-                    setTimeout(() => {
-                        router.push(`/checkout/success?order_id=${data.orderNumber}`);
-                    }, 2000); // Wait for animation
+                    router.push(`/checkout/success?order_id=${data.orderNumber}`);
                 } else {
                     toast.error(data.error || 'Failed to place COD order');
                 }
@@ -239,6 +237,8 @@ export default function CheckoutPage() {
                 order_id: data.razorpayOrderId,
                 handler: async function (response: RazorpayResponse) {
                     console.log('[Checkout] Payment successful:', response);
+                    setIsProcessingPayment(true); // Show loader immediately after payment
+
                     try {
                         const verifyResponse = await fetch('/api/razorpay/verify', {
                             method: 'POST',
@@ -254,19 +254,18 @@ export default function CheckoutPage() {
                         });
                         const verifyData = await verifyResponse.json();
                         if (verifyData.success) {
-                            setIsProcessingPayment(true);
                             toast.success('Payment successful! Redirecting...');
                             clearCart();
-                            setTimeout(() => {
-                                router.push(`/checkout/success?order_id=${verifyData.orderNumber}`);
-                            }, 2000);
+                            router.push(`/checkout/success?order_id=${verifyData.orderNumber}`);
                         } else {
+                            // If verification failed server-side
                             toast.error(verifyData.error || 'Payment verification failed');
-                            router.push('/checkout/cancel');
+                            router.push('/checkout/cancel?reason=failed');
                         }
                     } catch (error) {
                         console.error('[Checkout] Verification error:', error);
                         toast.error('Payment verification failed. Please contact support.');
+                        router.push('/checkout/cancel?reason=failed');
                     }
                 },
                 prefill: {
