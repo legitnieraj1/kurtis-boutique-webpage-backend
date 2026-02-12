@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
         }
 
         try {
-            const response = await ShiprocketService.trackByAWB(awb);
+            const response = await ShiprocketService.trackByAWB(awb) as any;
 
             // Format tracking data for frontend
             // Shiprocket returns a complex object, we want a simple timeline
