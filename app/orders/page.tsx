@@ -152,56 +152,60 @@ export default function OrdersPage() {
                                 const trackingUrl = `https://shiprocket.co/tracking/order/${order.orderNumber}?company_id=9186815`;
 
                                 return (
-                                    <motion.div
-                                        key={order.id}
-                                        initial={{ opacity: 0, y: 20 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: index * 0.1 }}
-                                        className="group bg-white/60 backdrop-blur-md border border-white/60 rounded-2xl p-6 shadow-sm hover:shadow-xl hover:bg-white/80 transition-all duration-300"
-                                    >
-                                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                                            <div className="space-y-1">
-                                                <div className="flex items-center gap-3">
-                                                    <span className="font-mono text-sm text-muted-foreground">#{order.orderNumber}</span>
-                                                    <span className={cn(
-                                                        "px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider",
-                                                        order.status === 'delivered' ? "bg-green-100 text-green-700" :
-                                                            order.status === 'cancelled' ? "bg-red-100 text-red-700" :
-                                                                order.status === 'pending' ? "bg-yellow-100 text-yellow-700" :
-                                                                    "bg-blue-100 text-blue-700" // confirmed, shipped, etc.
-                                                    )}>
-                                                        {order.status.replace('_', ' ')}
-                                                    </span>
-                                                </div>
-                                                <h3 className="font-serif text-xl font-bold text-foreground">
-                                                    {formatPrice(order.total)}
-                                                </h3>
-                                                <p className="text-sm text-muted-foreground font-medium">{order.date}</p>
-                                                {order.items?.length > 0 && (
-                                                    <p className="text-xs text-muted-foreground">
-                                                        {order.items.length} item{order.items.length > 1 ? 's' : ''}: {order.items.map(i => i.product_name).join(', ').slice(0, 50)}...
-                                                    </p>
-                                                )}
-                                            </div>
-
-                                            <div className="flex flex-col sm:flex-row gap-3">
-                                                <Button
-                                                    onClick={() => {
-                                                        if (isConfirmed) window.open(trackingUrl, '_blank');
-                                                    }}
-                                                    className={cn(
-                                                        "w-full sm:w-auto gap-2 rounded-xl shadow-lg transition-all",
-                                                        isConfirmed
-                                                            ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-primary/20 cursor-pointer"
-                                                            : "bg-stone-200 text-stone-400 cursor-not-allowed shadow-none"
+                                    <Link href={`/orders/${order.id}`} key={order.id} className="block">
+                                        <motion.div
+                                            initial={{ opacity: 0, y: 20 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ delay: index * 0.1 }}
+                                            className="group bg-white/60 backdrop-blur-md border border-white/60 rounded-2xl p-6 shadow-sm hover:shadow-xl hover:bg-white/80 transition-all duration-300 relative"
+                                        >
+                                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                                                <div className="space-y-1">
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="font-mono text-sm text-muted-foreground">#{order.orderNumber}</span>
+                                                        <span className={cn(
+                                                            "px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider",
+                                                            order.status === 'delivered' ? "bg-green-100 text-green-700" :
+                                                                order.status === 'cancelled' ? "bg-red-100 text-red-700" :
+                                                                    order.status === 'pending' ? "bg-yellow-100 text-yellow-700" :
+                                                                        "bg-blue-100 text-blue-700"
+                                                        )}>
+                                                            {order.status.replace('_', ' ')}
+                                                        </span>
+                                                    </div>
+                                                    <h3 className="font-serif text-xl font-bold text-foreground">
+                                                        {formatPrice(order.total)}
+                                                    </h3>
+                                                    <p className="text-sm text-muted-foreground font-medium">{order.date}</p>
+                                                    {order.items?.length > 0 && (
+                                                        <p className="text-xs text-muted-foreground">
+                                                            {order.items.length} item{order.items.length > 1 ? 's' : ''}: {order.items.map(i => i.product_name).join(', ').slice(0, 50)}...
+                                                        </p>
                                                     )}
-                                                    disabled={!isConfirmed}
-                                                >
-                                                    Track Now <PackageSearch className="w-4 h-4" />
-                                                </Button>
+                                                </div>
+
+                                                <div className="flex flex-col sm:flex-row gap-3">
+                                                    <Button
+                                                        onClick={(e) => {
+                                                            if (isConfirmed) {
+                                                                e.preventDefault(); // Prevent navigation when clicking track
+                                                                window.open(trackingUrl, '_blank');
+                                                            }
+                                                        }}
+                                                        className={cn(
+                                                            "w-full sm:w-auto gap-2 rounded-xl shadow-lg transition-all",
+                                                            isConfirmed
+                                                                ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-primary/20 cursor-pointer"
+                                                                : "bg-stone-200 text-stone-400 cursor-not-allowed shadow-none"
+                                                        )}
+                                                        disabled={!isConfirmed}
+                                                    >
+                                                        Track Now <PackageSearch className="w-4 h-4" />
+                                                    </Button>
+                                                </div>
                                             </div>
-                                        </div>
-                                    </motion.div>
+                                        </motion.div>
+                                    </Link>
                                 );
                             })}
                         </div>
@@ -209,6 +213,6 @@ export default function OrdersPage() {
                 </div>
             </div>
             <Footer />
-        </div>
+        </div >
     );
 }

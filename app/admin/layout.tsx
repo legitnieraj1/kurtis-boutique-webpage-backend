@@ -13,7 +13,7 @@ export default function AdminLayout({
 }: {
     children: React.ReactNode;
 }) {
-    const { user } = useStore();
+    const { user, isLoading } = useStore();
     const pathname = usePathname();
     const router = useRouter();
     const [mounted, setMounted] = useState(false);
@@ -30,12 +30,12 @@ export default function AdminLayout({
 
     // Protect admin routes
     useEffect(() => {
-        if (mounted && pathname !== "/admin/login") {
+        if (mounted && pathname !== "/admin/login" && !isLoading) {
             if (!user || user.role !== "admin") {
                 router.replace("/admin/login");
             }
         }
-    }, [user, pathname, router, mounted]);
+    }, [user, pathname, router, mounted, isLoading]);
 
     // Don't render anything until mounted to prevent hydration mismatch
     // or if verifying auth for protected routes
@@ -45,6 +45,9 @@ export default function AdminLayout({
     if (pathname === "/admin/login") {
         return <>{children}</>;
     }
+
+    // If loading, show nothing or a spinner
+    if (isLoading) return null;
 
     // If trying to access admin routes without auth, don't render layout content
     // validation is handled by useEffect above
