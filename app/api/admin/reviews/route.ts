@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin, createSupabaseAdmin } from '@/lib/supabase/server';
 
-// GET /api/admin/reviews - List all reviews (admin only)
+// GET /api/admin/reviews - List all reviews (Public for testimonials)
 export async function GET(request: NextRequest) {
     try {
-        await requireAdmin();
+        // await requireAdmin(); // Allow public access for testimonials
         const supabase = createSupabaseAdmin();
         const { searchParams } = new URL(request.url);
 
