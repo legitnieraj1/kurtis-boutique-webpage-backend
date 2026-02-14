@@ -55,7 +55,7 @@ export function Footer() {
                         <h4 className="font-bold text-lg text-foreground uppercase tracking-wide">Customer Care</h4>
                         <ul className="space-y-3 text-sm text-foreground/80 font-medium">
                             <li><Link href="/about-us" className="hover:text-primary transition-colors hover:font-bold block">About Us</Link></li>
-                            <li><Link href="/orders" className="hover:text-primary transition-colors hover:font-bold block">Track Your Order</Link></li>
+                            <li><a href="https://shiprocket.co/tracking" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors hover:font-bold block">Track Your Order</a></li>
                             <li><Link href="/exchange-and-shipping" className="hover:text-primary transition-colors hover:font-bold block">Exchange & Shipping</Link></li>
                             <li><Link href="/payment-security" className="hover:text-primary transition-colors hover:font-bold block">Payment Security</Link></li>
                             <li><Link href="/privacy-policy" className="hover:text-primary transition-colors hover:font-bold block">Privacy Policy</Link></li>

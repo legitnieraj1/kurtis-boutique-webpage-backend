@@ -12,7 +12,6 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 
 
-import { ShiprocketTimeline } from "@/components/orders/ShiprocketTimeline";
 
 interface Order {
     id: string;
@@ -34,7 +33,6 @@ export default function OrdersPage() {
     const [mounted, setMounted] = useState(false);
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
-    const [activeTrackingAwb, setActiveTrackingAwb] = useState<string | null>(null);
 
     useEffect(() => {
         setMounted(true);
@@ -117,7 +115,7 @@ export default function OrdersPage() {
 
                         {orders[0].tracking?.awb ? (
                             <Button
-                                onClick={() => setActiveTrackingAwb(orders[0].tracking?.awb || null)}
+                                onClick={() => window.open(`https://shiprocket.co/tracking/${orders[0].tracking?.awb || orders[0].orderNumber}`, '_blank')}
                                 className="bg-stone-800 text-white hover:bg-stone-700 rounded-xl px-8"
                             >
                                 Track Now <PackageSearch className="w-4 h-4 ml-2" />
@@ -193,19 +191,18 @@ export default function OrdersPage() {
                                         </div>
 
                                         <div className="flex flex-col sm:flex-row gap-3">
-                                            <Link href={order.tracking?.awb ? `/orders/${order.id}` : '#'}>
-                                                <Button
-                                                    disabled={!order.tracking?.awb}
-                                                    className={cn(
-                                                        "w-full sm:w-auto gap-2 rounded-xl shadow-lg transition-all",
-                                                        order.tracking?.awb
-                                                            ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-primary/20"
-                                                            : "bg-stone-200 text-stone-400 cursor-not-allowed shadow-none"
-                                                    )}
-                                                >
-                                                    View Order <ChevronRight className="w-4 h-4" />
-                                                </Button>
-                                            </Link>
+                                            <Button
+                                                onClick={() => window.open(`https://shiprocket.co/tracking/${order.tracking?.awb || order.orderNumber}`, '_blank')}
+                                                className={cn(
+                                                    "w-full sm:w-auto gap-2 rounded-xl shadow-lg transition-all",
+                                                    (order.tracking?.awb || order.orderNumber)
+                                                        ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-primary/20"
+                                                        : "bg-stone-200 text-stone-400 cursor-not-allowed shadow-none"
+                                                )}
+                                                disabled={!order.tracking?.awb && !order.orderNumber}
+                                            >
+                                                Track Order <PackageSearch className="w-4 h-4" />
+                                            </Button>
                                         </div>
                                     </div>
                                 </motion.div>
@@ -214,12 +211,6 @@ export default function OrdersPage() {
                     )}
                 </div>
             </div>
-            {activeTrackingAwb && (
-                <ShiprocketTimeline
-                    awb={activeTrackingAwb}
-                    onClose={() => setActiveTrackingAwb(null)}
-                />
-            )}
             <Footer />
         </div>
     );
