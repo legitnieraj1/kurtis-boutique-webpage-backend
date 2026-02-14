@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
             .from('orders')
             .insert({
                 user_id: user.id,
-                status: 'confirmed',
+                status: 'pending', // Default status for new orders
                 subtotal: subtotal,
                 shipping_cost: shippingCost,
                 discount_amount: discountAmount,

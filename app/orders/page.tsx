@@ -100,31 +100,18 @@ export default function OrdersPage() {
 
             {/* Order Status Message & Tracking */}
             {orders.length > 0 && orders[0].status !== 'delivered' && orders[0].status !== 'cancelled' && (
-                <div className="mb-8 p-6 bg-white/60 backdrop-blur-md border border-white/60 rounded-2xl shadow-sm">
+                <div className="mb-8 p-6 bg-white/60 backdrop-blur-md border border-white/60 rounded-2xl shadow-sm container mx-auto mt-8 max-w-4xl">
                     <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                         <div className="space-y-1 text-center md:text-left">
                             <h2 className="text-xl font-serif font-bold text-stone-800">
-                                {orders[0].tracking?.awb ? "Track your order" : "Your order is getting sewed!"}
+                                {orders[0].status === 'pending' ? "Order Placed" : "Order Confirmed"}
                             </h2>
                             <p className="text-stone-500 text-sm">
-                                {orders[0].tracking?.awb
-                                    ? "Track your package in real-time."
-                                    : "We appreciate your patience. Your order is being crafted with care."}
+                                {orders[0].status === 'pending'
+                                    ? "Please wait patiently until it gets confirmed."
+                                    : "You can track your package now."}
                             </p>
                         </div>
-
-                        {orders[0].tracking?.awb ? (
-                            <Button
-                                onClick={() => window.open(`https://shiprocket.co/tracking/${orders[0].tracking?.awb || orders[0].orderNumber}`, '_blank')}
-                                className="bg-stone-800 text-white hover:bg-stone-700 rounded-xl px-8"
-                            >
-                                Track Now <PackageSearch className="w-4 h-4 ml-2" />
-                            </Button>
-                        ) : (
-                            <div className="px-4 py-2 bg-stone-100 text-stone-600 rounded-lg text-sm font-medium">
-                                Order Confirmed
-                            </div>
-                        )}
                     </div>
                 </div>
             )}
@@ -135,6 +122,9 @@ export default function OrdersPage() {
                     <header className="space-y-2">
                         <h1 className="font-serif text-4xl font-bold text-foreground">My Orders</h1>
                         <p className="text-muted-foreground font-medium">Manage and track your recent purchases.</p>
+                        <div className="p-4 bg-blue-50 text-blue-800 rounded-lg text-sm border border-blue-100">
+                            Note: If your order hasn't been confirmed yet, please wait patiently until it gets confirmed or contact us.
+                        </div>
                     </header>
 
                     {loading ? (
@@ -157,56 +147,63 @@ export default function OrdersPage() {
                         </motion.div>
                     ) : (
                         <div className="space-y-6">
-                            {orders.map((order, index) => (
-                                <motion.div
-                                    key={order.id}
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: index * 0.1 }}
-                                    className="group bg-white/60 backdrop-blur-md border border-white/60 rounded-2xl p-6 shadow-sm hover:shadow-xl hover:bg-white/80 transition-all duration-300"
-                                >
-                                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                                        <div className="space-y-1">
-                                            <div className="flex items-center gap-3">
-                                                <span className="font-mono text-sm text-muted-foreground">#{order.orderNumber}</span>
-                                                <span className={cn(
-                                                    "px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider",
-                                                    order.status === 'delivered' ? "bg-green-100 text-green-700" :
-                                                        order.status === 'cancelled' ? "bg-red-100 text-red-700" :
-                                                            order.status === 'shipped' || order.status === 'in_transit' ? "bg-blue-100 text-blue-700" :
-                                                                "bg-amber-100 text-amber-700"
-                                                )}>
-                                                    {order.status.replace('_', ' ')}
-                                                </span>
-                                            </div>
-                                            <h3 className="font-serif text-xl font-bold text-foreground">
-                                                {formatPrice(order.total)}
-                                            </h3>
-                                            <p className="text-sm text-muted-foreground font-medium">{order.date}</p>
-                                            {order.items?.length > 0 && (
-                                                <p className="text-xs text-muted-foreground">
-                                                    {order.items.length} item{order.items.length > 1 ? 's' : ''}: {order.items.map(i => i.product_name).join(', ').slice(0, 50)}...
-                                                </p>
-                                            )}
-                                        </div>
+                            {orders.map((order, index) => {
+                                const isConfirmed = order.status !== 'pending' && order.status !== 'cancelled';
+                                const trackingUrl = `https://shiprocket.co/tracking/order/${order.orderNumber}?company_id=9186815`;
 
-                                        <div className="flex flex-col sm:flex-row gap-3">
-                                            <Button
-                                                onClick={() => window.open(`https://shiprocket.co/tracking/${order.tracking?.awb || order.orderNumber}`, '_blank')}
-                                                className={cn(
-                                                    "w-full sm:w-auto gap-2 rounded-xl shadow-lg transition-all",
-                                                    (order.tracking?.awb || order.orderNumber)
-                                                        ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-primary/20"
-                                                        : "bg-stone-200 text-stone-400 cursor-not-allowed shadow-none"
+                                return (
+                                    <motion.div
+                                        key={order.id}
+                                        initial={{ opacity: 0, y: 20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: index * 0.1 }}
+                                        className="group bg-white/60 backdrop-blur-md border border-white/60 rounded-2xl p-6 shadow-sm hover:shadow-xl hover:bg-white/80 transition-all duration-300"
+                                    >
+                                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                                            <div className="space-y-1">
+                                                <div className="flex items-center gap-3">
+                                                    <span className="font-mono text-sm text-muted-foreground">#{order.orderNumber}</span>
+                                                    <span className={cn(
+                                                        "px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider",
+                                                        order.status === 'delivered' ? "bg-green-100 text-green-700" :
+                                                            order.status === 'cancelled' ? "bg-red-100 text-red-700" :
+                                                                order.status === 'pending' ? "bg-yellow-100 text-yellow-700" :
+                                                                    "bg-blue-100 text-blue-700" // confirmed, shipped, etc.
+                                                    )}>
+                                                        {order.status.replace('_', ' ')}
+                                                    </span>
+                                                </div>
+                                                <h3 className="font-serif text-xl font-bold text-foreground">
+                                                    {formatPrice(order.total)}
+                                                </h3>
+                                                <p className="text-sm text-muted-foreground font-medium">{order.date}</p>
+                                                {order.items?.length > 0 && (
+                                                    <p className="text-xs text-muted-foreground">
+                                                        {order.items.length} item{order.items.length > 1 ? 's' : ''}: {order.items.map(i => i.product_name).join(', ').slice(0, 50)}...
+                                                    </p>
                                                 )}
-                                                disabled={!order.tracking?.awb && !order.orderNumber}
-                                            >
-                                                Track Order <PackageSearch className="w-4 h-4" />
-                                            </Button>
+                                            </div>
+
+                                            <div className="flex flex-col sm:flex-row gap-3">
+                                                <Button
+                                                    onClick={() => {
+                                                        if (isConfirmed) window.open(trackingUrl, '_blank');
+                                                    }}
+                                                    className={cn(
+                                                        "w-full sm:w-auto gap-2 rounded-xl shadow-lg transition-all",
+                                                        isConfirmed
+                                                            ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-primary/20 cursor-pointer"
+                                                            : "bg-stone-200 text-stone-400 cursor-not-allowed shadow-none"
+                                                    )}
+                                                    disabled={!isConfirmed}
+                                                >
+                                                    Track Now <PackageSearch className="w-4 h-4" />
+                                                </Button>
+                                            </div>
                                         </div>
-                                    </div>
-                                </motion.div>
-                            ))}
+                                    </motion.div>
+                                );
+                            })}
                         </div>
                     )}
                 </div>

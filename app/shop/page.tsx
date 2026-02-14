@@ -13,17 +13,23 @@ import { Skeleton } from "@/components/ui/skeleton";
 // Define Types inline or import from types file
 import { Product, Category } from "@/types";
 
+
 function ShopContent() {
     const searchParams = useSearchParams();
-    const initialCategory = searchParams.get("category");
+    const categoryParam = searchParams.get("category");
 
     const [products, setProducts] = useState<Product[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const [selectedCategory, setSelectedCategory] = useState<string | null>(initialCategory);
+    const [selectedCategory, setSelectedCategory] = useState<string | null>(categoryParam);
     const [showFilters, setShowFilters] = useState(false);
     const [sortBy, setSortBy] = useState<"new" | "price_asc" | "price_desc">("new");
+
+    // Sync selectedCategory with URL param changes
+    useEffect(() => {
+        setSelectedCategory(categoryParam);
+    }, [categoryParam]);
 
     // Fetch Data
     useEffect(() => {
@@ -46,11 +52,21 @@ function ShopContent() {
         fetchData();
     }, []);
 
+    // Helper to resolve selected category to ID (handles slugs from URL)
+    const activeCategoryId = useMemo(() => {
+        if (!selectedCategory) return null;
+        const category = categories.find(c => c.id === selectedCategory || c.slug === selectedCategory);
+        return category ? category.id : selectedCategory;
+    }, [selectedCategory, categories]);
+
     const filteredProducts = useMemo(() => {
         let result = [...products];
 
-        if (selectedCategory) {
-            result = result.filter(p => p.category_id === selectedCategory);
+        if (activeCategoryId) {
+            result = result.filter(p =>
+                p.category_id === activeCategoryId ||
+                (p.category && p.category.slug === selectedCategory)
+            );
         }
 
         if (sortBy === "price_asc") {
@@ -63,7 +79,7 @@ function ShopContent() {
         }
 
         return result;
-    }, [selectedCategory, sortBy, products]);
+    }, [activeCategoryId, selectedCategory, sortBy, products]);
 
     return (
         <div className="min-h-screen flex flex-col">
@@ -91,11 +107,11 @@ function ShopContent() {
                                         onClick={() => setSelectedCategory(null)}
                                         className={cn(
                                             "flex items-center justify-between w-full text-sm text-left hover:text-primary transition-colors py-1",
-                                            !selectedCategory && "font-semibold text-primary"
+                                            !activeCategoryId && "font-semibold text-primary"
                                         )}
                                     >
                                         All Products
-                                        {!selectedCategory && <Check className="w-4 h-4" />}
+                                        {!activeCategoryId && <Check className="w-4 h-4" />}
                                     </button>
                                     {categories.map(cat => (
                                         <button
@@ -103,11 +119,11 @@ function ShopContent() {
                                             onClick={() => setSelectedCategory(cat.id)}
                                             className={cn(
                                                 "flex items-center justify-between w-full text-sm text-left hover:text-primary transition-colors py-1",
-                                                selectedCategory === cat.id && "font-semibold text-primary"
+                                                activeCategoryId === cat.id && "font-semibold text-primary"
                                             )}
                                         >
                                             {cat.name}
-                                            {selectedCategory === cat.id && <Check className="w-4 h-4" />}
+                                            {activeCategoryId === cat.id && <Check className="w-4 h-4" />}
                                         </button>
                                     ))}
                                 </div>

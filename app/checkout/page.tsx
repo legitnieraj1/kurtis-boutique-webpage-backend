@@ -100,44 +100,37 @@ export default function CheckoutPage() {
     });
 
     const [sameAsShipping, setSameAsShipping] = useState(true);
-    const [paymentMethod, setPaymentMethod] = useState<'PREPAID' | 'COD'>('PREPAID');
-    const [codCharges, setCodCharges] = useState<number>(0);
     const [shippingCost, setShippingCost] = useState<number | null>(null);
     const [isCheckingShipping, setIsCheckingShipping] = useState(false);
 
-    // Debounce effect for pincode change & payment method
+    // Debounce effect for pincode change
     useEffect(() => {
         const checkShipping = async () => {
             if (formData.pincode.length === 6) {
                 setIsCheckingShipping(true);
                 try {
-                    const isCod = paymentMethod === 'COD' ? 1 : 0;
-                    const res = await fetch(`/api/shiprocket/check-serviceability?delivery_postcode=${formData.pincode}&cod=${isCod}`);
+                    const res = await fetch(`/api/shiprocket/check-serviceability?delivery_postcode=${formData.pincode}&cod=0`);
                     const data = await res.json();
                     if (data.success) {
                         setShippingCost(data.shipping_cost);
-                        setCodCharges(data.cod_charges || 0);
                     } else {
                         // Fallback or error
                         setShippingCost(getCartTotal() >= 999 ? 0 : 99);
-                        setCodCharges(0);
                     }
                 } catch (error) {
                     console.error('Failed to check shipping:', error);
                     setShippingCost(getCartTotal() >= 999 ? 0 : 99);
-                    setCodCharges(0);
                 } finally {
                     setIsCheckingShipping(false);
                 }
             } else {
                 setShippingCost(null);
-                setCodCharges(0);
             }
         };
 
         const timeoutId = setTimeout(checkShipping, 1000);
         return () => clearTimeout(timeoutId);
-    }, [formData.pincode, getCartTotal, paymentMethod]);
+    }, [formData.pincode, getCartTotal]);
 
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -177,34 +170,7 @@ export default function CheckoutPage() {
         try {
             const finalBillingData = sameAsShipping ? formData : billingData;
 
-            // COD FLOW
-            if (paymentMethod === 'COD') {
-                console.log('[Checkout] Placing COD Order...');
-                const response = await fetch('/api/checkout/cod-order', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        shippingAddress: formData,
-                        billingAddress: finalBillingData,
-                        sameAsShipping,
-                        paymentMethod: 'COD'
-                    })
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    setIsProcessingPayment(true);
-                    toast.success('Order placed successfully!');
-                    clearCart();
-                    router.push(`/checkout/success?order_id=${data.orderNumber}`);
-                } else {
-                    toast.error(data.error || 'Failed to place COD order');
-                }
-                return;
-            }
-
-            // PREPAID FLOW (Razorpay)
+            // PREPAID FLOW (Razorpay) - ONLY OPTION NOW
             if (!razorpayLoaded) {
                 toast.error("Payment system is loading, please try again");
                 return;
@@ -511,38 +477,22 @@ export default function CheckoutPage() {
                                 )}
                             </div>
 
-                            {/* Payment Method Selection */}
+                            {/* Payment Method Selection - SIMPLIFIED SHOWING ONLY PREPAID */}
                             <div className="bg-white rounded-lg shadow p-6">
                                 <h2 className="text-xl font-medium mb-4">Payment Method</h2>
                                 <div className="space-y-3">
                                     <div
-                                        className={`flex items-center justify-between p-4 border rounded-lg cursor-pointer transition-all ${paymentMethod === 'PREPAID' ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-gray-200 hover:border-gray-300'}`}
-                                        onClick={() => setPaymentMethod('PREPAID')}
+                                        className="flex items-center justify-between p-4 border border-primary bg-primary/5 ring-1 ring-primary rounded-lg cursor-pointer transition-all"
                                     >
                                         <div className="flex items-center gap-3">
                                             <div className="h-5 w-5 rounded-full border border-gray-300 flex items-center justify-center">
-                                                {paymentMethod === 'PREPAID' && <div className="h-2.5 w-2.5 rounded-full bg-primary" />}
+                                                <div className="h-2.5 w-2.5 rounded-full bg-primary" />
                                             </div>
                                             <span className="font-medium">Online Payment (Cards, UPI, Netbanking)</span>
                                         </div>
                                         <ShieldCheck className="w-5 h-5 text-green-600" />
                                     </div>
-
-                                    <div
-                                        className={`flex items-center justify-between p-4 border rounded-lg cursor-pointer transition-all ${paymentMethod === 'COD' ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-gray-200 hover:border-gray-300'}`}
-                                        onClick={() => setPaymentMethod('COD')}
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <div className="h-5 w-5 rounded-full border border-gray-300 flex items-center justify-center">
-                                                {paymentMethod === 'COD' && <div className="h-2.5 w-2.5 rounded-full bg-primary" />}
-                                            </div>
-                                            <div className="flex flex-col">
-                                                <span className="font-medium">Cash on Delivery</span>
-                                                {codCharges > 0 && <span className="text-xs text-orange-600">Additional charges apply: {formatPrice(codCharges)}</span>}
-                                            </div>
-                                        </div>
-                                        {/* Icon for COD */}
-                                    </div>
+                                    {/* COD OPTION REMOVED */}
                                 </div>
                             </div>
                         </div>
@@ -597,24 +547,17 @@ export default function CheckoutPage() {
                                             )}
                                         </p>
                                     </div>
-                                    {/* COD Charges Display */}
-                                    {paymentMethod === 'COD' && codCharges > 0 && (
-                                        <div className="flex justify-between text-sm text-orange-600">
-                                            <p>COD Charges</p>
-                                            <p>{formatPrice(codCharges)}</p>
-                                        </div>
-                                    )}
 
                                     <div className="flex justify-between text-lg font-bold text-gray-900 pt-2">
                                         <p>Total</p>
-                                        <p>{formatPrice(subtotal + (shippingCost || 0) + (paymentMethod === 'COD' ? codCharges : 0))}</p>
+                                        <p>{formatPrice(subtotal + (shippingCost || 0))}</p>
                                     </div>
                                 </div>
 
                                 <Button
                                     type="button"
                                     onClick={() => formRef.current?.requestSubmit()}
-                                    disabled={isInitiating || cart.length === 0 || (!razorpayLoaded && paymentMethod === 'PREPAID')}
+                                    disabled={isInitiating || cart.length === 0 || !razorpayLoaded}
                                     className="w-full mt-6 h-12 bg-primary hover:bg-primary/90 text-white font-bold text-lg rounded-md shadow-lg transition-all"
                                 >
                                     {isInitiating ? (
@@ -623,33 +566,24 @@ export default function CheckoutPage() {
                                             Processing...
                                         </>
                                     ) : (
-                                        paymentMethod === 'COD' ? "Place Order" : (!razorpayLoaded ? (
+                                        !razorpayLoaded ? (
                                             <>
                                                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                                                 Loading...
                                             </>
-                                        ) : "Pay Now")
+                                        ) : "Pay Now"
                                     )}
                                 </Button>
 
                                 <div className="mt-4 space-y-2">
-                                    {paymentMethod === 'PREPAID' && (
-                                        <>
-                                            <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
-                                                <ShieldCheck className="h-4 w-4 text-green-600" />
-                                                <span>Secured by Razorpay</span>
-                                            </div>
-                                            <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
-                                                <CreditCard className="h-4 w-4 text-primary" />
-                                                <span>Cards, UPI, Wallets & More</span>
-                                            </div>
-                                        </>
-                                    )}
-                                    {paymentMethod === 'COD' && (
-                                        <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
-                                            <span className="text-center">Cash payment upon delivery. Additional charges may apply.</span>
-                                        </div>
-                                    )}
+                                    <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
+                                        <ShieldCheck className="h-4 w-4 text-green-600" />
+                                        <span>Secured by Razorpay</span>
+                                    </div>
+                                    <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
+                                        <CreditCard className="h-4 w-4 text-primary" />
+                                        <span>Cards, UPI, Wallets & More</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>

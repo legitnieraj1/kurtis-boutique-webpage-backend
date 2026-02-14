@@ -1,7 +1,22 @@
+"use client";
+
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
+import { Category } from "@/types";
 
 export function Footer() {
+    const [categories, setCategories] = useState<Category[]>([]);
+
+    useEffect(() => {
+        fetch('/api/categories')
+            .then(res => res.json())
+            .then(data => {
+                if (data.categories) setCategories(data.categories);
+            })
+            .catch(err => console.error("Footer category fetch error:", err));
+    }, []);
+
     return (
         <footer className="bg-gradient-to-br from-white via-pink-50 to-rose-100/40 pt-16 pb-8 border-t border-pink-100">
             <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -43,10 +58,23 @@ export function Footer() {
                     <div className="space-y-4">
                         <h4 className="font-bold text-lg text-foreground uppercase tracking-wide">Shop</h4>
                         <ul className="space-y-3 text-sm text-foreground/80 font-medium">
-                            <li><Link href="/shop?category=kurtis" className="hover:text-primary transition-colors hover:font-bold block">Kurtis</Link></li>
-                            <li><Link href="/shop?category=workwear" className="hover:text-primary transition-colors hover:font-bold block">Workwear</Link></li>
-                            <li><Link href="/shop?category=festive" className="hover:text-primary transition-colors hover:font-bold block">Festive Wear</Link></li>
-                            <li><Link href="/shop?category=new" className="hover:text-primary transition-colors hover:font-bold block">New Arrivals</Link></li>
+                            <li>
+                                <Link href="/shop" className="hover:text-primary transition-colors hover:font-bold block">
+                                    Shop All
+                                </Link>
+                            </li>
+                            {categories.slice(0, 5).map(cat => (
+                                <li key={cat.id}>
+                                    <Link href={`/shop?category=${cat.slug}`} className="hover:text-primary transition-colors hover:font-bold block capitalize">
+                                        {cat.name}
+                                    </Link>
+                                </li>
+                            ))}
+                            <li>
+                                <Link href="/shop?sort=created_at&order=desc" className="hover:text-primary transition-colors hover:font-bold block">
+                                    New Arrivals
+                                </Link>
+                            </li>
                         </ul>
                     </div>
 
