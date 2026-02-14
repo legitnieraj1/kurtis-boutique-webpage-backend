@@ -22,7 +22,7 @@ export function NewArrivalsSection() {
     }, []);
 
     return (
-        <section className="pt-20 pb-20 md:py-24 bg-[#faf9f6]">
+        <section className="pt-40 pb-20 md:py-24 bg-[#faf9f6]">
             <div className="container mx-auto px-4 md:px-8">
 
                 {/* Header */}
