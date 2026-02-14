@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import Script from 'next/script';
 
 import { PaymentProcessingLoader } from '@/components/orders/PaymentProcessingLoader';
+import { LoadingScreen } from "@/components/ui/LoadingScreen";
 
 declare global {
     interface Window {
@@ -261,12 +262,11 @@ export default function CheckoutPage() {
 
     if (!hydrated || isLoading || cartLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <div className="flex flex-col items-center gap-4">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    <p className="text-muted-foreground">Loading checkout...</p>
-                </div>
-            </div>
+            <LoadingScreen
+                text="Loading checkout..."
+                startTime={2}
+                endTime={6}
+            />
         );
     }
 

@@ -10,16 +10,10 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { getSupabaseClient } from "@/lib/supabase/client";
 
+import { LoadingScreen } from "@/components/ui/LoadingScreen";
+
 function LoadingState() {
-    return (
-        <div className="min-h-screen flex flex-col">
-            <Navbar />
-            <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-stone-50 via-rose-50/30 to-stone-100">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            </div>
-            <Footer />
-        </div>
-    );
+    return <LoadingScreen />;
 }
 
 function OrderSuccessContent() {

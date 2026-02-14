@@ -43,6 +43,52 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         console.log('AuthProvider mounting...');
 
+        // Helper to fetch profile and set user
+        const fetchProfileAndSetUser = async (session: Session) => {
+            if (!isMounted) return;
+            if (!session.user) return;
+
+            try {
+                // Fetch profile role
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('role, full_name')
+                    .eq('id', session.user.id)
+                    .single();
+
+                if (!isMounted) return;
+
+                const role = profile?.role || 'customer';
+                const fullName = profile?.full_name || session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User';
+
+                setUser({
+                    id: session.user.id,
+                    email: session.user.email || '',
+                    full_name: fullName,
+                    role: role
+                });
+                setIsAuthenticated(true);
+                setIsLoading(false);
+
+                // Sync data in background
+                syncAllData().catch(e => console.warn('Sync error:', e));
+
+            } catch (error) {
+                console.error('Error fetching profile:', error);
+                // Fallback to customer if profile fetch fails but session exists
+                if (isMounted) {
+                    setUser({
+                        id: session.user.id,
+                        email: session.user.email || '',
+                        full_name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
+                        role: 'customer'
+                    });
+                    setIsAuthenticated(true);
+                    setIsLoading(false);
+                }
+            }
+        };
+
         // Listen for auth state changes first - this is the most reliable method
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (event: AuthChangeEvent, session: Session | null) => {
@@ -52,17 +98,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
                 if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') && session?.user) {
                     authSetByEvent.current = true;
-                    setUser({
-                        id: session.user.id,
-                        email: session.user.email || '',
-                        full_name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
-                        role: 'customer'
-                    });
-                    setIsAuthenticated(true);
-                    setIsLoading(false);
-
-                    // Sync data in background
-                    syncAllData().catch(e => console.warn('Sync error:', e));
+                    // Use helper to fetch profile
+                    await fetchProfileAndSetUser(session);
                 } else if (event === 'SIGNED_OUT') {
                     authSetByEvent.current = true;
                     logout();
@@ -97,24 +134,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
                 if (session?.user) {
                     console.log('Fallback: found session for', session.user.email);
-                    setUser({
-                        id: session.user.id,
-                        email: session.user.email || '',
-                        full_name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
-                        role: 'customer'
-                    });
-                    setIsAuthenticated(true);
-                    syncAllData().catch(e => console.warn('Sync error:', e));
+                    // Use helper here too
+                    await fetchProfileAndSetUser(session);
                 } else {
                     console.log('Fallback: no session found');
                     setIsAuthenticated(false);
+                    setIsLoading(false); // Ensure loading stops if no session
                 }
             } catch (error) {
                 console.warn('Fallback session check threw:', error);
+                if (isMounted) setIsLoading(false);
             } finally {
-                if (isMounted) {
-                    setIsLoading(false);
-                }
+                // remove redundant failsafe here as fetchProfile handles it
             }
         }, 500); // Wait 500ms for onAuthStateChange to fire first
 
