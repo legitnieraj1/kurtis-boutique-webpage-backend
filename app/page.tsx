@@ -35,14 +35,41 @@ export default function Home() {
         <CategoryBubbles categories={categories} />
 
         {/* HERO SECTION */}
-        <section className="relative w-full pt-10 pb-40 md:pb-64 bg-white flex flex-col items-center justify-center overflow-visible">
-          <div className="flex flex-col items-center gap-8 animate-in fade-in duration-700 p-4 w-full">
+        <section className="relative w-full pt-6 md:pt-10 pb-40 md:pb-64 bg-white flex flex-col items-center justify-center overflow-visible">
+          <div className="flex flex-col items-center gap-0 animate-in fade-in duration-700 p-4 w-full">
             {/* Logo */}
             <img
               src="/kurtis-logo-large.png"
               alt="Kurtis Boutique"
-              className="w-48 sm:w-64 md:w-80 h-auto object-contain drop-shadow-sm mb-4 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-200 fill-mode-forwards"
+              className="w-48 sm:w-64 md:w-80 h-auto object-contain drop-shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-200 fill-mode-forwards"
             />
+
+            {/* Animated Brand Text - Luxury Boutique Style */}
+            <div className="flex flex-col items-center justify-center text-center max-w-3xl z-50 relative mx-4 mt-2 mb-8 md:mb-14">
+
+              {/* Primary Headline */}
+              <h2 className="text-2xl md:text-3xl lg:text-4xl font-serif text-[#7d3b54] tracking-wider font-light animate-in fade-in slide-in-from-bottom-2 duration-1000 delay-300 fill-mode-forwards mb-8 md:mb-10">
+                Your go to customised store
+              </h2>
+
+              {/* Subtext Options */}
+              <div className="flex flex-col items-center justify-center gap-y-3 text-sm md:text-base lg:text-lg text-[#8c8c8c] font-sans font-light tracking-wide leading-relaxed animate-in fade-in slide-in-from-bottom-1 duration-1000 delay-500 fill-mode-forwards">
+                <span className="mb-2">
+                  Women fashion – Normal & Maternity wears
+                </span>
+
+                <div className="flex flex-wrap items-center justify-center gap-x-3 md:gap-x-4">
+                  <span>Mom & Baby combos</span>
+                  <span className="text-[10px] text-[#b3b3b3] opacity-60">•</span>
+                  <span>Family combos</span>
+                  <span className="text-[10px] text-[#b3b3b3] opacity-60">•</span>
+                  <span>Couple combos</span>
+                  <span className="text-[10px] text-[#b3b3b3] opacity-60">•</span>
+                  <span>Siblings combos</span>
+                </div>
+              </div>
+
+            </div>
 
             {/* Overlapping Banner */}
             <div className="absolute -bottom-24 md:-bottom-44 w-[90%] md:w-[80%] max-w-5xl h-[200px] md:h-[350px] rounded-xl overflow-hidden shadow-2xl z-20">

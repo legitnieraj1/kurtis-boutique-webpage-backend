@@ -122,7 +122,7 @@ export default function CustomisationQueriesPage() {
                                 <div>
                                     <h3 className="font-medium text-lg text-foreground">{query.product_name || 'General Query'}</h3>
                                     <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                                        <span>Product ID: {query.product_id || 'N/A'}</span>
+                                        <span>Product: {(query as any).product?.name || query.product_id || 'N/A'}</span>
                                         <span>•</span>
                                         <span>{new Date(query.created_at).toLocaleString()}</span>
                                     </div>
