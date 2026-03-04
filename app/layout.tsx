@@ -15,11 +15,193 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Kurtis Boutique | Elegant Indian Fashion",
-  description: "Premium Indian women's boutique offering Kurtis, Co-ords, and Festive wear.",
+  metadataBase: new URL("https://kurtisboutique.in"),
+
+  title: {
+    default: "Kurtis Boutique | Buy Designer Kurtis & Ethnic Wear Online India",
+    template: "%s | Kurtis Boutique India",
+  },
+
+  description:
+    "Shop premium designer kurtis, kurtas, co-ords & festive ethnic wear for women online at Kurtis Boutique India. Free delivery, COD available. Cotton kurtis, Anarkali kurtas, maternity wear & more.",
+
+  keywords: [
+    "kurtis boutique",
+    "kurtisboutique",
+    "boutique kurtis",
+    "buy kurtis online India",
+    "designer kurtis for women",
+    "women ethnic wear online",
+    "cotton kurtis",
+    "Anarkali kurtas",
+    "festive wear kurtis",
+    "party wear kurtis",
+    "co-ord sets women",
+    "maternity kurtis",
+    "affordable kurtis online India",
+    "kurta sets for women",
+    "Indian fashion online",
+    "ethnic wear shopping India",
+    "A-line kurtis",
+    "straight kurtas for women",
+    "printed kurtis",
+    "office wear kurtis",
+    "casual kurtis online",
+    "family combo sets",
+    "couple matching sets",
+    "mom baby matching outfits",
+  ],
+
+  authors: [{ name: "Kurtis Boutique" }],
+
+  alternates: {
+    canonical: "/",
+    languages: { "en-IN": "/" },
+  },
+
+  openGraph: {
+    type: "website",
+    locale: "en_IN",
+    url: "https://kurtisboutique.in",
+    siteName: "Kurtis Boutique",
+    title: "Kurtis Boutique | Designer Kurtis & Ethnic Wear Online India",
+    description:
+      "Shop premium designer kurtis, kurtas, co-ords & festive ethnic wear for women. Free delivery & COD available across India.",
+    images: [
+      {
+        url: "/kurtis-logo-large.png",
+        width: 512,
+        height: 512,
+        alt: "Kurtis Boutique - Designer Ethnic Wear for Women",
+      },
+    ],
+  },
+
+  twitter: {
+    card: "summary_large_image",
+    title: "Kurtis Boutique | Designer Kurtis & Ethnic Wear Online India",
+    description:
+      "Shop premium designer kurtis, kurtas, co-ords & festive ethnic wear for women. Free delivery & COD available across India.",
+    images: ["/kurtis-logo-large.png"],
+  },
+
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+
+  verification: {
+    // Uncomment and add your codes after registering:
+    // google: "YOUR_GOOGLE_SEARCH_CONSOLE_CODE",
+  },
+
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/kurtis-logo-large.png",
+  },
+
+  manifest: "/site.webmanifest",
 };
 
 import { BackgroundGradientAnimation } from "@/components/ui/background-gradient-animation";
+
+// JSON-LD Schema Markup for SEO
+function SchemaMarkup() {
+  const organizationSchema = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "@id": "https://kurtisboutique.in/#organization",
+    name: "Kurtis Boutique",
+    alternateName: ["KurtisBoutique", "Kurtis Boutique India", "Boutique Kurtis"],
+    url: "https://kurtisboutique.in",
+    logo: {
+      "@type": "ImageObject",
+      url: "https://kurtisboutique.in/logo.png",
+      width: 512,
+      height: 512,
+    },
+    description:
+      "Premium Indian women's boutique offering designer kurtis, kurtas, co-ords, festive wear, maternity wear, and family combo collections across India.",
+    contactPoint: {
+      "@type": "ContactPoint",
+      contactType: "customer service",
+      availableLanguage: ["English", "Hindi"],
+    },
+    sameAs: [
+      // Add your actual social URLs here:
+      // "https://www.instagram.com/kurtisboutique/",
+      // "https://www.facebook.com/kurtisboutique/",
+    ],
+  };
+
+  const websiteSchema = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "@id": "https://kurtisboutique.in/#website",
+    name: "Kurtis Boutique",
+    alternateName: "KurtisBoutique",
+    url: "https://kurtisboutique.in",
+    publisher: { "@id": "https://kurtisboutique.in/#organization" },
+    potentialAction: {
+      "@type": "SearchAction",
+      target: {
+        "@type": "EntryPoint",
+        urlTemplate: "https://kurtisboutique.in/shop?search={search_term_string}",
+      },
+      "query-input": "required name=search_term_string",
+    },
+  };
+
+  const storeSchema = {
+    "@context": "https://schema.org",
+    "@type": "OnlineStore",
+    "@id": "https://kurtisboutique.in/#store",
+    name: "Kurtis Boutique",
+    url: "https://kurtisboutique.in",
+    description:
+      "Shop designer kurtis, ethnic wear, co-ords & festive collections for women online in India.",
+    currenciesAccepted: "INR",
+    paymentAccepted: "Credit Card, Debit Card, UPI, Cash on Delivery, Net Banking",
+    priceRange: "₹₹",
+    areaServed: { "@type": "Country", name: "India" },
+    brand: { "@type": "Brand", name: "Kurtis Boutique" },
+    hasOfferCatalog: {
+      "@type": "OfferCatalog",
+      name: "Women's Ethnic Wear Collection",
+      itemListElement: [
+        { "@type": "OfferCatalog", name: "Kurtis", description: "Designer kurtis including A-line, Anarkali, straight, and printed styles" },
+        { "@type": "OfferCatalog", name: "Co-ord Sets", description: "Matching co-ord sets for women in ethnic and fusion styles" },
+        { "@type": "OfferCatalog", name: "Festive Wear", description: "Premium festive and party wear collections for women" },
+        { "@type": "OfferCatalog", name: "Maternity Wear", description: "Comfortable and stylish maternity ethnic wear" },
+        { "@type": "OfferCatalog", name: "Combo Sets", description: "Family combo sets, couple sets, and sibling matching collections" },
+      ],
+    },
+  };
+
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(storeSchema) }}
+      />
+    </>
+  );
+}
 
 export default function RootLayout({
   children,
@@ -31,6 +213,7 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${playfair.variable} antialiased text-foreground relative min-h-screen`}
       >
+        <SchemaMarkup />
         <div className="fixed inset-0 -z-10 bg-background pointer-events-none">
           <BackgroundGradientAnimation
             containerClassName="h-full w-full pointer-events-none"

@@ -1,0 +1,21 @@
+{
+  "name": "Kurtis Boutique - Designer Ethnic Wear Online India",
+  "short_name": "Kurtis Boutique",
+  "description": "Shop premium designer kurtis, kurtas, co-ords & festive ethnic wear for women online at Kurtis Boutique India.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#7d3b54",
+  "icons": [
+    {
+      "src": "/kurtis-logo-large.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}

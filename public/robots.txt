@@ -1,0 +1,28 @@
+# robots.txt for kurtisboutique.in
+
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /checkout/
+Disallow: /cart/
+Disallow: /account/
+Disallow: /admin/
+Disallow: /_next/
+Disallow: /login
+Disallow: /signup
+Disallow: /dashboard
+
+# Allow crawling important pages
+Allow: /shop
+Allow: /product/
+Allow: /about-us
+Allow: /contact
+Allow: /exchange-and-shipping
+Allow: /privacy-policy
+Allow: /payment-security
+
+# Sitemap
+Sitemap: https://kurtisboutique.in/sitemap.xml
+
+User-agent: Bingbot
+Crawl-delay: 5

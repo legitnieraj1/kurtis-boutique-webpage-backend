@@ -1,6 +1,14 @@
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { ShieldCheck, Lock, CreditCard } from "lucide-react";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Payment Security - 100% Secure Payments",
+  description:
+    "Shop with confidence at Kurtis Boutique. We use industry-standard encryption and secure payment gateways. UPI, credit cards, debit cards & COD accepted.",
+  alternates: { canonical: "/payment-security" },
+};
 
 export default function PaymentSecurity() {
     return (

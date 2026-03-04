@@ -1,5 +1,14 @@
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Privacy Policy",
+  description:
+    "Read the Kurtis Boutique privacy policy. Learn how we collect, use, and protect your personal information when you shop with us.",
+  alternates: { canonical: "/privacy-policy" },
+  robots: { index: true, follow: true },
+};
 
 export default function PrivacyPolicy() {
     return (

@@ -1,0 +1,232 @@
+{
+  "___INSTRUCTIONS___": "Add each schema block as a <script type='application/ld+json'> tag in your <head>. See the implementation guide for details.",
+
+  "schema_1_organization": {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "@id": "https://kurtisboutique.in/#organization",
+    "name": "Kurtis Boutique",
+    "alternateName": ["KurtisBoutique", "Kurtis Boutique India"],
+    "url": "https://kurtisboutique.in",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://kurtisboutique.in/logo.png",
+      "width": 512,
+      "height": 512
+    },
+    "description": "Premium Indian women's boutique offering designer kurtis, kurtas, co-ords, festive wear, and maternity collections across India.",
+    "foundingDate": "2024",
+    "contactPoint": {
+      "@type": "ContactPoint",
+      "contactType": "customer service",
+      "availableLanguage": ["English", "Hindi"]
+    },
+    "sameAs": [
+      "https://www.instagram.com/kurtisboutique/",
+      "https://www.facebook.com/kurtisboutique/"
+    ]
+  },
+
+  "schema_2_website_with_search": {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "@id": "https://kurtisboutique.in/#website",
+    "name": "Kurtis Boutique",
+    "alternateName": "KurtisBoutique",
+    "url": "https://kurtisboutique.in",
+    "publisher": {
+      "@id": "https://kurtisboutique.in/#organization"
+    },
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": {
+        "@type": "EntryPoint",
+        "urlTemplate": "https://kurtisboutique.in/search?q={search_term_string}"
+      },
+      "query-input": "required name=search_term_string"
+    }
+  },
+
+  "schema_3_online_store": {
+    "@context": "https://schema.org",
+    "@type": "OnlineStore",
+    "@id": "https://kurtisboutique.in/#store",
+    "name": "Kurtis Boutique",
+    "url": "https://kurtisboutique.in",
+    "description": "Shop designer kurtis, ethnic wear, co-ords & festive collections for women online in India.",
+    "currenciesAccepted": "INR",
+    "paymentAccepted": "Credit Card, Debit Card, UPI, Cash on Delivery, Net Banking",
+    "priceRange": "₹₹",
+    "areaServed": {
+      "@type": "Country",
+      "name": "India"
+    },
+    "brand": {
+      "@type": "Brand",
+      "name": "Kurtis Boutique"
+    },
+    "hasOfferCatalog": {
+      "@type": "OfferCatalog",
+      "name": "Women's Ethnic Wear Collection",
+      "itemListElement": [
+        {
+          "@type": "OfferCatalog",
+          "name": "Kurtis",
+          "description": "Designer kurtis including A-line, Anarkali, straight, and printed styles"
+        },
+        {
+          "@type": "OfferCatalog",
+          "name": "Co-ord Sets",
+          "description": "Matching co-ord sets for women in ethnic and fusion styles"
+        },
+        {
+          "@type": "OfferCatalog",
+          "name": "Festive Wear",
+          "description": "Premium festive and party wear collections for women"
+        },
+        {
+          "@type": "OfferCatalog",
+          "name": "Maternity Wear",
+          "description": "Comfortable and stylish maternity ethnic wear"
+        },
+        {
+          "@type": "OfferCatalog",
+          "name": "Combo Sets",
+          "description": "Family combo sets, couple sets, and sibling matching collections"
+        }
+      ]
+    }
+  },
+
+  "schema_4_breadcrumb_homepage": {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://kurtisboutique.in/"
+      }
+    ]
+  },
+
+  "schema_5_breadcrumb_category_example": {
+    "___NOTE___": "Use this pattern for each category page, updating name and item URL",
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://kurtisboutique.in/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Kurtis",
+        "item": "https://kurtisboutique.in/collections/kurtis"
+      }
+    ]
+  },
+
+  "schema_6_product_example": {
+    "___NOTE___": "Use this template for EACH product page. Replace values dynamically from your product data.",
+    "@context": "https://schema.org",
+    "@type": "Product",
+    "name": "YOUR_PRODUCT_NAME",
+    "image": [
+      "https://kurtisboutique.in/images/products/YOUR_IMAGE_1.jpg",
+      "https://kurtisboutique.in/images/products/YOUR_IMAGE_2.jpg"
+    ],
+    "description": "YOUR_PRODUCT_DESCRIPTION",
+    "brand": {
+      "@type": "Brand",
+      "name": "Kurtis Boutique"
+    },
+    "category": "Women's Ethnic Wear",
+    "color": "YOUR_COLOR",
+    "material": "YOUR_FABRIC",
+    "offers": {
+      "@type": "Offer",
+      "url": "https://kurtisboutique.in/products/YOUR_PRODUCT_SLUG",
+      "priceCurrency": "INR",
+      "price": "YOUR_PRICE",
+      "priceValidUntil": "2026-12-31",
+      "availability": "https://schema.org/InStock",
+      "itemCondition": "https://schema.org/NewCondition",
+      "seller": {
+        "@id": "https://kurtisboutique.in/#organization"
+      },
+      "shippingDetails": {
+        "@type": "OfferShippingDetails",
+        "shippingDestination": {
+          "@type": "DefinedRegion",
+          "addressCountry": "IN"
+        },
+        "deliveryTime": {
+          "@type": "ShippingDeliveryTime",
+          "handlingTime": {
+            "@type": "QuantitativeValue",
+            "minValue": 1,
+            "maxValue": 3,
+            "unitCode": "d"
+          },
+          "transitTime": {
+            "@type": "QuantitativeValue",
+            "minValue": 3,
+            "maxValue": 7,
+            "unitCode": "d"
+          }
+        }
+      }
+    },
+    "aggregateRating": {
+      "___NOTE___": "Only add this if you have real customer reviews",
+      "@type": "AggregateRating",
+      "ratingValue": "4.5",
+      "reviewCount": "25"
+    }
+  },
+
+  "schema_7_faq_example": {
+    "___NOTE___": "Add FAQ schema to pages that have FAQ sections. Great for winning rich snippets.",
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "Does Kurtis Boutique offer Cash on Delivery?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes, Kurtis Boutique offers Cash on Delivery (COD) across India along with online payment options including UPI, credit cards, and debit cards."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What types of kurtis are available at Kurtis Boutique?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Kurtis Boutique offers a wide range including A-line kurtis, Anarkali kurtas, straight kurtis, printed kurtis, cotton kurtis, designer kurtis, co-ord sets, festive wear, maternity wear, and family combo sets."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Does Kurtis Boutique deliver all over India?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes, Kurtis Boutique delivers across India. We offer free delivery on qualifying orders with fast shipping typically within 3-7 business days."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What is the return policy at Kurtis Boutique?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Kurtis Boutique offers easy returns and exchanges. Please check our Returns & Exchange policy page for detailed information on timelines and conditions."
+        }
+      }
+    ]
+  }
+}

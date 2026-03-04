@@ -1,0 +1,27 @@
+# ============================================================
+# robots.txt for kurtisboutique.in
+# Place this file at: https://kurtisboutique.in/robots.txt
+# In Next.js, put it in the /public folder
+# ============================================================
+
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /checkout/
+Disallow: /cart/
+Disallow: /account/
+Disallow: /admin/
+Disallow: /_next/
+Disallow: /search?*
+
+# Allow search engines to crawl important pages
+Allow: /collections/
+Allow: /products/
+Allow: /pages/
+
+# Sitemap location
+Sitemap: https://kurtisboutique.in/sitemap.xml
+
+# Crawl delay (optional, helps prevent server overload)
+User-agent: Bingbot
+Crawl-delay: 5

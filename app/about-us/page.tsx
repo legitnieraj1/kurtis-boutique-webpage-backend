@@ -2,6 +2,27 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "About Us - Our Story",
+  description:
+    "Learn about Kurtis Boutique — a premium Indian women's boutique from Bangalore offering designer kurtis, ethnic wear, co-ords, and festive collections crafted with love.",
+  keywords: [
+    "about kurtis boutique",
+    "Indian ethnic wear brand",
+    "Bangalore boutique",
+    "women fashion India",
+    "handcrafted kurtis",
+  ],
+  alternates: { canonical: "/about-us" },
+  openGraph: {
+    title: "About Kurtis Boutique - Our Story",
+    description:
+      "Discover the story behind Kurtis Boutique — blending traditional Indian craftsmanship with contemporary fashion.",
+    url: "https://kurtisboutique.in/about-us",
+  },
+};
 
 export default function AboutPage() {
     return (
