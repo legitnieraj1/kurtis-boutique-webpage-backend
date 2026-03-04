@@ -40,18 +40,6 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-
-  // Redirect www → non-www for SEO canonical consistency
-  async redirects() {
-    return [
-      {
-        source: "/:path*",
-        has: [{ type: "host", value: "www.kurtisboutique.in" }],
-        destination: "https://kurtisboutique.in/:path*",
-        permanent: true,
-      },
-    ];
-  },
 };
 
 export default nextConfig;
