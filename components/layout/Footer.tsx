@@ -43,15 +43,6 @@ export function Footer() {
                                 <span className="sr-only">WhatsApp</span>
                             </a>
                         </div>
-
-                        <div className="flex gap-2 max-w-sm pt-2">
-                            <input
-                                type="email"
-                                placeholder="Enter your email"
-                                className="flex-1 px-4 py-2 rounded-md border border-foreground/20 bg-white/50 text-sm focus:outline-none focus:ring-1 focus:ring-primary font-medium placeholder:text-foreground/50 text-foreground"
-                            />
-                            <Button className="font-semibold shadow-md">Subscribe</Button>
-                        </div>
                     </div>
 
                     {/* Quick Links */}
