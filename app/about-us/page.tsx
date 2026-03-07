@@ -5,23 +5,23 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "About Us - Our Story",
-  description:
-    "Learn about Kurtis Boutique — a premium Indian women's boutique from Bangalore offering designer kurtis, ethnic wear, co-ords, and festive collections crafted with love.",
-  keywords: [
-    "about kurtis boutique",
-    "Indian ethnic wear brand",
-    "Bangalore boutique",
-    "women fashion India",
-    "handcrafted kurtis",
-  ],
-  alternates: { canonical: "/about-us" },
-  openGraph: {
-    title: "About Kurtis Boutique - Our Story",
+    title: "About Us - Our Story",
     description:
-      "Discover the story behind Kurtis Boutique — blending traditional Indian craftsmanship with contemporary fashion.",
-    url: "https://kurtisboutique.in/about-us",
-  },
+        "Learn about Kurtis Boutique — a premium Indian women's boutique from Bangalore offering designer kurtis, ethnic wear, co-ords, and festive collections crafted with love.",
+    keywords: [
+        "about kurtis boutique",
+        "Indian ethnic wear brand",
+        "Bangalore boutique",
+        "women fashion India",
+        "handcrafted kurtis",
+    ],
+    alternates: { canonical: "/about-us" },
+    openGraph: {
+        title: "About Kurtis Boutique - Our Story",
+        description:
+            "Discover the story behind Kurtis Boutique — blending traditional Indian craftsmanship with contemporary fashion.",
+        url: "https://kurtisboutique.in/about-us",
+    },
 };
 
 export default function AboutPage() {
@@ -46,11 +46,12 @@ export default function AboutPage() {
                     </section>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
-                        <div className="aspect-square bg-muted rounded-lg relative overflow-hidden">
-                            <div className="absolute inset-0 bg-stone-200 animate-pulse-slow" />
-                            <div className="absolute inset-0 flex items-center justify-center text-muted-foreground/30 text-xl font-serif">
-                                Craftsmanship
-                            </div>
+                        <div className="aspect-square rounded-lg relative overflow-hidden shadow-lg">
+                            <img
+                                src="/craftsmanship.jpg"
+                                alt="Indian Ethnic Wear Craftsmanship"
+                                className="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
+                            />
                         </div>
                         <div className="space-y-6">
                             <h3 className="text-2xl font-serif">Crafted with Care</h3>

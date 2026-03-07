@@ -85,14 +85,14 @@ export async function POST(request: NextRequest) {
                 codCharges = bestCourier.cod_charges || 0;
             } else {
                 // Fallback
-                shippingCost = subtotal >= 999 ? 0 : 99;
+                shippingCost = 99;
                 codCharges = 0;
             }
 
         } catch (error) {
             console.error('Error fetching Shiprocket rates:', error);
             // Fallback logic
-            shippingCost = subtotal >= 999 ? 0 : 99;
+            shippingCost = 99;
         }
 
         const totalAmount = subtotal + shippingCost + codCharges;

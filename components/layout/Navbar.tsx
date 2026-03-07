@@ -88,7 +88,7 @@ export function Navbar() {
 
                         {/* Logo - Centered on Mobile, Left on Desktop */}
                         <Link href="/" className="absolute top-1/2 -translate-y-1/2 z-50 left-1/2 -translate-x-1/2 md:left-0 md:translate-x-0">
-                            <img src="/kurtis-logo-large.png" alt="Kurtis Boutique" className="h-16 md:h-40 w-auto object-contain drop-shadow-sm md:transform md:-translate-x-2" />
+                            <img src="/kurtis-logo-large.png" alt="Kurtis Boutique" className="h-28 md:h-40 w-auto object-contain drop-shadow-sm md:transform md:-translate-x-2 pb-2 md:pb-0 scale-125 md:scale-100" />
                         </Link>
 
                         {/* Desktop Nav */}

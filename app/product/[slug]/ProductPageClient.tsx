@@ -213,11 +213,10 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
                             </Button>
                         </div>
 
-                        {/* FEATURES */}
                         <div className="grid grid-cols-1 gap-4 pt-6">
                             <div className="flex items-center gap-3 text-sm text-foreground/80">
                                 <Truck className="w-5 h-5 text-muted-foreground" />
-                                <span>Free Shipping on orders above ₹999</span>
+                                <span>Nationwide Shipping Available</span>
                             </div>
                             <div className="flex items-center gap-3 text-sm text-foreground/80">
                                 <ShieldCheck className="w-5 h-5 text-muted-foreground" />

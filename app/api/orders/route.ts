@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Create order
-        const shippingCost = subtotal >= 999 ? 0 : 99; // Free shipping above ₹999
+        const shippingCost = 99; // Standard shipping
         const total = subtotal + shippingCost;
 
         const { data: order, error: orderError } = await supabase

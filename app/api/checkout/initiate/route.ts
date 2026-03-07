@@ -95,16 +95,16 @@ export async function POST(request: NextRequest) {
                     console.log(`[Checkout] Dynamic Shipping Cost for ${deliveryPincode}: ₹${shippingCost}`);
                 } else {
                     console.warn('[Checkout] Shiprocket serviceability check failed/empty, falling back');
-                    // Fallback logic could go here (e.g., standard flat rate)
-                    shippingCost = totalAmount >= 999 ? 0 : 99;
+                    // Fallback logic
+                    shippingCost = 99;
                 }
             } catch (srError) {
                 console.error('[Checkout] Shiprocket error:', srError);
                 // Fallback on error
-                shippingCost = totalAmount >= 999 ? 0 : 99;
+                shippingCost = 99;
             }
         } else {
-            shippingCost = totalAmount >= 999 ? 0 : 99;
+            shippingCost = 99;
         }
 
         totalAmount += shippingCost;

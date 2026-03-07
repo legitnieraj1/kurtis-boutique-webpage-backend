@@ -116,11 +116,11 @@ export default function CheckoutPage() {
                         setShippingCost(data.shipping_cost);
                     } else {
                         // Fallback or error
-                        setShippingCost(getCartTotal() >= 999 ? 0 : 99);
+                        setShippingCost(99);
                     }
                 } catch (error) {
                     console.error('Failed to check shipping:', error);
-                    setShippingCost(getCartTotal() >= 999 ? 0 : 99);
+                    setShippingCost(99);
                 } finally {
                     setIsCheckingShipping(false);
                 }
@@ -541,7 +541,7 @@ export default function CheckoutPage() {
                                             {isCheckingShipping ? (
                                                 <span className="flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Calc...</span>
                                             ) : shippingCost !== null ? (
-                                                shippingCost === 0 ? 'Free' : formatPrice(shippingCost)
+                                                formatPrice(shippingCost)
                                             ) : (
                                                 'Enter Pincode'
                                             )}

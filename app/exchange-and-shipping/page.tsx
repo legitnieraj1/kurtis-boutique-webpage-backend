@@ -3,17 +3,17 @@ import { Footer } from "@/components/layout/Footer";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Exchange & Shipping Policy",
-  description:
-    "Free shipping on orders above ₹999. Learn about Kurtis Boutique delivery timelines, exchange policy, and COD availability across India.",
-  keywords: [
-    "kurtis boutique shipping",
-    "free delivery India",
-    "exchange policy",
-    "COD kurtis India",
-    "return policy ethnic wear",
-  ],
-  alternates: { canonical: "/exchange-and-shipping" },
+    title: "Exchange & Shipping Policy",
+    description:
+        "Learn about Kurtis Boutique delivery timelines, exchange policy, and COD availability across India.",
+    keywords: [
+        "kurtis boutique shipping",
+        "free delivery India",
+        "exchange policy",
+        "COD kurtis India",
+        "return policy ethnic wear",
+    ],
+    alternates: { canonical: "/exchange-and-shipping" },
 };
 
 export default function ShippingPage() {
@@ -27,7 +27,7 @@ export default function ShippingPage() {
                     <section>
                         <h2 className="text-xl font-medium text-foreground mb-4">Shipping Policy</h2>
                         <p>
-                            We offer free standard shipping on all orders above ₹999 across India. working days.
+                            We offer standard nationwide shipping across India.
                         </p>
                         <ul className="list-disc pl-5 mt-2 space-y-1">
                             <li><strong>Processing Time:</strong> Orders are processed within 24-48 hours.</li>
