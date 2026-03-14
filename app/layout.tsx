@@ -110,8 +110,7 @@ export const metadata: Metadata = {
   },
 
   verification: {
-    // Uncomment and add your codes after registering:
-    // google: "YOUR_GOOGLE_SEARCH_CONSOLE_CODE",
+    google: "4oQ37WhLTUn5InMlFQaH474DTfgJ_U9uUs4jdXWXWVU",
   },
 
   icons: {
