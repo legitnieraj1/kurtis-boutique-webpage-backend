@@ -519,9 +519,17 @@ export default function CheckoutPage() {
                                             <div className="flex-1">
                                                 <h3 className="font-medium text-gray-900 line-clamp-1">{item.product?.name}</h3>
                                                 <div className="flex justify-between mt-1">
-                                                    <p className="text-sm text-gray-500">Size: {item.size}</p>
+                                                    <p className="text-sm text-gray-500">
+                                                        Size: {item.size}
+                                                        {item.color && ` | Color: ${item.color.includes('|') ? item.color.split('|')[0] : item.color}`}
+                                                    </p>
                                                     <p className="text-sm font-medium">Qty: {item.quantity}</p>
                                                 </div>
+                                                {item.combo_type && item.combo_type !== 'single' && (
+                                                    <p className="text-xs text-primary mt-1">
+                                                        {item.combo_type === 'mom_baby' ? 'Mom & Baby Combo' : 'Family Combo'}
+                                                    </p>
+                                                )}
                                                 <p className="text-sm font-semibold mt-1">
                                                     {formatPrice((item.product?.discount_price || item.product?.price || 0) * item.quantity)}
                                                 </p>

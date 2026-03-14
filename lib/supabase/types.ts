@@ -65,6 +65,9 @@ export interface Product {
     is_best_seller: boolean;
     created_at: string;
     updated_at: string;
+    colors?: string[] | null;
+    is_mom_baby?: boolean;
+    is_family_combo?: boolean;
 }
 
 export interface ProductImage {
@@ -123,6 +126,8 @@ export interface OrderItem {
     unit_price: number;
     total_price: number;
     created_at: string;
+    color?: string | null;
+    combo_type?: string | null;
 }
 
 export interface CartItem {
@@ -133,6 +138,10 @@ export interface CartItem {
     quantity: number;
     created_at: string;
     updated_at: string;
+    color?: string | null;
+    combo_type?: string | null;
+    selected_size?: string | null;
+    selected_color?: string | null;
 }
 
 export interface Review {
@@ -196,6 +205,34 @@ export interface OrderTimeline {
 }
 
 // ============================================
+// COMMERCE COMBO & VARIANT TYPES
+// ============================================
+
+export interface MomBabyCombo {
+    id: string;
+    product_id: string;
+    mom_price: number;
+    baby_base_price: number;
+    created_at: string;
+}
+
+export interface FamilyCombo {
+    id: string;
+    product_id: string;
+    mother_price: number | null;
+    father_price: number | null;
+    baby_base_price: number | null;
+    created_at: string;
+}
+
+export interface BabySizePrice {
+    id: string;
+    product_id: string;
+    size: string | null;
+    price: number | null;
+}
+
+// ============================================
 // JOINED TYPES (for queries with relations)
 // ============================================
 
@@ -204,6 +241,9 @@ export interface ProductWithDetails extends Product {
     images?: ProductImage[];
     sizes?: ProductSize[];
     reviews?: Review[];
+    mom_baby_combos?: MomBabyCombo[];
+    family_combos?: FamilyCombo[];
+    baby_size_prices?: BabySizePrice[];
 }
 
 export interface OrderWithDetails extends Order {
@@ -247,6 +287,8 @@ export interface CreateOrderInput {
         product_id: string;
         size: string;
         quantity: number;
+        color?: string;
+        combo_type?: string;
     }[];
     shipping: {
         name: string;

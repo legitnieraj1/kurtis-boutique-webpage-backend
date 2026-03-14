@@ -142,7 +142,15 @@ export function CartSheet({ isOpen, onClose }: CartSheetProps) {
                                                             {isUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                                                         </button>
                                                     </div>
-                                                    <p className="text-sm text-muted-foreground mt-1">Size: {item.size}</p>
+                                                    <p className="text-sm text-muted-foreground mt-1">
+                                                        Size: {item.size}
+                                                        {item.color && ` | Color: ${item.color.includes('|') ? item.color.split('|')[0] : item.color}`}
+                                                    </p>
+                                                    {item.combo_type && item.combo_type !== 'single' && (
+                                                        <p className="text-xs text-primary bg-primary/10 px-2 py-0.5 rounded inline-block mt-1">
+                                                            {item.combo_type === 'mom_baby' ? 'Mom & Baby Combo' : 'Family Combo'}
+                                                        </p>
+                                                    )}
                                                     <p className="font-medium mt-1">{formatPrice(price)}</p>
                                                 </div>
 

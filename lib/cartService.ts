@@ -12,6 +12,8 @@ export interface CartItem {
         discount_price?: number;
         images?: { image_url: string }[];
     };
+    color?: string | null;
+    combo_type?: string | null;
 }
 
 export const CartService = {
@@ -43,6 +45,8 @@ export const CartService = {
                 product_id,
                 size,
                 quantity,
+                color,
+                combo_type,
                 created_at,
                 product:products (
                     name,
@@ -68,20 +72,31 @@ export const CartService = {
         })) as CartItem[];
     },
 
-    async addToCart(productId: string, size: string, quantity: number = 1) {
+    async addToCart(productId: string, size: string, color: string | null = null, comboType: string = 'single', quantity: number = 1) {
         const supabase = createSupabaseClient();
         const { data: { user } } = await supabase.auth.getUser();
 
         if (!user) throw new Error("User not authenticated");
 
         // Check if item exists to update quantity
-        const { data: existingItem } = await supabase
+        let query = supabase
             .from('cart_items')
             .select('id, quantity')
             .eq('user_id', user.id)
             .eq('product_id', productId)
-            .eq('size', size)
-            .single();
+            .eq('size', size);
+            
+        if (color) {
+            query = query.eq('color', color);
+        } else {
+            query = query.is('color', null);
+        }
+        
+        if (comboType) {
+            query = query.eq('combo_type', comboType);
+        }
+
+        const { data: existingItem } = await query.single();
 
         if (existingItem) {
             const { error } = await supabase
@@ -97,6 +112,10 @@ export const CartService = {
                     user_id: user.id,
                     product_id: productId,
                     size: size,
+                    color: color,
+                    combo_type: comboType,
+                    selected_size: size, // Requirements mention selected_size/color too
+                    selected_color: color,
                     quantity: quantity
                 });
 

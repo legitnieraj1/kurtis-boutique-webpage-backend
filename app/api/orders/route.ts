@@ -139,6 +139,8 @@ export async function POST(request: NextRequest) {
                 product_name: product.name,
                 product_image: product.images?.[0]?.image_url || null,
                 size: item.size,
+                color: item.color || null,
+                combo_type: item.combo_type || 'single',
                 quantity: item.quantity,
                 unit_price: unitPrice,
                 total_price: totalPrice
@@ -191,7 +193,10 @@ export async function POST(request: NextRequest) {
         for (const item of items) {
             await supabase.rpc('decrement_stock', {
                 p_product_id: item.product_id,
-                p_quantity: item.quantity
+                p_quantity: item.quantity,
+                p_size: item.size || null,
+                p_color: item.color || null,
+                p_combo_type: item.combo_type || 'single'
             });
         }
 

@@ -73,6 +73,8 @@ export async function POST(request: NextRequest) {
                 product_name: item.product.name,
                 product_image: item.product.images?.[0]?.image_url || null,
                 size: item.size,
+                color: item.color || null,
+                combo_type: item.combo_type || 'single',
                 quantity: item.quantity,
                 unit_price: price,
                 total_price: itemTotal,
@@ -176,7 +178,10 @@ export async function POST(request: NextRequest) {
         for (const item of cartItems) {
             const { error: stockError } = await supabase.rpc('decrement_stock', {
                 p_product_id: item.product.id,
-                p_quantity: item.quantity
+                p_quantity: item.quantity,
+                p_size: item.size || null,
+                p_color: item.color || null,
+                p_combo_type: item.combo_type || 'single'
             });
 
             if (stockError) {
@@ -214,15 +219,22 @@ export async function POST(request: NextRequest) {
                 billing_email: user.email || 'customer@example.com',
                 billing_phone: parsedShipping?.phone || '9999999999',
                 shipping_is_billing: true,
-                order_items: orderItemsData.map(item => ({
-                    name: item.product_name,
-                    sku: item.product_id, // Using product_id as SKU since column is missing
-                    units: item.quantity,
-                    selling_price: item.unit_price,
-                    discount: 0,
-                    tax: 0,
-                    hsn: 0
-                })),
+                order_items: orderItemsData.map(item => {
+                    let variantStr = '';
+                    if (item.combo_type && item.combo_type !== 'single') variantStr += ` [${item.combo_type}]`;
+                    if (item.color) variantStr += ` - ${item.color}`;
+                    if (item.size) variantStr += ` - Size: ${item.size}`;
+                    
+                    return {
+                        name: item.product_name + variantStr,
+                        sku: item.product_id, // Using product_id as SKU since column is missing
+                        units: item.quantity,
+                        selling_price: item.unit_price,
+                        discount: 0,
+                        tax: 0,
+                        hsn: 0
+                    };
+                }),
                 payment_method: 'Prepaid',
                 sub_total: subtotal,
                 length: 10,

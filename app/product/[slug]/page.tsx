@@ -86,7 +86,10 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             *,
             category:categories(id, name, slug),
             images:product_images(id, image_url, display_order),
-            sizes:product_sizes(id, size, stock_count)
+            sizes:product_sizes(id, size, stock_count),
+            mom_baby_combos(*),
+            family_combos(*),
+            baby_size_prices(*)
         `)
         .eq('slug', slug)
         .eq('is_active', true)

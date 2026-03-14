@@ -23,8 +23,26 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
     const [existingImages, setExistingImages] = useState<any[]>(initialData?.images || []);
     const [newImages, setNewImages] = useState<File[]>([]);
 
-    // Sizes
+    // Sizes & Colors
     const [sizes, setSizes] = useState<string[]>(initialData?.sizes?.map((s: any) => s.size) || []);
+    const [colors, setColors] = useState<string[]>(initialData?.colors || []);
+    const [newColorName, setNewColorName] = useState("");
+    const [newColorHex, setNewColorHex] = useState("#ff0000");
+
+    // Combos
+    const [isMomBaby, setIsMomBaby] = useState(initialData?.is_mom_baby || false);
+    const [momPrice, setMomPrice] = useState(initialData?.mom_baby_combos?.[0]?.mom_price || "");
+    const [babyBasePriceMB, setBabyBasePriceMB] = useState(initialData?.mom_baby_combos?.[0]?.baby_base_price || "");
+
+    const [isFamilyCombo, setIsFamilyCombo] = useState(initialData?.is_family_combo || false);
+    const [motherPrice, setMotherPrice] = useState(initialData?.family_combos?.[0]?.mother_price || "");
+    const [fatherPrice, setFatherPrice] = useState(initialData?.family_combos?.[0]?.father_price || "");
+    const [babyBasePriceFC, setBabyBasePriceFC] = useState(initialData?.family_combos?.[0]?.baby_base_price || "");
+
+    // Baby Size Prices
+    const [babySizePrices, setBabySizePrices] = useState<{size: string, price: string}[]>(
+        initialData?.baby_size_prices?.map((p: any) => ({ size: p.size, price: p.price.toString() })) || []
+    );
 
     // Inventory
     const [stockTotal, setStockTotal] = useState(initialData?.stock_total || 0);
@@ -123,7 +141,13 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
                 stock_total: parseInt(stockTotal + ''),
                 stock_remaining: parseInt(stockRemaining + ''),
                 sizes: sizes.map(s => ({ size: s, stock: Math.floor((parseInt(stockRemaining + '') || 0) / (sizes.length || 1)) })),
-                is_active: true
+                is_active: true,
+                colors,
+                is_mom_baby: isMomBaby,
+                is_family_combo: isFamilyCombo,
+                mom_baby_combos: isMomBaby && momPrice && babyBasePriceMB ? [{ mom_price: parseFloat(momPrice + ''), baby_base_price: parseFloat(babyBasePriceMB + '') }] : [],
+                family_combos: isFamilyCombo && motherPrice && fatherPrice && babyBasePriceFC ? [{ mother_price: parseFloat(motherPrice + ''), father_price: parseFloat(fatherPrice + ''), baby_base_price: parseFloat(babyBasePriceFC + '') }] : [],
+                baby_size_prices: babySizePrices.filter(p => p.size && p.price).map(p => ({ size: p.size, price: parseFloat(p.price) })),
             };
 
             const res = await fetch(endpoint, {
@@ -169,6 +193,33 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
 
     const toggleSize = (size: string) => {
         setSizes(prev => prev.includes(size) ? prev.filter(s => s !== size) : [...prev, size]);
+    };
+
+    const handleAddColor = () => {
+        if (!newColorName.trim()) return;
+        const colorStr = `${newColorName.trim()}|${newColorHex}`;
+        if (!colors.includes(colorStr)) {
+            setColors([...colors, colorStr]);
+        }
+        setNewColorName("");
+    };
+
+    const removeColor = (colorStr: string) => {
+        setColors(colors.filter(c => c !== colorStr));
+    };
+
+    const addBabySizePrice = () => {
+        setBabySizePrices([...babySizePrices, { size: "", price: "" }]);
+    };
+
+    const updateBabySizePrice = (index: number, field: 'size' | 'price', value: string) => {
+        const newPrices = [...babySizePrices];
+        newPrices[index][field] = value;
+        setBabySizePrices(newPrices);
+    };
+
+    const removeBabySizePrice = (index: number) => {
+        setBabySizePrices(babySizePrices.filter((_, i) => i !== index));
     };
 
     return (
@@ -257,20 +308,62 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
                     </div>
                 </div>
 
-                {/* Sizes */}
-                <div>
-                    <label className="text-sm font-medium mb-2 block">Sizes</label>
-                    <div className="flex gap-2 flex-wrap">
-                        {['XS', 'S', 'M', 'L', 'XL', 'XXL'].map(size => (
-                            <button
-                                key={size}
-                                type="button"
-                                onClick={() => toggleSize(size)}
-                                className={`px-3 py-1 border rounded-full text-sm ${sizes.includes(size) ? 'bg-primary text-white border-primary' : 'bg-background'}`}
-                            >
-                                {size}
-                            </button>
-                        ))}
+                {/* Sizes and Colors */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label className="text-sm font-medium mb-2 block">Sizes</label>
+                        <div className="flex gap-2 flex-wrap">
+                            {['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'].map(size => (
+                                <button
+                                    key={size}
+                                    type="button"
+                                    onClick={() => toggleSize(size)}
+                                    className={`px-3 py-1 border rounded-full text-sm ${sizes.includes(size) ? 'bg-primary text-white border-primary' : 'bg-background'}`}
+                                >
+                                    {size}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                    <div>
+                        <label className="text-sm font-medium mb-2 block">Colors</label>
+                        <div className="flex gap-2 flex-wrap mb-3">
+                            {colors.map(colorStr => {
+                                const [name, hex] = colorStr.includes('|') ? colorStr.split('|') : [colorStr, '#cccccc'];
+                                return (
+                                    <div key={colorStr} className="flex items-center gap-2 px-3 py-1 border border-input rounded-full bg-background shadow-sm">
+                                        <div className="w-4 h-4 rounded-full border border-black/10 shadow-inner" style={{ backgroundColor: hex }}></div>
+                                        <span className="text-sm font-medium">{name}</span>
+                                        <button 
+                                            type="button" 
+                                            onClick={() => removeColor(colorStr)} 
+                                            className="text-muted-foreground hover:text-red-500 transition-colors ml-1"
+                                        >
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        <div className="flex items-center gap-2 max-w-sm">
+                            <div className="p-1 border border-input rounded-md flex-shrink-0 bg-background overflow-hidden relative w-10 h-10 shadow-sm cursor-pointer hover:border-primary/50 transition-colors">
+                                <input 
+                                    type="color" 
+                                    value={newColorHex} 
+                                    onChange={(e) => setNewColorHex(e.target.value)} 
+                                    className="absolute inset-0 w-20 h-20 -top-2 -left-2 cursor-pointer" 
+                                />
+                            </div>
+                            <input 
+                                type="text" 
+                                placeholder="Color Name (e.g. Ruby Red)" 
+                                value={newColorName} 
+                                onChange={(e) => setNewColorName(e.target.value)} 
+                                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddColor())}
+                                className="flex-1 px-3 py-2 border border-input rounded-md text-sm shadow-sm" 
+                            />
+                            <Button type="button" onClick={handleAddColor} variant="outline" size="sm" className="h-[38px]">Add</Button>
+                        </div>
                     </div>
                 </div>
 
@@ -293,6 +386,89 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
                             value={stockRemaining}
                             onChange={e => setStockRemaining(Number(e.target.value))}
                         />
+                    </div>
+                </div>
+
+                {/* Combos & Advanced Pricing */}
+                <div className="space-y-6 border-t pt-6">
+                    <h3 className="text-lg font-medium">Advanced Variants & Combos</h3>
+                    
+                    {/* Mom & Baby */}
+                    <div className="p-4 border rounded-md space-y-4 bg-muted/20">
+                        <div className="flex items-center gap-2">
+                            <input type="checkbox" id="momBaby" checked={isMomBaby} onChange={e => setIsMomBaby(e.target.checked)} className="w-4 h-4" />
+                            <label htmlFor="momBaby" className="font-medium">Mom & Baby Combo Available</label>
+                        </div>
+                        {isMomBaby && (
+                            <div className="grid grid-cols-2 gap-4 pl-6">
+                                <div className="space-y-2">
+                                    <label className="text-sm">Mom Price (₹)</label>
+                                    <input type="number" required placeholder="e.g. 1999" className="w-full px-3 py-2 border rounded-md" value={momPrice} onChange={e => setMomPrice(e.target.value)} />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm">Baby Base Price (₹)</label>
+                                    <input type="number" required placeholder="e.g. 999" className="w-full px-3 py-2 border rounded-md" value={babyBasePriceMB} onChange={e => setBabyBasePriceMB(e.target.value)} />
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Family Combo */}
+                    <div className="p-4 border rounded-md space-y-4 bg-muted/20">
+                        <div className="flex items-center gap-2">
+                            <input type="checkbox" id="familyCombo" checked={isFamilyCombo} onChange={e => setIsFamilyCombo(e.target.checked)} className="w-4 h-4" />
+                            <label htmlFor="familyCombo" className="font-medium">Family Combo Available</label>
+                        </div>
+                        {isFamilyCombo && (
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pl-6">
+                                <div className="space-y-2">
+                                    <label className="text-sm">Mother Price (₹)</label>
+                                    <input type="number" required placeholder="e.g. 1999" className="w-full px-3 py-2 border rounded-md" value={motherPrice} onChange={e => setMotherPrice(e.target.value)} />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm">Father Price (₹)</label>
+                                    <input type="number" required placeholder="e.g. 1499" className="w-full px-3 py-2 border rounded-md" value={fatherPrice} onChange={e => setFatherPrice(e.target.value)} />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm">Baby Base Price (₹)</label>
+                                    <input type="number" required placeholder="e.g. 999" className="w-full px-3 py-2 border rounded-md" value={babyBasePriceFC} onChange={e => setBabyBasePriceFC(e.target.value)} />
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Dynamic Baby Sizing */}
+                    <div className="p-4 border rounded-md space-y-4 bg-muted/20">
+                        <div className="flex items-center justify-between">
+                            <label className="font-medium">Dynamic Baby Size Pricing</label>
+                            <Button type="button" variant="outline" size="sm" onClick={addBabySizePrice}>
+                                <Plus className="w-4 h-4 mr-2" /> Add Size Price
+                            </Button>
+                        </div>
+                        <p className="text-sm text-muted-foreground">Specify unique prices for different baby ages/sizes.</p>
+                        {babySizePrices.map((bp, index) => (
+                            <div key={index} className="flex gap-4 items-center pl-6">
+                                <input
+                                    type="text"
+                                    placeholder="Size (e.g. 0-6m)"
+                                    className="flex-1 px-3 py-2 border rounded-md"
+                                    value={bp.size}
+                                    onChange={e => updateBabySizePrice(index, 'size', e.target.value)}
+                                    required
+                                />
+                                <input
+                                    type="number"
+                                    placeholder="Price (₹)"
+                                    className="flex-1 px-3 py-2 border rounded-md"
+                                    value={bp.price}
+                                    onChange={e => updateBabySizePrice(index, 'price', e.target.value)}
+                                    required
+                                />
+                                <Button type="button" variant="ghost" size="icon" onClick={() => removeBabySizePrice(index)}>
+                                    <Trash className="w-4 h-4 text-red-500" />
+                                </Button>
+                            </div>
+                        ))}
                     </div>
                 </div>
 

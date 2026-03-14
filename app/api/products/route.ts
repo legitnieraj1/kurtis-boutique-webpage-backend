@@ -36,7 +36,10 @@ export async function GET(request: NextRequest) {
                 *,
                 category:categories(id, name, slug),
                 images:product_images(id, image_url, display_order),
-                sizes:product_sizes(id, size, stock_count)
+                sizes:product_sizes(id, size, stock_count),
+                mom_baby_combos(id, mom_price, baby_base_price),
+                family_combos(id, mother_price, father_price, baby_base_price),
+                baby_size_prices(id, size, price)
             `, { count: 'exact' });
 
         // For non-admins, force active only
@@ -111,7 +114,13 @@ export async function POST(request: NextRequest) {
             is_active = true,
             is_new = false,
             is_best_seller = false,
-            sizes = []
+            sizes = [],
+            colors = [],
+            is_mom_baby = false,
+            is_family_combo = false,
+            mom_baby_combos = [],
+            family_combos = [],
+            baby_size_prices = []
         } = body;
 
         // Validation
@@ -145,7 +154,10 @@ export async function POST(request: NextRequest) {
                 low_stock_threshold,
                 is_active,
                 is_new,
-                is_best_seller
+                is_best_seller,
+                colors,
+                is_mom_baby,
+                is_family_combo
             })
             .select()
             .single();
@@ -175,6 +187,24 @@ export async function POST(request: NextRequest) {
             }
         }
 
+        if (mom_baby_combos.length > 0) {
+            await supabaseAdmin.from('mom_baby_combos').insert(
+                mom_baby_combos.map((c: any) => ({ product_id: product.id, mom_price: c.mom_price, baby_base_price: c.baby_base_price }))
+            );
+        }
+
+        if (family_combos.length > 0) {
+            await supabaseAdmin.from('family_combos').insert(
+                family_combos.map((c: any) => ({ product_id: product.id, mother_price: c.mother_price, father_price: c.father_price, baby_base_price: c.baby_base_price }))
+            );
+        }
+
+        if (baby_size_prices.length > 0) {
+            await supabaseAdmin.from('baby_size_prices').insert(
+                baby_size_prices.map((p: any) => ({ product_id: product.id, size: p.size, price: p.price }))
+            );
+        }
+
         // Fetch complete product with relations for immediate return
         const { data: fullProduct, error: fetchError } = await supabaseAdmin
             .from('products')
@@ -182,7 +212,10 @@ export async function POST(request: NextRequest) {
                 *,
                 category:categories(*),
                 images:product_images(*),
-                sizes:product_sizes(*)
+                sizes:product_sizes(*),
+                mom_baby_combos(*),
+                family_combos(*),
+                baby_size_prices(*)
             `)
             .eq('id', product.id)
             .single();

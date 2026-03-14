@@ -24,6 +24,12 @@ interface Product {
     sizes: { id: string; size: string; stock_count: number }[];
     category: { id: string; name: string; slug: string } | null;
     reviews: { id: string; rating: number; comment: string; user_id: string; created_at: string }[];
+    colors?: string[] | null;
+    is_mom_baby?: boolean;
+    is_family_combo?: boolean;
+    mom_baby_combos?: { id: string; product_id: string; mom_price: number; baby_base_price: number; }[];
+    family_combos?: { id: string; product_id: string; mother_price: number; father_price: number; baby_base_price: number; }[];
+    baby_size_prices?: { id: string; product_id: string; size: string; price: number; }[];
 }
 
 interface ProductPageClientProps {
@@ -35,6 +41,8 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
     const isWishlisted = isInWishlist(product.id);
 
     const [selectedSize, setSelectedSize] = useState<string | null>(null);
+    const [selectedColor, setSelectedColor] = useState<string | null>(null);
+    const [comboType, setComboType] = useState<string>('single');
     const [quantity, setQuantity] = useState(1);
     const [activeImage, setActiveImage] = useState<string>(product.images?.[0]?.image_url || "");
     const [showSticky, setShowSticky] = useState(false);
@@ -51,7 +59,30 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
     }, []);
 
     const inStock = product.stock_remaining > 0;
-    const finalPrice = product.discount_price || product.price;
+    
+    // Dynamic Price Calculation
+    let finalPrice = product.discount_price || product.price;
+    let originalPrice = product.price;
+    
+    // Is base product using discount?
+    let isDiscounted = !!product.discount_price && product.discount_price < product.price;
+
+    if (comboType === 'mom_baby' && product.mom_baby_combos?.[0]) {
+        finalPrice = product.mom_baby_combos[0].mom_price + product.mom_baby_combos[0].baby_base_price;
+        originalPrice = finalPrice;
+        isDiscounted = false; // Combos have fixed dynamic prices according to schema
+    } else if (comboType === 'family' && product.family_combos?.[0]) {
+        finalPrice = (product.family_combos[0].mother_price || 0) + (product.family_combos[0].father_price || 0) + (product.family_combos[0].baby_base_price || 0);
+        originalPrice = finalPrice;
+        isDiscounted = false;
+    } else if (selectedSize && product.baby_size_prices?.length) {
+        const babyPrice = product.baby_size_prices.find(p => p.size === selectedSize);
+        if (babyPrice && babyPrice.price) {
+            finalPrice = babyPrice.price;
+            originalPrice = babyPrice.price;
+            isDiscounted = false; // Baby sizes have fixed prices overriding base
+        }
+    }
     const categoryName = product.category?.name || "Uncategorized";
 
     const handleAddToCart = async () => {
@@ -60,7 +91,12 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
             return;
         }
 
-        const success = await addToCart(product.id, selectedSize, quantity);
+        if (product.colors && product.colors.length > 0 && !selectedColor) {
+            toast.error("Please select a color");
+            return;
+        }
+
+        const success = await addToCart(product.id, selectedSize, selectedColor, comboType, quantity);
 
         if (success) {
             toast.success("Added to Cart");
@@ -132,16 +168,16 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
                             <p className="text-sm text-muted-foreground mt-1">{categoryName}</p>
 
                             <div className="mt-4 flex items-center gap-4">
-                                {product.discount_price && product.discount_price < product.price ? (
+                                {isDiscounted ? (
                                     <div className="text-2xl font-semibold">
-                                        <span className="text-foreground">{formatPrice(product.discount_price)}</span>
-                                        <span className="text-muted-foreground line-through text-lg ml-2 font-normal">{formatPrice(product.price)}</span>
+                                        <span className="text-foreground">{formatPrice(finalPrice)}</span>
+                                        <span className="text-muted-foreground line-through text-lg ml-2 font-normal">{formatPrice(originalPrice)}</span>
                                         <span className="text-green-600 text-sm ml-2 font-medium">
-                                            Save {Math.round(((product.price - product.discount_price) / product.price) * 100)}%
+                                            Save {Math.round(((originalPrice - finalPrice) / originalPrice) * 100)}%
                                         </span>
                                     </div>
                                 ) : (
-                                    <div className="text-2xl font-semibold text-foreground">{formatPrice(product.price)}</div>
+                                    <div className="text-2xl font-semibold text-foreground">{formatPrice(finalPrice)}</div>
                                 )}
                             </div>
                         </div>
@@ -149,6 +185,80 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
                         <div className="prose prose-stone text-muted-foreground">
                             <p>{product.description}</p>
                         </div>
+
+                        {/* COMBO TYPES */}
+                        {(product.is_mom_baby || product.is_family_combo) && (
+                            <div className="mb-6 space-y-3">
+                                <label className="font-medium text-sm">Select Option</label>
+                                <div className="flex flex-col gap-2">
+                                    <button
+                                        onClick={() => setComboType('single')}
+                                        className={cn("flex items-center justify-between p-3 border rounded-lg text-left transition-all", comboType === 'single' ? "border-primary ring-1 ring-primary" : "hover:border-primary/50")}
+                                    >
+                                        <span className="font-medium text-sm">Just for Me (Single)</span>
+                                        {comboType === 'single' && <span className="w-2 h-2 rounded-full bg-primary" />}
+                                    </button>
+
+                                    {product.is_mom_baby && (
+                                        <button
+                                            onClick={() => setComboType('mom_baby')}
+                                            className={cn("flex items-center justify-between p-3 border rounded-lg text-left transition-all", comboType === 'mom_baby' ? "border-primary ring-1 ring-primary" : "hover:border-primary/50")}
+                                        >
+                                            <div className="flex flex-col">
+                                                <span className="font-medium text-sm">Mom & Baby Combo</span>
+                                                <span className="text-xs text-muted-foreground mt-0.5">Matching outfit for mother and child</span>
+                                            </div>
+                                            {comboType === 'mom_baby' && <span className="w-2 h-2 rounded-full bg-primary" />}
+                                        </button>
+                                    )}
+
+                                    {product.is_family_combo && (
+                                        <button
+                                            onClick={() => setComboType('family')}
+                                            className={cn("flex items-center justify-between p-3 border rounded-lg text-left transition-all", comboType === 'family' ? "border-primary ring-1 ring-primary" : "hover:border-primary/50")}
+                                        >
+                                            <div className="flex flex-col">
+                                                <span className="font-medium text-sm">Family Combo</span>
+                                                <span className="text-xs text-muted-foreground mt-0.5">Matching outfits for mother, father, and child</span>
+                                            </div>
+                                            {comboType === 'family' && <span className="w-2 h-2 rounded-full bg-primary" />}
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* COLORS */}
+                        {product.colors && product.colors.length > 0 && (
+                            <div className="mb-6">
+                                <label className="font-medium text-sm mb-2 block">Select Color</label>
+                                <div className="flex gap-3 flex-wrap">
+                                    {product.colors.map(colorStr => {
+                                        const [name, hex] = colorStr.includes('|') ? colorStr.split('|') : [colorStr, '#cccccc'];
+                                        return (
+                                            <button
+                                                key={colorStr}
+                                                onClick={() => setSelectedColor(colorStr)}
+                                                className={cn(
+                                                    "flex items-center gap-2 px-3 py-1.5 border rounded-full text-sm transition-all",
+                                                    selectedColor === colorStr
+                                                        ? "border-primary ring-2 ring-primary/20 bg-primary/5"
+                                                        : "border-input hover:border-primary/50 bg-background text-foreground"
+                                                )}
+                                            >
+                                                <span 
+                                                    className="w-4 h-4 rounded-full border border-black/10 shadow-sm"
+                                                    style={{ backgroundColor: hex }}
+                                                />
+                                                <span className={selectedColor === colorStr ? "font-medium text-primary" : ""}>
+                                                    {name}
+                                                </span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
 
                         {/* SIZES */}
                         <div id="size-selector">

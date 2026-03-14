@@ -19,7 +19,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
                 category:categories(id, name, slug),
                 images:product_images(id, image_url, display_order),
                 sizes:product_sizes(id, size, stock_count),
-                reviews:reviews(id, rating, comment, user_id, created_at)
+                reviews:reviews(id, rating, comment, user_id, created_at),
+                mom_baby_combos(id, mom_price, baby_base_price),
+                family_combos(id, mother_price, father_price, baby_base_price),
+                baby_size_prices(id, size, price)
             `);
 
         // Check if it's a UUID or slug
@@ -67,7 +70,13 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
             is_active,
             is_new,
             is_best_seller,
-            sizes
+            sizes,
+            colors,
+            is_mom_baby,
+            is_family_combo,
+            mom_baby_combos,
+            family_combos,
+            baby_size_prices
         } = body;
 
         // Update product
@@ -86,6 +95,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         if (is_active !== undefined) updateData.is_active = is_active;
         if (is_new !== undefined) updateData.is_new = is_new;
         if (is_best_seller !== undefined) updateData.is_best_seller = is_best_seller;
+        if (colors !== undefined) updateData.colors = colors;
+        if (is_mom_baby !== undefined) updateData.is_mom_baby = is_mom_baby;
+        if (is_family_combo !== undefined) updateData.is_family_combo = is_family_combo;
 
         const { error: updateError } = await supabase
             .from('products')
@@ -114,6 +126,33 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
             }
         }
 
+        if (mom_baby_combos !== undefined) {
+            await supabase.from('mom_baby_combos').delete().eq('product_id', id);
+            if (mom_baby_combos.length > 0) {
+                await supabase.from('mom_baby_combos').insert(
+                    mom_baby_combos.map((c: any) => ({ product_id: id, mom_price: c.mom_price, baby_base_price: c.baby_base_price }))
+                );
+            }
+        }
+
+        if (family_combos !== undefined) {
+            await supabase.from('family_combos').delete().eq('product_id', id);
+            if (family_combos.length > 0) {
+                await supabase.from('family_combos').insert(
+                    family_combos.map((c: any) => ({ product_id: id, mother_price: c.mother_price, father_price: c.father_price, baby_base_price: c.baby_base_price }))
+                );
+            }
+        }
+
+        if (baby_size_prices !== undefined) {
+            await supabase.from('baby_size_prices').delete().eq('product_id', id);
+            if (baby_size_prices.length > 0) {
+                await supabase.from('baby_size_prices').insert(
+                    baby_size_prices.map((p: any) => ({ product_id: id, size: p.size, price: p.price }))
+                );
+            }
+        }
+
         // Fetch updated product
         const { data: product } = await supabase
             .from('products')
@@ -121,7 +160,10 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         *,
         category:categories(*),
         images:product_images(*),
-        sizes:product_sizes(*)
+        sizes:product_sizes(*),
+        mom_baby_combos(*),
+        family_combos(*),
+        baby_size_prices(*)
       `)
             .eq('id', id)
             .single();
