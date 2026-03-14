@@ -130,7 +130,7 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
                             {activeImage ? (
                                 <img
                                     src={activeImage}
-                                    alt={product.name}
+                                    alt={`${product.name} - ${categoryName} from Kurtis Boutique online store India`}
                                     className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                                 />
                             ) : (
@@ -151,7 +151,7 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
                                             activeImage === img ? "border-primary" : "border-transparent"
                                         )}
                                     >
-                                        <img src={img} alt={`View ${idx + 1}`} className="w-full h-full object-cover" />
+                                        <img src={img} alt={`${product.name} - Image ${idx + 1} - Kurtis Boutique India`} loading="lazy" className="w-full h-full object-cover" />
                                     </button>
                                 ))}
                             </div>

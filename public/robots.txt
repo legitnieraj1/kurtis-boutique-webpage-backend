@@ -1,7 +1,16 @@
 # robots.txt for kurtisboutique.in
+# Kurtis Boutique - Designer Kurtis Online Store India
 
 User-agent: *
 Allow: /
+Allow: /shop
+Allow: /product/
+Allow: /about-us
+Allow: /contact
+Allow: /exchange-and-shipping
+Allow: /privacy-policy
+Allow: /payment-security
+
 Disallow: /api/
 Disallow: /checkout/
 Disallow: /cart/
@@ -11,18 +20,24 @@ Disallow: /_next/
 Disallow: /login
 Disallow: /signup
 Disallow: /dashboard
+Disallow: /orders/
+Disallow: /wishlist
 
-# Allow crawling important pages
-Allow: /shop
-Allow: /product/
-Allow: /about-us
-Allow: /contact
-Allow: /exchange-and-shipping
-Allow: /privacy-policy
-Allow: /payment-security
-
-# Sitemap
+# Sitemaps
 Sitemap: https://kurtisboutique.in/sitemap.xml
+Sitemap: https://kurtisboutique.in/sitemap-0.xml
 
+# Googlebot specific
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 1
+
+# Bingbot specific
 User-agent: Bingbot
 Crawl-delay: 5
+
+# Googlebot Image
+User-agent: Googlebot-Image
+Allow: /
+Allow: /product/
+Allow: /shop

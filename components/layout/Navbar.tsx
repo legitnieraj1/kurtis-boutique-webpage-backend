@@ -11,10 +11,10 @@ import { SearchSheet } from "@/components/layout/SearchSheet";
 import { usePathname } from "next/navigation";
 
 const links = [
-    { href: "/", label: "Home" },
-    { href: "/shop", label: "Shop" },
-    { href: "/orders", label: "Orders" },
-    { href: "/contact", label: "Contact" },
+    { href: "/", label: "Home", title: "Kurtis Boutique - Designer Kurtis Online Store India" },
+    { href: "/shop", label: "Shop", title: "Shop Designer Kurtis & Ethnic Wear Online India" },
+    { href: "/orders", label: "Orders", title: "Track Your Orders - Kurtis Boutique" },
+    { href: "/contact", label: "Contact", title: "Contact Kurtis Boutique India" },
 ];
 
 export function Navbar() {
@@ -87,16 +87,17 @@ export function Navbar() {
                         </div>
 
                         {/* Logo - Centered on Mobile, Left on Desktop */}
-                        <Link href="/" className="absolute top-1/2 -translate-y-1/2 z-50 left-1/2 -translate-x-1/2 md:left-0 md:translate-x-0">
-                            <img src="/kurtis-logo-large.png" alt="Kurtis Boutique" className="h-28 md:h-40 w-auto object-contain drop-shadow-sm md:transform md:-translate-x-2 pb-2 md:pb-0 scale-125 md:scale-100" />
+                        <Link href="/" className="absolute top-1/2 -translate-y-1/2 z-50 left-1/2 -translate-x-1/2 md:left-0 md:translate-x-0" title="Kurtis Boutique - Designer Kurtis Online Store India">
+                            <img src="/kurtis-logo-large.png" alt="Kurtis Boutique - Designer Kurtis Online Store India" className="h-28 md:h-40 w-auto object-contain drop-shadow-sm md:transform md:-translate-x-2 pb-2 md:pb-0 scale-125 md:scale-100" />
                         </Link>
 
                         {/* Desktop Nav */}
-                        <nav className="hidden md:flex items-center gap-8 ml-60">
+                        <nav className="hidden md:flex items-center gap-8 ml-60" aria-label="Main navigation">
                             {links.map((link) => (
                                 <Link
                                     key={link.href}
                                     href={link.href}
+                                    title={link.title}
                                     className="text-sm font-medium text-foreground/80 hover:text-primary transition-colors"
                                 >
                                     {link.label}

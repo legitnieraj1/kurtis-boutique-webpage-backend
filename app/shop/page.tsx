@@ -93,9 +93,9 @@ function ShopContent() {
                 )}>
                     <div className="sticky top-24 space-y-8">
                         <div>
-                            <h1 className="text-3xl font-serif font-medium">Shop All</h1>
+                            <h1 className="text-3xl font-serif font-medium">Shop Designer Kurtis Online</h1>
                             <p className="text-muted-foreground mt-2 text-sm">
-                                {loading ? "..." : filteredProducts.length} Products
+                                {loading ? "..." : filteredProducts.length} Products — Buy kurtis, ethnic wear &amp; boutique clothing online India
                             </p>
                         </div>
 
@@ -167,6 +167,30 @@ function ShopContent() {
                             No products found.
                         </div>
                     )}
+
+                    {/* SEO Content Block for Shop Page */}
+                    <div className="mt-16 pt-12 border-t border-border/40">
+                        <div className="max-w-none">
+                            <h2 className="text-2xl font-serif mb-4">Buy Designer Kurtis Online at Kurtis Boutique India</h2>
+                            <p className="text-muted-foreground leading-relaxed mb-4 text-sm">
+                                Welcome to the <strong>Kurtis Boutique</strong> online store — your trusted destination to <strong>buy designer kurtis online in India</strong>.
+                                Browse our handpicked collection of <strong>cotton kurtis</strong>, <strong>designer kurti sets</strong>, <strong>festive kurti collections</strong>,
+                                and <strong>ethnic wear</strong> for every occasion. As a leading <strong>ethnic wear boutique online</strong> with over <strong>30,000 Instagram followers</strong>,
+                                we bring you premium quality boutique clothing shipped across India.
+                            </p>
+                            <p className="text-muted-foreground leading-relaxed mb-4 text-sm">
+                                Our collection includes <strong>Anarkali kurtas</strong>, <strong>A-line kurtis</strong>, <strong>straight kurtas for women</strong>,{" "}
+                                <strong>co-ord sets</strong>, <strong>maternity kurtis</strong>, <strong>matching mom baby outfits</strong>,
+                                and <strong>family combo ethnic wear</strong>. Every piece is crafted with care at our manufacturing facility in Madurai
+                                and dispatched from Bangalore with love.
+                            </p>
+                            <p className="text-muted-foreground leading-relaxed text-sm">
+                                Enjoy free delivery, Cash on Delivery (COD), and secure payments via UPI, credit cards, and debit cards.
+                                Follow us on <a href="https://www.instagram.com/kurtis.boutique/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Instagram @kurtis.boutique</a> for
+                                new arrivals, styling tips, and exclusive offers.
+                            </p>
+                        </div>
+                    </div>
                 </main>
             </div>
 

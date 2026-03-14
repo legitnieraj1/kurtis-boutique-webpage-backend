@@ -28,17 +28,21 @@ export function ProductCard({ product, hideWishlist }: ProductCardProps) {
 
     // Derived state
     const inStock = product.stock_remaining > 0 && product.is_active;
-    const categoryName = product.category?.name || "Uncategorized";
+    const categoryName = product.category?.name || "Ethnic Wear";
     const mainImage = product.images?.[0]?.image_url || null;
 
+    // SEO optimized alt text for images
+    const imageAlt = `${product.name} - ${categoryName} from Kurtis Boutique online store India`;
+
     return (
-        <div className="group relative flex flex-col gap-2">
+        <article className="group relative flex flex-col gap-2" itemScope itemType="https://schema.org/Product">
             <div className="relative aspect-[3/4] overflow-hidden rounded-lg bg-secondary/10">
-                <Link href={`/product/${product.slug}`} className="block w-full h-full">
+                <Link href={`/product/${product.slug}`} className="block w-full h-full" title={`Buy ${product.name} online at Kurtis Boutique India`}>
                     {mainImage ? (
                         <img
                             src={mainImage}
-                            alt={product.name}
+                            alt={imageAlt}
+                            loading="lazy"
                             className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 mobile-gpu"
                         />
                     ) : (
@@ -75,6 +79,7 @@ export function ProductCard({ product, hideWishlist }: ProductCardProps) {
                             isWishlisted && "opacity-100 text-red-500 bg-white"
                         )}
                         onClick={toggleWishlist}
+                        aria-label={isWishlisted ? `Remove ${product.name} from wishlist` : `Add ${product.name} to wishlist`}
                     >
                         <Heart className={cn("h-4 w-4", isWishlisted && "fill-current")} />
                     </button>
@@ -82,22 +87,23 @@ export function ProductCard({ product, hideWishlist }: ProductCardProps) {
             </div>
 
             <div className="space-y-1">
-                <h3 className="font-serif text-base font-medium leading-none group-hover:text-primary transition-colors">
-                    <Link href={`/product/${product.slug}`}>{product.name}</Link>
+                <h3 className="font-serif text-base font-medium leading-none group-hover:text-primary transition-colors" itemProp="name">
+                    <Link href={`/product/${product.slug}`} title={`${product.name} - Buy online at Kurtis Boutique India`}>{product.name}</Link>
                 </h3>
-                <p className="text-sm text-muted-foreground capitalize">{categoryName}</p>
-                <div className="flex items-center gap-2">
+                <p className="text-sm text-muted-foreground capitalize" itemProp="category">{categoryName}</p>
+                <div className="flex items-center gap-2" itemProp="offers" itemScope itemType="https://schema.org/Offer">
+                    <meta itemProp="priceCurrency" content="INR" />
                     {product.discount_price ? (
                         <>
-                            <span className="font-semibold text-foreground">{formatPrice(product.discount_price)}</span>
+                            <span className="font-semibold text-foreground" itemProp="price" content={String(product.discount_price)}>{formatPrice(product.discount_price)}</span>
                             <span className="text-xs text-muted-foreground line-through">{formatPrice(product.price)}</span>
                         </>
                     ) : (
-                        <span className="font-semibold text-foreground">{formatPrice(product.price)}</span>
+                        <span className="font-semibold text-foreground" itemProp="price" content={String(product.price)}>{formatPrice(product.price)}</span>
                     )}
+                    <link itemProp="availability" href={inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock"} />
                 </div>
             </div>
-        </div>
+        </article>
     );
 }
-
