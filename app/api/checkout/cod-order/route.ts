@@ -132,7 +132,13 @@ export async function POST(request: NextRequest) {
             product_id: item.product_id,
             quantity: item.quantity,
             price: item.product.discount_price || item.product.price,
-            size: item.size
+            size: item.size,
+            color: item.color || null,
+            combo_type: item.combo_type || 'single',
+            baby_size: item.baby_size || null,
+            product_name: item.product.name,
+            unit_price: item.product.discount_price || item.product.price,
+            total_price: (item.product.discount_price || item.product.price) * item.quantity,
         }));
 
         const { error: itemsError } = await supabase

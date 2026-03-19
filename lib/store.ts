@@ -55,7 +55,7 @@ interface StoreState {
 
     // Cart actions - all DB-driven
     setCart: (items: DBCartItem[]) => void;
-    addToCart: (productId: string, size: string, color?: string | null, comboType?: string, quantity?: number) => Promise<boolean>;
+    addToCart: (productId: string, size: string, color?: string | null, comboType?: string, quantity?: number, babySize?: string | null) => Promise<boolean>;
     removeFromCart: (cartItemId: string) => Promise<boolean>;
     updateCartQuantity: (cartItemId: string, quantity: number) => Promise<boolean>;
     clearCart: () => Promise<boolean>;
@@ -226,11 +226,11 @@ export const useStore = create<StoreState>()((set, get) => ({
         await attemptSync();
     },
 
-    addToCart: async (productId, size, color = null, comboType = 'single', quantity = 1) => {
+    addToCart: async (productId, size, color = null, comboType = 'single', quantity = 1, babySize = null) => {
         if (!get().isAuthenticated) return false;
 
         try {
-            await CartService.addToCart(productId, size, color, comboType, quantity);
+            await CartService.addToCart(productId, size, color, comboType, quantity, babySize);
             await get().syncCart();
             return true;
         } catch (error) {

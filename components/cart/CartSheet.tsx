@@ -151,6 +151,11 @@ export function CartSheet({ isOpen, onClose }: CartSheetProps) {
                                                             {item.combo_type === 'mom_baby' ? 'Mom & Baby Combo' : 'Family Combo'}
                                                         </p>
                                                     )}
+                                                    {item.baby_size && (
+                                                        <p className="text-xs text-orange-700 bg-orange-50 px-2 py-0.5 rounded inline-block mt-1">
+                                                            Baby Size: {item.baby_size}
+                                                        </p>
+                                                    )}
                                                     <p className="font-medium mt-1">{formatPrice(price)}</p>
                                                 </div>
 

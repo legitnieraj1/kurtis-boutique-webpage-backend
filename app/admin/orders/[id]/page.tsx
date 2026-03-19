@@ -33,6 +33,7 @@ interface OrderDetail {
         size: string;
         color?: string | null;
         combo_type?: string | null;
+        baby_size?: string | null;
         unit_price: number;
         total_price: number;
         image_url: string | null;
@@ -151,6 +152,11 @@ export default function AdminOrderDetailsPage() {
                                             )}
                                             {item.combo_type && item.combo_type !== 'single' && (
                                                 <p>Combo: <span className="font-medium text-primary">{item.combo_type === 'mom_baby' ? 'Mom & Baby' : 'Family'}</span></p>
+                                            )}
+                                            {item.baby_size && (
+                                                <p className="flex items-center gap-1">
+                                                    <span className="inline-block px-2 py-0.5 bg-orange-100 text-orange-800 rounded text-xs font-semibold">Baby Size: {item.baby_size}</span>
+                                                </p>
                                             )}
                                             <p>Quantity: <span className="font-medium text-black">{item.quantity}</span></p>
                                         </div>

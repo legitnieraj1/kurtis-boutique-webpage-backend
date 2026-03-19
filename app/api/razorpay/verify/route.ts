@@ -75,6 +75,7 @@ export async function POST(request: NextRequest) {
                 size: item.size,
                 color: item.color || null,
                 combo_type: item.combo_type || 'single',
+                baby_size: item.baby_size || null,
                 quantity: item.quantity,
                 unit_price: price,
                 total_price: itemTotal,
@@ -224,6 +225,7 @@ export async function POST(request: NextRequest) {
                     if (item.combo_type && item.combo_type !== 'single') variantStr += ` [${item.combo_type}]`;
                     if (item.color) variantStr += ` - ${item.color}`;
                     if (item.size) variantStr += ` - Size: ${item.size}`;
+                    if (item.baby_size) variantStr += ` - Baby Size: ${item.baby_size}`;
                     
                     return {
                         name: item.product_name + variantStr,

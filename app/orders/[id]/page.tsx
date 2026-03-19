@@ -32,6 +32,9 @@ interface OrderDetail {
         product_name: string;
         quantity: number;
         size: string;
+        color?: string | null;
+        combo_type?: string | null;
+        baby_size?: string | null;
         unit_price: number;
         total_price: number;
         image_url: string | null;
@@ -162,6 +165,21 @@ export default function UserOrderDetailsPage() {
                                                 <h3 className="font-medium text-lg text-foreground">{item.product_name}</h3>
                                                 <div className="text-sm text-muted-foreground mt-2 space-y-1">
                                                     <p>Size: <span className="font-medium text-foreground uppercase">{item.size}</span></p>
+                                                    {item.color && (
+                                                        <p className="flex items-center gap-1">
+                                                            Color: 
+                                                            <span className="w-3 h-3 rounded-full border border-black/10 inline-block shadow-sm" style={{ backgroundColor: item.color.includes('|') ? item.color.split('|')[1] : '#cccccc' }}></span>
+                                                            <span className="font-medium text-foreground">{item.color.includes('|') ? item.color.split('|')[0] : item.color}</span>
+                                                        </p>
+                                                    )}
+                                                    {item.combo_type && item.combo_type !== 'single' && (
+                                                        <p>Type: <span className="font-medium text-primary">{item.combo_type === 'mom_baby' ? 'Mom & Baby Combo' : 'Family Combo'}</span></p>
+                                                    )}
+                                                    {item.baby_size && (
+                                                        <p className="flex items-center gap-1">
+                                                            <span className="inline-block px-2 py-0.5 bg-orange-100 text-orange-800 rounded text-xs font-semibold">Baby Size: {item.baby_size}</span>
+                                                        </p>
+                                                    )}
                                                     <p>Qty: <span className="font-medium text-foreground">{item.quantity}</span></p>
                                                 </div>
                                             </div>

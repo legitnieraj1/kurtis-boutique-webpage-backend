@@ -530,6 +530,11 @@ export default function CheckoutPage() {
                                                         {item.combo_type === 'mom_baby' ? 'Mom & Baby Combo' : 'Family Combo'}
                                                     </p>
                                                 )}
+                                                {item.baby_size && (
+                                                    <p className="text-xs text-orange-700 bg-orange-50 px-2 py-0.5 rounded inline-block mt-1">
+                                                        Baby Size: {item.baby_size}
+                                                    </p>
+                                                )}
                                                 <p className="text-sm font-semibold mt-1">
                                                     {formatPrice((item.product?.discount_price || item.product?.price || 0) * item.quantity)}
                                                 </p>

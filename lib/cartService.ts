@@ -14,6 +14,7 @@ export interface CartItem {
     };
     color?: string | null;
     combo_type?: string | null;
+    baby_size?: string | null;
 }
 
 export const CartService = {
@@ -47,6 +48,7 @@ export const CartService = {
                 quantity,
                 color,
                 combo_type,
+                baby_size,
                 created_at,
                 product:products (
                     name,
@@ -72,7 +74,7 @@ export const CartService = {
         })) as CartItem[];
     },
 
-    async addToCart(productId: string, size: string, color: string | null = null, comboType: string = 'single', quantity: number = 1) {
+    async addToCart(productId: string, size: string, color: string | null = null, comboType: string = 'single', quantity: number = 1, babySize: string | null = null) {
         const supabase = createSupabaseClient();
         const { data: { user } } = await supabase.auth.getUser();
 
@@ -96,6 +98,12 @@ export const CartService = {
             query = query.eq('combo_type', comboType);
         }
 
+        if (babySize) {
+            query = query.eq('baby_size', babySize);
+        } else {
+            query = query.is('baby_size', null);
+        }
+
         const { data: existingItem } = await query.single();
 
         if (existingItem) {
@@ -114,7 +122,8 @@ export const CartService = {
                     size: size,
                     color: color,
                     combo_type: comboType,
-                    selected_size: size, // Requirements mention selected_size/color too
+                    baby_size: babySize,
+                    selected_size: size,
                     selected_color: color,
                     quantity: quantity
                 });

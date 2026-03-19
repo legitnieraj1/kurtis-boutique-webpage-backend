@@ -42,6 +42,7 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
 
     const [selectedSize, setSelectedSize] = useState<string | null>(null);
     const [selectedColor, setSelectedColor] = useState<string | null>(null);
+    const [selectedBabySize, setSelectedBabySize] = useState<string | null>(null);
     const [comboType, setComboType] = useState<string>('single');
     const [quantity, setQuantity] = useState(1);
     const [activeImage, setActiveImage] = useState<string>(product.images?.[0]?.image_url || "");
@@ -68,11 +69,24 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
     let isDiscounted = !!product.discount_price && product.discount_price < product.price;
 
     if (comboType === 'mom_baby' && product.mom_baby_combos?.[0]) {
-        finalPrice = product.mom_baby_combos[0].mom_price + product.mom_baby_combos[0].baby_base_price;
+        const combo = product.mom_baby_combos[0];
+        // If a baby size is selected and has a specific price, use it
+        if (selectedBabySize && product.baby_size_prices?.length) {
+            const babySizePrice = product.baby_size_prices.find(p => p.size === selectedBabySize);
+            finalPrice = combo.mom_price + (babySizePrice?.price || combo.baby_base_price);
+        } else {
+            finalPrice = combo.mom_price + combo.baby_base_price;
+        }
         originalPrice = finalPrice;
-        isDiscounted = false; // Combos have fixed dynamic prices according to schema
+        isDiscounted = false;
     } else if (comboType === 'family' && product.family_combos?.[0]) {
-        finalPrice = (product.family_combos[0].mother_price || 0) + (product.family_combos[0].father_price || 0) + (product.family_combos[0].baby_base_price || 0);
+        const fCombo = product.family_combos[0];
+        if (selectedBabySize && product.baby_size_prices?.length) {
+            const babySizePrice = product.baby_size_prices.find(p => p.size === selectedBabySize);
+            finalPrice = (fCombo.mother_price || 0) + (fCombo.father_price || 0) + (babySizePrice?.price || fCombo.baby_base_price || 0);
+        } else {
+            finalPrice = (fCombo.mother_price || 0) + (fCombo.father_price || 0) + (fCombo.baby_base_price || 0);
+        }
         originalPrice = finalPrice;
         isDiscounted = false;
     } else if (selectedSize && product.baby_size_prices?.length) {
@@ -96,7 +110,14 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
             return;
         }
 
-        const success = await addToCart(product.id, selectedSize, selectedColor, comboType, quantity);
+        // Validate baby size for combo orders
+        if ((comboType === 'mom_baby' || comboType === 'family') && product.baby_size_prices && product.baby_size_prices.length > 0 && !selectedBabySize) {
+            toast.error("Please select a baby size");
+            return;
+        }
+
+        const babySize = (comboType === 'mom_baby' || comboType === 'family') ? selectedBabySize : null;
+        const success = await addToCart(product.id, selectedSize, selectedColor, comboType, quantity, babySize);
 
         if (success) {
             toast.success("Added to Cart");
@@ -227,6 +248,33 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
                                 </div>
                             </div>
                         )}
+
+                        {/* BABY SIZE PICKER (for combos) */}
+                        {(comboType === 'mom_baby' || comboType === 'family') && product.baby_size_prices && product.baby_size_prices.length > 0 && (
+                            <div id="baby-size-selector" className="mb-6">
+                                <div className="flex justify-between items-center mb-2">
+                                    <span className="font-medium text-sm">Select Baby Size</span>
+                                </div>
+                                <div className="flex flex-col gap-2">
+                                    {product.baby_size_prices.map(bp => (
+                                        <button
+                                            key={bp.id}
+                                            onClick={() => setSelectedBabySize(bp.size)}
+                                            className={cn(
+                                                "flex items-center justify-between p-3 border rounded-lg text-left transition-all",
+                                                selectedBabySize === bp.size
+                                                    ? "border-primary ring-1 ring-primary bg-primary/5"
+                                                    : "hover:border-primary/50"
+                                            )}
+                                        >
+                                            <span className="font-medium text-sm">{bp.size}</span>
+                                            <span className="text-sm text-muted-foreground">{formatPrice(bp.price)}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
 
                         {/* COLORS */}
                         {product.colors && product.colors.length > 0 && (
