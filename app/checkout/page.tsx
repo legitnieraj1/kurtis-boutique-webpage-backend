@@ -11,6 +11,8 @@ import { formatPrice } from '@/lib/utils';
 import { toast } from 'sonner';
 import Script from 'next/script';
 
+import { getCartItemPrice } from '@/lib/cartService';
+
 import { PaymentProcessingLoader } from '@/components/orders/PaymentProcessingLoader';
 import { LoadingScreen } from "@/components/ui/LoadingScreen";
 
@@ -536,7 +538,7 @@ export default function CheckoutPage() {
                                                     </p>
                                                 )}
                                                 <p className="text-sm font-semibold mt-1">
-                                                    {formatPrice((item.product?.discount_price || item.product?.price || 0) * item.quantity)}
+                                                    {formatPrice(getCartItemPrice(item) * item.quantity)}
                                                 </p>
                                             </div>
                                         </div>

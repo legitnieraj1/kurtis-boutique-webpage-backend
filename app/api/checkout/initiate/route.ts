@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
         const body = await request.json();
         const { shippingAddress, billingAddress, sameAsShipping } = body;
 
-        // 1. Fetch Cart Items with Product Details
+        // 1. Fetch Cart Items with Product Details (including combo pricing)
         const { data: cartItems, error } = await supabase
             .from('cart_items')
             .select(`
@@ -36,7 +36,22 @@ export async function POST(request: NextRequest) {
                     slug,
                     price,
                     discount_price,
-                    images:product_images(image_url)
+                    is_mom_baby,
+                    is_family_combo,
+                    images:product_images(image_url),
+                    mom_baby_combos (
+                        mom_price,
+                        baby_base_price
+                    ),
+                    family_combos (
+                        mother_price,
+                        father_price,
+                        baby_base_price
+                    ),
+                    baby_size_prices (
+                        size,
+                        price
+                    )
                 )
             `)
             .eq('user_id', user.id);
@@ -53,10 +68,30 @@ export async function POST(request: NextRequest) {
 
         console.log('[Checkout] Cart items found:', cartItems.length);
 
-        // 2. Calculate Total Amount
+        // 2. Calculate Total Amount (combo-aware pricing)
         let totalAmount = 0;
         const orderItems = cartItems.map((item) => {
-            const price = item.product.discount_price || item.product.price;
+            let price = item.product.discount_price || item.product.price;
+
+            // Combo pricing override
+            if (item.combo_type === 'mom_baby' && item.product.mom_baby_combos?.[0]) {
+                const combo = item.product.mom_baby_combos[0];
+                if (item.baby_size && item.product.baby_size_prices?.length) {
+                    const babySizePrice = item.product.baby_size_prices.find((p: any) => p.size === item.baby_size);
+                    price = combo.mom_price + (babySizePrice?.price || combo.baby_base_price);
+                } else {
+                    price = combo.mom_price + combo.baby_base_price;
+                }
+            } else if (item.combo_type === 'family' && item.product.family_combos?.[0]) {
+                const fCombo = item.product.family_combos[0];
+                if (item.baby_size && item.product.baby_size_prices?.length) {
+                    const babySizePrice = item.product.baby_size_prices.find((p: any) => p.size === item.baby_size);
+                    price = (fCombo.mother_price || 0) + (fCombo.father_price || 0) + (babySizePrice?.price || fCombo.baby_base_price || 0);
+                } else {
+                    price = (fCombo.mother_price || 0) + (fCombo.father_price || 0) + (fCombo.baby_base_price || 0);
+                }
+            }
+
             const itemTotal = price * item.quantity;
             totalAmount += itemTotal;
 

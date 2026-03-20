@@ -6,6 +6,7 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Plus, Minus, Trash2, ShoppingBag, Loader2 } from "lucide-react";
 import { useStore } from "@/lib/store";
+import { getCartItemPrice } from "@/lib/cartService";
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/utils";
 import { useIsMobile } from "@/lib/hooks/use-mobile";
@@ -110,7 +111,7 @@ export function CartSheet({ isOpen, onClose }: CartSheetProps) {
                                 cart.map((item) => {
                                     const isUpdating = updatingItems.has(item.id);
                                     const imageUrl = item.product?.images?.[0]?.image_url;
-                                    const price = item.product?.discount_price || item.product?.price || 0;
+                                    const price = getCartItemPrice(item);
 
                                     return (
                                         <div key={item.id} className={`flex gap-4 p-4 bg-muted/30 rounded-lg border border-border/50 ${isUpdating ? 'opacity-50' : ''}`}>

@@ -477,13 +477,40 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
                     <label className="text-sm font-medium mb-2 block">Images</label>
                     <div className="flex flex-wrap gap-4">
                         {existingImages.map((img: any, i) => (
-                            <div key={i} className="relative w-24 h-32 border rounded overflow-hidden">
+                            <div key={img.id || i} className="relative w-24 h-32 border rounded overflow-hidden group">
                                 <img src={img.image_url} className="w-full h-full object-cover" />
+                                <button
+                                    type="button"
+                                    onClick={async () => {
+                                        if (!initialData?.id || !img.id) return;
+                                        if (!confirm("Delete this image?")) return;
+                                        try {
+                                            const res = await fetch(`/api/products/${initialData.id}/images?imageId=${img.id}`, { method: 'DELETE' });
+                                            if (!res.ok) throw new Error("Failed to delete");
+                                            setExistingImages(existingImages.filter((_: any, idx: number) => idx !== i));
+                                            toast.success("Image deleted");
+                                        } catch (error) {
+                                            toast.error("Failed to delete image");
+                                        }
+                                    }}
+                                    className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+                                    title="Delete image"
+                                >
+                                    <X className="w-3 h-3" />
+                                </button>
                             </div>
                         ))}
                         {newImages.map((file, i) => (
-                            <div key={`new-${i}`} className="relative w-24 h-32 border rounded overflow-hidden bg-gray-100 flex items-center justify-center">
-                                <span className="text-xs text-center p-1">{file.name}</span>
+                            <div key={`new-${i}`} className="relative w-24 h-32 border rounded overflow-hidden bg-gray-100 flex items-center justify-center group">
+                                <img src={URL.createObjectURL(file)} className="w-full h-full object-cover" />
+                                <button
+                                    type="button"
+                                    onClick={() => setNewImages(newImages.filter((_, idx) => idx !== i))}
+                                    className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+                                    title="Remove image"
+                                >
+                                    <X className="w-3 h-3" />
+                                </button>
                             </div>
                         ))}
                         <label className="w-24 h-32 border-2 border-dashed rounded flex flex-col items-center justify-center cursor-pointer hover:bg-muted">

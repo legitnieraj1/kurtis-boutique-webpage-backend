@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { User, Order } from '@/types';
-import { CartService, CartItem } from './cartService';
+import { CartService, CartItem, getCartItemPrice } from './cartService';
 
 
 // Extended cart item with product details from DB
@@ -294,7 +294,7 @@ export const useStore = create<StoreState>()((set, get) => ({
 
     getCartTotal: () => {
         return get().cart.reduce((total, item) => {
-            const price = item.product?.discount_price || item.product?.price || 0;
+            const price = getCartItemPrice(item);
             return total + (price * item.quantity);
         }, 0);
     },

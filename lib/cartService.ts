@@ -11,10 +11,43 @@ export interface CartItem {
         price: number;
         discount_price?: number;
         images?: { image_url: string }[];
+        is_mom_baby?: boolean;
+        is_family_combo?: boolean;
+        mom_baby_combos?: { mom_price: number; baby_base_price: number }[];
+        family_combos?: { mother_price: number; father_price: number; baby_base_price: number }[];
+        baby_size_prices?: { size: string; price: number }[];
     };
     color?: string | null;
     combo_type?: string | null;
     baby_size?: string | null;
+}
+
+/**
+ * Calculate the effective unit price for a cart item, considering combo type and baby size pricing.
+ */
+export function getCartItemPrice(item: CartItem): number {
+    const product = item.product;
+    if (!product) return 0;
+
+    if (item.combo_type === 'mom_baby' && product.mom_baby_combos?.[0]) {
+        const combo = product.mom_baby_combos[0];
+        if (item.baby_size && product.baby_size_prices?.length) {
+            const babySizePrice = product.baby_size_prices.find(p => p.size === item.baby_size);
+            return combo.mom_price + (babySizePrice?.price || combo.baby_base_price);
+        }
+        return combo.mom_price + combo.baby_base_price;
+    }
+
+    if (item.combo_type === 'family' && product.family_combos?.[0]) {
+        const fCombo = product.family_combos[0];
+        if (item.baby_size && product.baby_size_prices?.length) {
+            const babySizePrice = product.baby_size_prices.find(p => p.size === item.baby_size);
+            return (fCombo.mother_price || 0) + (fCombo.father_price || 0) + (babySizePrice?.price || fCombo.baby_base_price || 0);
+        }
+        return (fCombo.mother_price || 0) + (fCombo.father_price || 0) + (fCombo.baby_base_price || 0);
+    }
+
+    return product.discount_price || product.price || 0;
 }
 
 export const CartService = {
@@ -54,8 +87,23 @@ export const CartService = {
                     name,
                     price,
                     discount_price,
+                    is_mom_baby,
+                    is_family_combo,
                     images:product_images (
                          image_url
+                    ),
+                    mom_baby_combos (
+                        mom_price,
+                        baby_base_price
+                    ),
+                    family_combos (
+                        mother_price,
+                        father_price,
+                        baby_base_price
+                    ),
+                    baby_size_prices (
+                        size,
+                        price
                     )
                 )
             `)
