@@ -183,14 +183,44 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     try {
         await requireAdmin();
         const { id } = await params;
-        const supabase = await createSupabaseServerClient();
+        
+        // Use service role client to ensure we can delete related records
+        // regardless of RLS policies which might block admin in some cases
+        let supabase = await createSupabaseServerClient();
+        if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+            const { createSupabaseAdmin } = await import('@/lib/supabase/server');
+            supabase = createSupabaseAdmin();
+        }
 
+        // 1. Manually delete related records to avoid missing ON DELETE CASCADE issues
+        await supabase.from('product_sizes').delete().eq('product_id', id);
+        await supabase.from('product_images').delete().eq('product_id', id);
+        await supabase.from('cart_items').delete().eq('product_id', id);
+        await supabase.from('mom_baby_combos').delete().eq('product_id', id);
+        await supabase.from('family_combos').delete().eq('product_id', id);
+        await supabase.from('baby_size_prices').delete().eq('product_id', id);
+        await supabase.from('wishlist').delete().eq('product_id', id);
+        await supabase.from('reviews').delete().eq('product_id', id);
+
+        // 2. Attempt to delete the product
         const { error } = await supabase
             .from('products')
             .delete()
             .eq('id', id);
 
         if (error) {
+            // Check if it's a foreign key constraint violation (likely order_items)
+            if (error.code === '23503' || error.message?.includes('violates foreign key constraint') || error.message?.includes('order_items')) {
+                console.log(`Product ${id} has orders. Soft-deleting instead.`);
+                // Fallback to soft delete
+                await supabase.from('products').update({ is_active: false }).eq('id', id);
+                return NextResponse.json({ 
+                    success: false, 
+                    softDeleted: true,
+                    message: 'Product has existing orders. It has been marked as inactive instead of fully deleted.' 
+                }, { status: 400 });
+            }
+            
             console.error('Product delete error:', error);
             return NextResponse.json({ error: error.message }, { status: 500 });
         }

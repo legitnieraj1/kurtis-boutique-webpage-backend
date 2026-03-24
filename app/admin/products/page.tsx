@@ -55,11 +55,22 @@ export default function AdminProducts() {
 
         try {
             const res = await fetch(`/api/products/${id}`, { method: 'DELETE' });
-            if (!res.ok) throw new Error("Failed to delete");
-            toast.success("Product deleted");
+            
+            const data = await res.json().catch(() => ({}));
+            
+            if (!res.ok) {
+                if (res.status === 400 && data.softDeleted) {
+                    toast.success(data.message || "Product marked as inactive.");
+                    fetchProducts();
+                    return;
+                }
+                throw new Error(data.error || "Failed to delete");
+            }
+            
+            toast.success("Product deleted successfully");
             fetchProducts();
-        } catch (error) {
-            toast.error("Error deleting product");
+        } catch (error: any) {
+            toast.error(error.message || "Error deleting product");
         }
     };
 
@@ -142,11 +153,18 @@ export default function AdminProducts() {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 hidden md:table-cell">
-                                                <div className="flex gap-2">
-                                                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${inStock ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                                        {inStock ? 'In Stock' : 'Out of Stock'}
-                                                    </span>
-                                                    <span className="text-sm text-muted-foreground ml-2">({product.stock_remaining})</span>
+                                                <div className="flex flex-col gap-2">
+                                                    <div className="flex gap-2">
+                                                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${inStock ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                            {inStock ? 'In Stock' : 'Out of Stock'}
+                                                        </span>
+                                                        <span className="text-sm text-muted-foreground ml-2">({product.stock_remaining})</span>
+                                                    </div>
+                                                    {!product.is_active && (
+                                                        <span className="inline-flex items-center w-fit px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                                                            Inactive
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-right space-x-2 whitespace-nowrap">

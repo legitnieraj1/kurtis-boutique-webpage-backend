@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Trash, ArrowRight, ArrowLeft, Upload, Plus, X, ChevronsUp, Loader2 } from "lucide-react";
+import { Trash, ArrowRight, ArrowLeft, Upload, Plus, X, ChevronsUp, Loader2, ChevronDown, Edit2 } from "lucide-react";
 import { toast } from "sonner";
 import { getSupabaseClient } from "@/lib/supabase/client";
 
@@ -58,6 +58,23 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
     const [isAddingCategory, setIsAddingCategory] = useState(false);
     const [newCategoryName, setNewCategoryName] = useState("");
     const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+    
+    // Custom Category Dropdown State
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [editingCategory, setEditingCategory] = useState<string | null>(null);
+    const [editCategoryName, setEditCategoryName] = useState("");
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsDropdownOpen(false);
+                setEditingCategory(null);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
 
     useEffect(() => {
         fetchCatergories();
@@ -106,6 +123,48 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
             toast.error("Failed to create category");
         } finally {
             setIsCreatingCategory(false);
+        }
+    };
+
+    const startEditCategory = (c: any, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setEditingCategory(c.id);
+        setEditCategoryName(c.name);
+    };
+
+    const saveEditCategory = async (id: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!editCategoryName.trim()) return;
+        try {
+            const slug = editCategoryName.toLowerCase().replace(/\s+/g, '-');
+            const res = await fetch(`/api/categories/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: editCategoryName, slug })
+            });
+            if (!res.ok) throw new Error("Failed to edit category");
+            toast.success("Category updated");
+            setEditingCategory(null);
+            fetchCatergories();
+        } catch (error) {
+            toast.error("Failed to update category");
+        }
+    };
+
+    const handleDeleteCategory = async (id: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!confirm("Are you sure you want to delete this category? (It will fail if products are linked to it)")) return;
+        try {
+            const res = await fetch(`/api/categories/${id}`, { method: 'DELETE' });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                throw new Error(data.error || "Failed to delete category");
+            }
+            toast.success("Category deleted");
+            if (categoryId === id) setCategoryId("");
+            fetchCatergories();
+        } catch (error: any) {
+            toast.error(error.message || "Error deleting category");
         }
     };
 
@@ -262,16 +321,62 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
                                 </Button>
                             </div>
                         ) : (
-                            <select
-                                className="w-full px-3 py-2 border rounded-md"
-                                required
-                                value={categoryId}
-                                onChange={handleCategoryChange}
-                            >
-                                <option value="">Select Category</option>
-                                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                <option value="new">+ Add New Category</option>
-                            </select>
+                            <div className="relative" ref={dropdownRef}>
+                                <div
+                                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                                    className="w-full px-3 py-2 border rounded-md cursor-pointer bg-background flex justify-between items-center"
+                                >
+                                    <span>{categories.find(c => c.id === categoryId)?.name || "Select Category"}</span>
+                                    <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                                </div>
+                                
+                                {isDropdownOpen && (
+                                    <div className="absolute top-full left-0 w-full mt-1 bg-background border border-border rounded-md shadow-lg max-h-60 overflow-y-auto z-50">
+                                        <div 
+                                            className="px-3 py-2 hover:bg-muted/50 cursor-pointer border-b border-border text-muted-foreground text-sm"
+                                            onClick={() => { setCategoryId(""); setIsDropdownOpen(false); }}
+                                        >
+                                            Select Category
+                                        </div>
+                                        {categories.map(c => (
+                                            <div key={c.id} className="flex justify-between items-center px-3 py-2 hover:bg-muted/50 border-b border-border last:border-0 group">
+                                                {editingCategory === c.id ? (
+                                                    <div className="flex gap-2 w-full items-center">
+                                                        <input 
+                                                            value={editCategoryName} 
+                                                            onChange={(e) => setEditCategoryName(e.target.value)} 
+                                                            onClick={(e) => e.stopPropagation()} 
+                                                            className="flex-1 px-2 py-1 border rounded min-w-0 text-sm" 
+                                                            autoFocus
+                                                        />
+                                                        <Button type="button" size="sm" onClick={(e) => saveEditCategory(c.id, e)} className="h-7 px-2 text-xs">Save</Button>
+                                                        <Button type="button" size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); setEditingCategory(null); }} className="h-7 w-7"><X className="w-3 h-3" /></Button>
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        <span 
+                                                            onClick={() => { setCategoryId(c.id); setIsDropdownOpen(false); }} 
+                                                            className="flex-1 cursor-pointer truncate"
+                                                        >
+                                                            {c.name}
+                                                        </span>
+                                                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                                                            <button type="button" onClick={(e) => startEditCategory(c, e)} className="p-1 text-muted-foreground hover:text-blue-500 rounded"><Edit2 size={14} /></button>
+                                                            <button type="button" onClick={(e) => handleDeleteCategory(c.id, e)} className="p-1 text-muted-foreground hover:text-red-500 rounded"><Trash size={14} /></button>
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
+                                        ))}
+                                        <div 
+                                            className="p-3 bg-muted/20 cursor-pointer text-primary text-sm font-medium hover:bg-muted/50 transition-colors" 
+                                            onClick={() => { setIsAddingCategory(true); setIsDropdownOpen(false); }}
+                                        >
+                                            + Add New Category
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         )}
                     </div>
                     <div className="space-y-2 md:col-span-2">

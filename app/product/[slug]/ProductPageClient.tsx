@@ -41,8 +41,11 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
     const isWishlisted = isInWishlist(product.id);
 
     const [selectedSize, setSelectedSize] = useState<string | null>(null);
+    const [selectedFatherSize, setSelectedFatherSize] = useState<string | null>(null);
+    const [selectedMotherSize, setSelectedMotherSize] = useState<string | null>(null);
     const [selectedColor, setSelectedColor] = useState<string | null>(null);
     const [selectedBabySize, setSelectedBabySize] = useState<string | null>(null);
+    const [selectedBabyGender, setSelectedBabyGender] = useState<string | null>(null);
     const [comboType, setComboType] = useState<string>('single');
     const [quantity, setQuantity] = useState(1);
     const [activeImage, setActiveImage] = useState<string>(product.images?.[0]?.image_url || "");
@@ -100,8 +103,13 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
     const categoryName = product.category?.name || "Uncategorized";
 
     const handleAddToCart = async () => {
-        if (!selectedSize) {
-            toast.error("Please select a size");
+        if (comboType === 'family') {
+            if (!selectedFatherSize || !selectedMotherSize) {
+                toast.error("Please select both Father and Mother sizes");
+                return;
+            }
+        } else if (!selectedSize) {
+            toast.error(comboType === 'mom_baby' ? "Please select Mom's size" : "Please select a size");
             return;
         }
 
@@ -111,13 +119,29 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
         }
 
         // Validate baby size for combo orders
-        if ((comboType === 'mom_baby' || comboType === 'family') && product.baby_size_prices && product.baby_size_prices.length > 0 && !selectedBabySize) {
-            toast.error("Please select a baby size");
-            return;
+        if ((comboType === 'mom_baby' || comboType === 'family') && product.baby_size_prices && product.baby_size_prices.length > 0) {
+            if (!selectedBabySize) {
+                toast.error("Please select a baby size");
+                return;
+            }
+            if (!selectedBabyGender) {
+                toast.error("Please select baby gender (Boy/Girl)");
+                return;
+            }
         }
 
         const babySize = (comboType === 'mom_baby' || comboType === 'family') ? selectedBabySize : null;
-        const success = await addToCart(product.id, selectedSize, selectedColor, comboType, quantity, babySize);
+        let finalSize = comboType === 'family' ? `Father: ${selectedFatherSize}, Mother: ${selectedMotherSize}` : selectedSize!;
+        
+        if ((comboType === 'mom_baby' || comboType === 'family') && selectedBabyGender) {
+             if (comboType === 'mom_baby') {
+                 finalSize = `Mom: ${selectedSize}, Baby: ${selectedBabyGender}`;
+             } else {
+                 finalSize += `, Baby: ${selectedBabyGender}`;
+             }
+        }
+        
+        const success = await addToCart(product.id, finalSize, selectedColor, comboType, quantity, babySize);
 
         if (success) {
             toast.success("Added to Cart");
@@ -251,26 +275,49 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
 
                         {/* BABY SIZE PICKER (for combos) */}
                         {(comboType === 'mom_baby' || comboType === 'family') && product.baby_size_prices && product.baby_size_prices.length > 0 && (
-                            <div id="baby-size-selector" className="mb-6">
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className="font-medium text-sm">Select Baby Size</span>
+                            <div id="baby-size-selector" className="mb-6 space-y-4">
+                                <div>
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="font-medium text-sm">Select Baby Size</span>
+                                    </div>
+                                    <div className="flex flex-col gap-2">
+                                        {product.baby_size_prices.map(bp => (
+                                            <button
+                                                key={bp.id}
+                                                onClick={() => setSelectedBabySize(bp.size)}
+                                                className={cn(
+                                                    "flex items-center justify-between p-3 border rounded-lg text-left transition-all",
+                                                    selectedBabySize === bp.size
+                                                        ? "border-primary ring-1 ring-primary bg-primary/5"
+                                                        : "hover:border-primary/50"
+                                                )}
+                                            >
+                                                <span className="font-medium text-sm">{bp.size}</span>
+                                                <span className="text-sm text-muted-foreground">{formatPrice(bp.price)}</span>
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
-                                <div className="flex flex-col gap-2">
-                                    {product.baby_size_prices.map(bp => (
-                                        <button
-                                            key={bp.id}
-                                            onClick={() => setSelectedBabySize(bp.size)}
-                                            className={cn(
-                                                "flex items-center justify-between p-3 border rounded-lg text-left transition-all",
-                                                selectedBabySize === bp.size
-                                                    ? "border-primary ring-1 ring-primary bg-primary/5"
-                                                    : "hover:border-primary/50"
-                                            )}
-                                        >
-                                            <span className="font-medium text-sm">{bp.size}</span>
-                                            <span className="text-sm text-muted-foreground">{formatPrice(bp.price)}</span>
-                                        </button>
-                                    ))}
+                                <div id="baby-gender-selector">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="font-medium text-sm">Select Baby Gender</span>
+                                    </div>
+                                    <div className="flex gap-3">
+                                        {['Boy', 'Girl'].map(gender => (
+                                            <button
+                                                key={gender}
+                                                onClick={() => setSelectedBabyGender(gender)}
+                                                className={cn(
+                                                    "flex-1 p-3 border rounded-lg text-center font-medium text-sm transition-all",
+                                                    selectedBabyGender === gender
+                                                        ? "border-primary ring-1 ring-primary bg-primary/5 text-primary"
+                                                        : "hover:border-primary/50 text-foreground"
+                                                )}
+                                            >
+                                                {gender}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
                         )}
@@ -309,30 +356,82 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
                         )}
 
                         {/* SIZES */}
-                        <div id="size-selector">
-                            <div className="flex justify-between items-center mb-2">
-                                <span className="font-medium text-sm">Select Size</span>
-                                <button className="text-xs underline text-muted-foreground hover:text-primary">Size Chart</button>
+                        {comboType !== 'family' ? (
+                            <div id="size-selector">
+                                <div className="flex justify-between items-center mb-2">
+                                    <span className="font-medium text-sm">{comboType === 'mom_baby' ? 'Select Mom Size' : 'Select Size'}</span>
+                                    <button className="text-xs underline text-muted-foreground hover:text-primary">Size Chart</button>
+                                </div>
+                                <div className="flex gap-3 flex-wrap">
+                                    {product.sizes?.map(sizeObj => (
+                                        <button
+                                            key={sizeObj.size}
+                                            onClick={() => setSelectedSize(sizeObj.size)}
+                                            disabled={!inStock}
+                                            className={cn(
+                                                "w-10 h-10 rounded-full border flex items-center justify-center text-sm transition-all",
+                                                selectedSize === sizeObj.size
+                                                    ? "border-primary bg-primary text-white"
+                                                    : "border-input hover:border-primary/50",
+                                                !inStock && "opacity-50 cursor-not-allowed"
+                                            )}
+                                        >
+                                            {sizeObj.size}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
-                            <div className="flex gap-3">
-                                {product.sizes?.map(sizeObj => (
-                                    <button
-                                        key={sizeObj.size}
-                                        onClick={() => setSelectedSize(sizeObj.size)}
-                                        disabled={!inStock}
-                                        className={cn(
-                                            "w-10 h-10 rounded-full border flex items-center justify-center text-sm transition-all",
-                                            selectedSize === sizeObj.size
-                                                ? "border-primary bg-primary text-white"
-                                                : "border-input hover:border-primary/50",
-                                            !inStock && "opacity-50 cursor-not-allowed"
-                                        )}
-                                    >
-                                        {sizeObj.size}
-                                    </button>
-                                ))}
+                        ) : (
+                            <div id="family-sizes-selector" className="space-y-4">
+                                <div>
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="font-medium text-sm">Select Father Size</span>
+                                        <button className="text-xs underline text-muted-foreground hover:text-primary">Size Chart</button>
+                                    </div>
+                                    <div className="flex gap-3 flex-wrap">
+                                        {product.sizes?.map(sizeObj => (
+                                            <button
+                                                key={`father-${sizeObj.size}`}
+                                                onClick={() => setSelectedFatherSize(sizeObj.size)}
+                                                disabled={!inStock}
+                                                className={cn(
+                                                    "w-10 h-10 rounded-full border flex items-center justify-center text-sm transition-all",
+                                                    selectedFatherSize === sizeObj.size
+                                                        ? "border-primary bg-primary text-white"
+                                                        : "border-input hover:border-primary/50",
+                                                    !inStock && "opacity-50 cursor-not-allowed"
+                                                )}
+                                            >
+                                                {sizeObj.size}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div>
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="font-medium text-sm">Select Mother Size</span>
+                                    </div>
+                                    <div className="flex gap-3 flex-wrap">
+                                        {product.sizes?.map(sizeObj => (
+                                            <button
+                                                key={`mother-${sizeObj.size}`}
+                                                onClick={() => setSelectedMotherSize(sizeObj.size)}
+                                                disabled={!inStock}
+                                                className={cn(
+                                                    "w-10 h-10 rounded-full border flex items-center justify-center text-sm transition-all",
+                                                    selectedMotherSize === sizeObj.size
+                                                        ? "border-primary bg-primary text-white"
+                                                        : "border-input hover:border-primary/50",
+                                                    !inStock && "opacity-50 cursor-not-allowed"
+                                                )}
+                                            >
+                                                {sizeObj.size}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
                             </div>
-                        </div>
+                        )}
 
                         {/* ACTIONS */}
                         <div ref={actionsRef} className="flex items-center gap-2 md:gap-3 pt-4 border-t border-border">
@@ -407,7 +506,10 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
                                     <span className="font-bold text-base text-foreground">{formatPrice(finalPrice)}</span>
                                 </div>
                                 <Button className="shadow-md h-10 px-5 rounded-lg bg-primary text-white text-sm" onClick={() => {
-                                    if (!selectedSize) {
+                                    if (comboType === 'family' && (!selectedFatherSize || !selectedMotherSize)) {
+                                        document.getElementById('family-sizes-selector')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                        toast.info("Please select both Father and Mother sizes");
+                                    } else if (comboType !== 'family' && !selectedSize) {
                                         document.getElementById('size-selector')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
                                         toast.info("Please select a size");
                                     } else handleAddToCart();
