@@ -10,6 +10,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import { OrderTimeline } from "@/components/orders/OrderTimeline";
+import type { OrderTimeline as OrderTimelineType } from "@/lib/supabase/types";
 
 interface OrderDetail {
     id: string;
@@ -45,6 +47,9 @@ interface OrderDetail {
         courier: string;
         trackingUrl: string;
     };
+    shipped_at?: string | null;
+    delivered_at?: string | null;
+    timeline?: OrderTimelineType[];
 }
 
 const statusSteps = ['pending', 'confirmed', 'processing', 'shipped', 'delivered'];
@@ -138,6 +143,15 @@ export default function UserOrderDetailsPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Left Column: Items */}
                     <div className="lg:col-span-2 space-y-8">
+                        {/* Timeline */}
+                        <OrderTimeline 
+                            status={order.status}
+                            createdAt={order.created_at}
+                            shippedAt={order.shipped_at}
+                            deliveredAt={order.delivered_at}
+                            timeline={order.timeline}
+                        />
+
                         <div className="bg-white rounded-2xl shadow-sm border border-stone-100 p-6 md:p-8">
                             <h2 className="font-serif text-xl mb-6 flex items-center gap-2">
                                 <ShoppingBag className="w-5 h-5 text-primary" />
