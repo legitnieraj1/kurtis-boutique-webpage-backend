@@ -201,6 +201,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
         await supabase.from('baby_size_prices').delete().eq('product_id', id);
         await supabase.from('wishlist').delete().eq('product_id', id);
         await supabase.from('reviews').delete().eq('product_id', id);
+        await supabase.from('order_items').delete().eq('product_id', id);
 
         // 2. Attempt to delete the product
         const { error } = await supabase
@@ -209,18 +210,6 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
             .eq('id', id);
 
         if (error) {
-            // Check if it's a foreign key constraint violation (likely order_items)
-            if (error.code === '23503' || error.message?.includes('violates foreign key constraint') || error.message?.includes('order_items')) {
-                console.log(`Product ${id} has orders. Soft-deleting instead.`);
-                // Fallback to soft delete
-                await supabase.from('products').update({ is_active: false }).eq('id', id);
-                return NextResponse.json({ 
-                    success: false, 
-                    softDeleted: true,
-                    message: 'Product has existing orders. It has been marked as inactive instead of fully deleted.' 
-                }, { status: 400 });
-            }
-            
             console.error('Product delete error:', error);
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
