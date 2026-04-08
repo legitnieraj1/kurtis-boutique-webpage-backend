@@ -26,12 +26,9 @@ export default function ShippingPage() {
                 <div className="prose prose-stone prose-sm md:prose-base max-w-none space-y-8 text-foreground/80">
                     <section>
                         <h2 className="text-xl font-medium text-foreground mb-4">Shipping Policy</h2>
-                        <p>
-                            We offer standard nationwide shipping across India.
-                        </p>
                         <ul className="list-disc pl-5 mt-2 space-y-1">
-                            <li><strong>Processing Time:</strong> Orders are processed within 24-48 hours.</li>
-                            <li><strong>Delivery Time:</strong> Standard delivery takes 3-7 business days depending on your location.</li>
+                            <li><strong>Processing Time:</strong> 3 to 7 working days</li>
+                            <li><strong>Delivery Time:</strong> 5 to 10 working days</li>
                             <li><strong>Tracking:</strong> Once shipped, you will receive a tracking number via email/SMS.</li>
                         </ul>
                     </section>
@@ -39,27 +36,24 @@ export default function ShippingPage() {
                     <section>
                         <h2 className="text-xl font-medium text-foreground mb-4">International Shipping</h2>
                         <p>
-                            Currently, we only ship within India. Stay tuned for international shipping updates!
+                            International shipping available - for international shipping DM us in Instagram or whatsapp us at <a href="https://wa.me/919787635982" className="text-primary hover:underline">9787635982</a>.
                         </p>
                     </section>
 
                     <section>
                         <h2 className="text-xl font-medium text-foreground mb-4">Exchange & Returns</h2>
                         <p>
-                            We want you to love your purchase. If you are not completely satisfied, we offer an easy exchange policy within 7 days of delivery.
+                            <strong>No exchange or returns or cancellations accepted once order is placed.</strong>
                         </p>
-                        <ul className="list-disc pl-5 mt-2 space-y-1">
-                            <li><strong>Eligibility:</strong> Items must be unused, unwashed, and in original packaging with tags intact.</li>
-                            <li><strong>Process:</strong> To initiate an exchange, please email us at support@kurtisboutique.com with your order number.</li>
-                            <li><strong>Requirement:</strong> A 360-degree unboxing video is mandatory for any damage or missing item claims.</li>
-                            <li><strong>Refunds:</strong> We currently offer store credit or exchanges only; cash refunds are processed only for defective items.</li>
-                        </ul>
+                        <p className="mt-2">
+                            Exchange can only be done if there are any damages found in the dress. To avail this, a 360 unboxing video is mandatory.
+                        </p>
                     </section>
 
                     <section>
                         <h2 className="text-xl font-medium text-foreground mb-4">Damaged Items</h2>
                         <p>
-                            In the rare case that you receive a damaged or incorrect item, please notify us within 48 hours of delivery for an immediate replacement.
+                            In the rare case that you receive a damaged product or incorrect item, please notify us within 24 hours of delivery for a replacement.
                         </p>
                     </section>
                 </div>

@@ -24,20 +24,22 @@ export default function ContactPage() {
                                 <h3 className="text-xl font-serif font-medium mb-4">Contact Information</h3>
                                 <div className="space-y-4">
                                     <div className="flex items-start gap-4">
-                                        <MapPin className="w-5 h-5 text-primary mt-1" />
+                                        <MapPin className="w-5 h-5 text-primary mt-1 flex-shrink-0" />
                                         <p className="text-muted-foreground">
-                                            123 Fashion Street, <br />
-                                            Indiranagar, Bangalore - 560038 <br />
+                                            <strong>Rajalakshmi</strong> <br />
+                                            41/1 muthukaruppapillai lane <br />
+                                            South veli street <br />
+                                            Madurai-625001 <br />
                                             India
                                         </p>
                                     </div>
                                     <div className="flex items-center gap-4">
-                                        <Phone className="w-5 h-5 text-primary" />
-                                        <p className="text-muted-foreground">+91 9787635982</p>
+                                        <Phone className="w-5 h-5 text-primary flex-shrink-0" />
+                                        <p className="text-muted-foreground">+91 9942147187</p>
                                     </div>
                                     <div className="flex items-center gap-4">
-                                        <Mail className="w-5 h-5 text-primary" />
-                                        <p className="text-muted-foreground">hello@kurtisboutique.com</p>
+                                        <Mail className="w-5 h-5 text-primary flex-shrink-0" />
+                                        <p className="text-muted-foreground">kurtisboutique23@gmail.com</p>
                                     </div>
 
                                     {/* Socials */}

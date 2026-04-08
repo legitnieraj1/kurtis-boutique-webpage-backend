@@ -124,6 +124,7 @@ export const metadata: Metadata = {
 };
 
 import { BackgroundGradientAnimation } from "@/components/ui/background-gradient-animation";
+import { BottomNavbar } from "@/components/layout/BottomNavbar";
 
 // JSON-LD Schema Markup for SEO
 function SchemaMarkup() {
@@ -300,10 +301,10 @@ function SchemaMarkup() {
       "Kurtis Boutique is a premium ethnic wear boutique based in Bangalore, India. With manufacturing in Madurai and over 30,000+ Instagram followers, we offer designer kurtis, kurti sets, and ethnic wear online across India.",
     address: {
       "@type": "PostalAddress",
-      streetAddress: "123 Fashion Street, Indiranagar",
-      addressLocality: "Bangalore",
-      addressRegion: "Karnataka",
-      postalCode: "560038",
+      streetAddress: "41/1 muthukaruppapillai lane, South veli street",
+      addressLocality: "Madurai",
+      addressRegion: "Tamil Nadu",
+      postalCode: "625001",
       addressCountry: "IN",
     },
     geo: {
@@ -461,9 +462,10 @@ export default function RootLayout({
           />
         </div>
         <AuthProvider>
-          <div className="relative z-0">
+          <div className="relative z-0 w-full overflow-x-hidden">
             {children}
           </div>
+          <BottomNavbar />
         </AuthProvider>
         <Toaster
           position="bottom-right"

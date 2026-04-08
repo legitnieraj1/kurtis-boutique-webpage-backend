@@ -360,7 +360,7 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
                             <div id="size-selector">
                                 <div className="flex justify-between items-center mb-2">
                                     <span className="font-medium text-sm">{comboType === 'mom_baby' ? 'Select Mom Size' : 'Select Size'}</span>
-                                    <button className="text-xs underline text-muted-foreground hover:text-primary">Size Chart</button>
+                                    <Link href="/size-chart" className="text-xs underline text-muted-foreground hover:text-primary transition-colors">Size Chart</Link>
                                 </div>
                                 <div className="flex gap-3 flex-wrap">
                                     {product.sizes?.map(sizeObj => (
@@ -386,7 +386,7 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
                                 <div>
                                     <div className="flex justify-between items-center mb-2">
                                         <span className="font-medium text-sm">Select Father Size</span>
-                                        <button className="text-xs underline text-muted-foreground hover:text-primary">Size Chart</button>
+                                        <Link href="/size-chart" className="text-xs underline text-muted-foreground hover:text-primary transition-colors">Size Chart</Link>
                                     </div>
                                     <div className="flex gap-3 flex-wrap">
                                         {product.sizes?.map(sizeObj => (

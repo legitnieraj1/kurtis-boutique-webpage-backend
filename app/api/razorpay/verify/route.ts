@@ -301,6 +301,15 @@ export async function POST(request: NextRequest) {
             // Don't fail the request, just log it. Admin can sync later.
         }
 
+        // Trigger push notification to admins
+        try {
+            const { sendAdminOrderNotification } = await import('@/lib/webpush');
+            const productNames = orderItemsData.map(item => `${item.product_name} x${item.quantity}`).join(', ');
+            await sendAdminOrderNotification(order.order_number, total, productNames);
+        } catch (pushErr) {
+            console.error('[WebPush] Error triggering push:', pushErr);
+        }
+
         // 10. Return success with order_number from database
         return NextResponse.json({
             success: true,
