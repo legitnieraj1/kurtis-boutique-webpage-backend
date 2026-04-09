@@ -6,22 +6,24 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { SearchSheet } from "@/components/layout/SearchSheet";
-
-const navItems = [
-    { href: "/", icon: Home, label: "Home" },
-    { href: "/shop", icon: ShoppingBag, label: "Shop" },
-    { href: null, icon: Search, label: "Search", isCenter: true },
-    { href: "/wishlist", icon: Heart, label: "Wishlist" },
-    { href: "/login?next=%2F", icon: User, label: "Profile" },
-];
+import { useStore } from "@/lib/store";
 
 export function BottomNavbar() {
     const pathname = usePathname();
     const [isSearchOpen, setIsSearchOpen] = useState(false);
+    const { isAuthenticated } = useStore();
 
     // Hide on admin / checkout pages
     const hidden = pathname?.startsWith("/admin") || pathname?.startsWith("/checkout");
     if (hidden) return null;
+
+    const navItems = [
+        { href: "/", icon: Home, label: "Home" },
+        { href: "/shop", icon: ShoppingBag, label: "Shop" },
+        { href: null, icon: Search, label: "Search", isCenter: true },
+        { href: "/wishlist", icon: Heart, label: "Wishlist" },
+        { href: isAuthenticated ? "/account" : "/login?next=%2F", icon: User, label: "Profile" },
+    ];
 
     return (
         <>

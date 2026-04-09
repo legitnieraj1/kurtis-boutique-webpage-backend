@@ -110,6 +110,9 @@ export function Navbar() {
                                                 <p className="text-sm font-medium text-foreground truncate">{user.full_name || 'Account'}</p>
                                                 <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                                             </div>
+                                            <Link href="/account" onClick={() => setIsAccountOpen(false)} className="flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-secondary/50 transition-colors">
+                                                My Profile
+                                            </Link>
                                             <Link href="/orders" onClick={() => setIsAccountOpen(false)} className="flex items-center gap-3 px-4 py-2 text-sm text-foreground hover:bg-secondary/50 transition-colors">
                                                 My Orders
                                             </Link>
