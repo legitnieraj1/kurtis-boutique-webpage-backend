@@ -37,9 +37,8 @@ export default function Home() {
         {/* Category Bubbles - Pass categories */}
         <CategoryBubbles categories={categories} />
 
-        {/* HERO CAROUSEL */}
         <section className="w-full" aria-label="Featured designer kurtis and ethnic wear collections">
-          <div className="w-full h-[250px] sm:h-[350px] md:h-[450px] lg:h-[600px]">
+          <div className="w-full aspect-[16/9] sm:aspect-[21/9] md:aspect-auto md:h-[450px] lg:h-[600px]">
             <HeroBannerCarousel />
           </div>
         </section>
