@@ -10,6 +10,8 @@ const nextConfig: NextConfig = {
 
   images: {
     formats: ["image/avif", "image/webp"],
+    minimumCacheTTL: 31536000, // Cache optimized images for 1 year
+    deviceSizes: [375, 640, 750, 828, 1080, 1200, 1920],
     remotePatterns: [
       {
         protocol: 'https',
@@ -36,6 +38,25 @@ const nextConfig: NextConfig = {
           { key: "X-Frame-Options", value: "DENY" },
           { key: "X-XSS-Protection", value: "1; mode=block" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+        ],
+      },
+      // Aggressively cache all static images and public assets
+      {
+        source: "/_next/image(.*)",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, stale-while-revalidate=86400, immutable",
+          },
+        ],
+      },
+      {
+        source: "/(.*)\\.(png|jpg|jpeg|gif|webp|avif|svg|ico)",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=86400, stale-while-revalidate=3600",
+          },
         ],
       },
     ];

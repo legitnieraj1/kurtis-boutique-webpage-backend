@@ -105,12 +105,15 @@ export function HeroBannerCarousel() {
                     transition={{ duration: 0.3, ease: "easeInOut" }}
                     className="absolute inset-0"
                 >
-                    <Link href={activeBanners[currentIndex]?.link_url || "/"} className="block w-full h-full">
+                        <Link href={activeBanners[currentIndex]?.link_url || "/"} className="block w-full h-full">
                         {activeBanners[currentIndex]?.image_url ? (
                             <img
                                 src={activeBanners[currentIndex].image_url}
-                                alt="Banner"
+                                alt={`Kurtis Boutique - ${currentIndex === 0 ? 'Featured Collection' : 'Designer Kurtis'}`}
                                 className="w-full h-full object-cover"
+                                fetchPriority={currentIndex === 0 ? "high" : "low"}
+                                loading={currentIndex === 0 ? "eager" : "lazy"}
+                                decoding={currentIndex === 0 ? "sync" : "async"}
                             />
                         ) : (
                             <div className="w-full h-full bg-gradient-to-r from-rose-100 to-stone-100 flex items-center justify-center">

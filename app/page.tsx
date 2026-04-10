@@ -67,6 +67,46 @@ export default function Home() {
           </div>
         </section>
 
+        {/* MARQUEE — promotional ticker */}
+        <div className="w-full overflow-hidden bg-[#f9e8ef] border-y border-pink-200/60 py-2.5">
+          <div
+            className="flex whitespace-nowrap"
+            style={{
+              animation: "marquee 28s linear infinite",
+            }}
+          >
+            {/* Duplicate the items so the scroll loops seamlessly */}
+            {[
+              "🌸 Sale is Live Now!",
+              "✨ Narayanpet Collections Live!",
+              "🛍 New Festive Arrivals!",
+              "🤍 Mom & Baby Combos — Shop Now!",
+              "🎉 Family Combo Sets Just Dropped!",
+              "💸 Free Shipping on Orders ₹999+!",
+              "🌸 Sale is Live Now!",
+              "✨ Narayanpet Collections Live!",
+              "🛍 New Festive Arrivals!",
+              "🤍 Mom & Baby Combos — Shop Now!",
+              "🎉 Family Combo Sets Just Dropped!",
+              "💸 Free Shipping on Orders ₹999+!",
+            ].map((text, i) => (
+              <span
+                key={i}
+                className="inline-block mx-8 text-[13px] font-semibold tracking-wide text-[#7d3b54]"
+              >
+                {text}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <style jsx global>{`
+          @keyframes marquee {
+            0% { transform: translateX(0%); }
+            100% { transform: translateX(-50%); }
+          }
+        `}</style>
+
         {/* CATEGORY GRID - SEO Optimized with keyword-rich headings */}
         <section className="pt-12 md:pt-20 pb-20 container mx-auto px-4 md:px-8 hidden md:block" aria-label="Shop kurtis by category">
           <div className="flex justify-between items-end mb-12">

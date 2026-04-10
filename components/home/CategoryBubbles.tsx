@@ -43,6 +43,8 @@ function BubbleItem({ category }: BubbleItemProps) {
                                 key={imgUrl}
                                 src={imgUrl}
                                 alt={category.name}
+                                loading="lazy"
+                                decoding="async"
                                 className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ease-out group-hover:scale-110 mobile-gpu ${idx === currentIndex ? 'opacity-100' : 'opacity-0'
                                     }`}
                             />

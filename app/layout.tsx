@@ -124,7 +124,6 @@ export const metadata: Metadata = {
 };
 
 import { BackgroundGradientAnimation } from "@/components/ui/background-gradient-animation";
-import { BottomNavbar } from "@/components/layout/BottomNavbar";
 
 // JSON-LD Schema Markup for SEO
 function SchemaMarkup() {
@@ -465,7 +464,6 @@ export default function RootLayout({
           <div className="relative z-0 w-full overflow-x-hidden">
             {children}
           </div>
-          <BottomNavbar />
         </AuthProvider>
         <Toaster
           position="bottom-right"
