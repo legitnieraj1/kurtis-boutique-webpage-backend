@@ -3,8 +3,10 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useIsMobile } from "@/lib/hooks/use-mobile";
+import { LoadingScreen } from "@/components/ui/LoadingScreen";
 
 interface Banner {
     id: string;
@@ -65,8 +67,8 @@ export function HeroBannerCarousel() {
 
     if (loading) {
         return (
-            <div className="w-full aspect-[21/9] bg-stone-100 animate-pulse flex items-center justify-center">
-                <span className="text-stone-400">Loading...</span>
+            <div className="w-full h-full flex items-center justify-center">
+                <LoadingScreen />
             </div>
         );
     }
@@ -107,13 +109,14 @@ export function HeroBannerCarousel() {
                 >
                         <Link href={activeBanners[currentIndex]?.link_url || "/"} className="block w-full h-full">
                         {activeBanners[currentIndex]?.image_url ? (
-                            <img
+                            <Image
                                 src={activeBanners[currentIndex].image_url}
                                 alt={`Kurtis Boutique - ${currentIndex === 0 ? 'Featured Collection' : 'Designer Kurtis'}`}
-                                className="w-full h-full object-cover"
-                                fetchPriority={currentIndex === 0 ? "high" : "low"}
+                                fill
+                                sizes="100vw"
+                                priority={currentIndex === 0}
                                 loading={currentIndex === 0 ? "eager" : "lazy"}
-                                decoding={currentIndex === 0 ? "sync" : "async"}
+                                className="object-cover"
                             />
                         ) : (
                             <div className="w-full h-full bg-gradient-to-r from-rose-100 to-stone-100 flex items-center justify-center">

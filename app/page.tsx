@@ -11,6 +11,7 @@ import { NewArrivalsSection } from "@/components/NewArrivalsSection";
 import { useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Category } from "@/types";
+import { LoadingScreen } from "@/components/ui/LoadingScreen";
 
 export default function Home() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -25,6 +26,14 @@ export default function Home() {
       .catch(err => console.error(err))
       .finally(() => setLoading(false));
   }, []);
+
+  if (loading) {
+    return (
+      <div className="w-screen h-screen">
+        <LoadingScreen />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen font-sans selection:bg-primary/20">

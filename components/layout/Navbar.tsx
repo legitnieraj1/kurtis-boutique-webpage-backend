@@ -70,28 +70,28 @@ export function Navbar() {
                             </Link>
                         </div>
 
-                        {/* ── LOGO — centered on mobile, left on desktop ── */}
-                        <Link
-                            href="/"
-                            className="absolute top-1/2 -translate-y-1/2 z-50 left-1/2 -translate-x-1/2 md:left-0 md:translate-x-0"
-                            title="Kurtis Boutique - Designer Kurtis Online Store India"
-                        >
-                            <img
-                                src="/kurtis-logo-large.png"
-                                alt="Kurtis Boutique - Designer Kurtis Online Store India"
-                                className="h-28 md:h-40 w-auto object-contain drop-shadow-sm md:transform md:-translate-x-2 pb-2 md:pb-0 scale-125 md:scale-100"
-                            />
-                        </Link>
+                        {/* ── LOGO + SEARCH (Centered on Mobile, Logo Left on Desktop) ── */}
+                        <div className="absolute top-1/2 -translate-y-1/2 left-1/2 -translate-x-1/2 md:left-0 md:translate-x-0 z-50 flex items-center gap-1 md:gap-0">
+                            <Link
+                                href="/"
+                                title="Kurtis Boutique - Designer Kurtis Online Store India"
+                            >
+                                <img
+                                    src="/kurtis-logo-large.png"
+                                    alt="Kurtis Boutique - Designer Kurtis Online Store India"
+                                    className="h-28 md:h-40 w-auto object-contain drop-shadow-sm md:transform md:-translate-x-2 pb-2 md:pb-0 scale-125 md:scale-100"
+                                />
+                            </Link>
 
-                        {/* ── MOBILE SEARCH ICON — sits right next to the logo ── */}
-                        <button
-                            onClick={() => setIsSearchOpen(true)}
-                            aria-label="Search"
-                            className="md:hidden absolute left-1/2 top-1/2 -translate-y-1/2 z-50 flex items-center justify-center w-8 h-8 rounded-full hover:bg-pink-50 transition-colors"
-                            style={{ marginLeft: "85px" }}
-                        >
-                            <Search className="h-[20px] w-[20px] text-foreground/80" />
-                        </button>
+                            {/* Mobile Search Icon (Hidden on Desktop) */}
+                            <button
+                                onClick={() => setIsSearchOpen(true)}
+                                aria-label="Search"
+                                className="md:hidden flex items-center justify-center w-9 h-9 rounded-full hover:bg-pink-50 transition-colors shrink-0"
+                            >
+                                <Search className="h-[20px] w-[20px] text-foreground/80 drop-shadow-sm" />
+                            </button>
+                        </div>
 
                         {/* ── DESKTOP NAV ── */}
                         <nav className="hidden md:flex items-center gap-8 ml-60" aria-label="Main navigation">
