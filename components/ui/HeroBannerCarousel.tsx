@@ -16,14 +16,14 @@ interface Banner {
     display_order: number;
 }
 
-export function HeroBannerCarousel() {
-    const [banners, setBanners] = useState<Banner[]>([]);
+export function HeroBannerCarousel({ initialBanners }: { initialBanners?: Banner[] }) {
+    const [banners, setBanners] = useState<Banner[]>(initialBanners?.filter(b => b.is_active) || []);
     const [currentIndex, setCurrentIndex] = useState(0);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(!initialBanners);
     const isMobile = useIsMobile();
 
-    // Fetch banners from API
     useEffect(() => {
+        if (initialBanners) return; // Skip fetch if passed via props
         async function fetchBanners() {
             try {
                 const res = await fetch('/api/banners');
@@ -38,7 +38,7 @@ export function HeroBannerCarousel() {
             }
         }
         fetchBanners();
-    }, []);
+    }, [initialBanners]);
 
     const activeBanners = banners;
 
@@ -115,7 +115,7 @@ export function HeroBannerCarousel() {
                                 fill
                                 sizes="100vw"
                                 priority={currentIndex === 0}
-                                loading={currentIndex === 0 ? "eager" : "lazy"}
+                                unoptimized={true}
                                 className="object-cover"
                             />
                         ) : (

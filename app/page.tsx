@@ -15,16 +15,20 @@ import { LoadingScreen } from "@/components/ui/LoadingScreen";
 
 export default function Home() {
   const [categories, setCategories] = useState<Category[]>([]);
+  const [banners, setBanners] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/categories')
-      .then(res => res.json())
-      .then(data => {
-        if (data.categories) setCategories(data.categories);
-      })
-      .catch(err => console.error(err))
-      .finally(() => setLoading(false));
+    Promise.all([
+      fetch('/api/categories').then(res => res.json()),
+      fetch('/api/banners').then(res => res.json())
+    ])
+    .then(([categoriesData, bannersData]) => {
+      if (categoriesData.categories) setCategories(categoriesData.categories);
+      if (bannersData.banners) setBanners(bannersData.banners);
+    })
+    .catch(err => console.error("Failed to load homepage data:", err))
+    .finally(() => setLoading(false));
   }, []);
 
   if (loading) {
@@ -48,7 +52,7 @@ export default function Home() {
 
         <section className="w-full" aria-label="Featured designer kurtis and ethnic wear collections">
           <div className="w-full aspect-[16/9] sm:aspect-[21/9] md:aspect-auto md:h-[450px] lg:h-[600px]">
-            <HeroBannerCarousel />
+            <HeroBannerCarousel initialBanners={banners} />
           </div>
         </section>
 
