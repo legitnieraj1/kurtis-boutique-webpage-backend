@@ -110,7 +110,7 @@ export function HeroBannerCarousel() {
                             <img
                                 src={activeBanners[currentIndex].image_url}
                                 alt={`Kurtis Boutique - ${currentIndex === 0 ? 'Featured Collection' : 'Designer Kurtis'}`}
-                                className="w-full h-full object-cover"
+                                className="w-full h-full object-contain md:object-cover"
                                 fetchPriority={currentIndex === 0 ? "high" : "low"}
                                 loading={currentIndex === 0 ? "eager" : "lazy"}
                                 decoding={currentIndex === 0 ? "sync" : "async"}
