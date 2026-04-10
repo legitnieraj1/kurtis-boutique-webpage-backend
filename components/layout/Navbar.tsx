@@ -84,14 +84,13 @@ export function Navbar() {
                         </Link>
 
                         {/* ── MOBILE SEARCH ICON — sits right next to the logo ── */}
-                        {/* Positioned as absolute, offset slightly right of center */}
                         <button
                             onClick={() => setIsSearchOpen(true)}
                             aria-label="Search"
                             className="md:hidden absolute left-1/2 top-1/2 -translate-y-1/2 z-50 flex items-center justify-center w-8 h-8 rounded-full hover:bg-pink-50 transition-colors"
-                            style={{ marginLeft: "52px" }}
+                            style={{ marginLeft: "85px" }}
                         >
-                            <Search className="h-[18px] w-[18px] text-foreground/70" />
+                            <Search className="h-[20px] w-[20px] text-foreground/80" />
                         </button>
 
                         {/* ── DESKTOP NAV ── */}
