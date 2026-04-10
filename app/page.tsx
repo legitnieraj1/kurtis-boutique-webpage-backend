@@ -82,13 +82,11 @@ export default function Home() {
               "🛍 New Festive Arrivals!",
               "🤍 Mom & Baby Combos — Shop Now!",
               "🎉 Family Combo Sets Just Dropped!",
-              "💸 Free Shipping on Orders ₹999+!",
               "🌸 Sale is Live Now!",
               "✨ Narayanpet Collections Live!",
               "🛍 New Festive Arrivals!",
               "🤍 Mom & Baby Combos — Shop Now!",
               "🎉 Family Combo Sets Just Dropped!",
-              "💸 Free Shipping on Orders ₹999+!",
             ].map((text, i) => (
               <span
                 key={i}
