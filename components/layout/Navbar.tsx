@@ -61,13 +61,16 @@ export function Navbar() {
                 <div className="container mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex h-24 items-center justify-between relative">
 
-                        {/* ── MOBILE LEFT: Heart icon ── */}
+                        {/* ── MOBILE LEFT: Search icon ── */}
                         <div className="flex items-center gap-1 md:hidden z-40">
-                            <Link href="/wishlist">
-                                <Button variant="ghost" size="icon">
-                                    <Heart className="h-5 w-5" />
-                                </Button>
-                            </Link>
+                            <Button 
+                                variant="ghost" 
+                                size="icon"
+                                onClick={() => setIsSearchOpen(true)}
+                                aria-label="Search"
+                            >
+                                <Search className="h-5 w-5" />
+                            </Button>
                         </div>
 
                         {/* ── LOGO + SEARCH (Centered on Mobile, Logo Left on Desktop) ── */}
@@ -83,14 +86,6 @@ export function Navbar() {
                                 />
                             </Link>
 
-                            {/* Mobile Search Icon (Hidden on Desktop) */}
-                            <button
-                                onClick={() => setIsSearchOpen(true)}
-                                aria-label="Search"
-                                className="md:hidden flex items-center justify-center w-9 h-9 rounded-full hover:bg-pink-50 transition-colors shrink-0"
-                            >
-                                <Search className="h-[20px] w-[20px] text-foreground/80 drop-shadow-sm" />
-                            </button>
                         </div>
 
                         {/* ── DESKTOP NAV ── */}
@@ -224,6 +219,13 @@ export function Navbar() {
                             </Link>
                         ))}
                         <div className="pt-8 border-t border-border/40 mt-4 space-y-4">
+                            <Link
+                                href="/wishlist"
+                                onClick={() => setIsOpen(false)}
+                                className="text-lg font-medium text-muted-foreground hover:text-primary flex items-center gap-2"
+                            >
+                                <Heart className="w-5 h-5" /> Wishlist
+                            </Link>
                             {!user ? (
                                 <Link
                                     href={loginHref}

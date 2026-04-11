@@ -26,7 +26,6 @@ export default function ContactPage() {
                                     <div className="flex items-start gap-4">
                                         <MapPin className="w-5 h-5 text-primary mt-1 flex-shrink-0" />
                                         <p className="text-muted-foreground">
-                                            <strong>Rajalakshmi</strong> <br />
                                             41/1 muthukaruppapillai lane <br />
                                             South veli street <br />
                                             Madurai-625001 <br />
@@ -56,13 +55,7 @@ export default function ContactPage() {
                                 </div>
                             </div>
 
-                            <div className="bg-secondary/20 p-6 rounded-lg">
-                                <h4 className="font-medium mb-2">Store Hours</h4>
-                                <div className="space-y-1 text-sm text-muted-foreground">
-                                    <div className="flex justify-between"><span>Monday - Saturday</span> <span>10:30 AM - 8:30 PM</span></div>
-                                    <div className="flex justify-between"><span>Sunday</span> <span>11:00 AM - 7:00 PM</span></div>
-                                </div>
-                            </div>
+
                         </div>
 
                         {/* Contact Form */}

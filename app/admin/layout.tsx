@@ -89,8 +89,8 @@ export default function AdminLayout({
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(subscription)
                 });
-            } catch (err) {
-                console.error('Failed to register push notification:', err);
+            } catch (err: any) {
+                console.warn('Push notification skipped (browser unsupported or blocked):', err?.message || err);
             }
         };
 
