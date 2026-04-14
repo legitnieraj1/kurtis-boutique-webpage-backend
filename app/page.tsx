@@ -195,10 +195,10 @@ export default function Home() {
                 </div>
                 <div className="text-center space-y-2">
                   <div className="w-14 h-14 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
                   </div>
-                  <h3 className="font-semibold text-sm">Easy Exchange</h3>
-                  <p className="text-xs text-muted-foreground">7-day exchange policy</p>
+                  <h3 className="font-semibold text-sm">Endless Styles</h3>
+                  <p className="text-xs text-muted-foreground">500+ looks, one boutique</p>
                 </div>
               </div>
 
