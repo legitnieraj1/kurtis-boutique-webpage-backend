@@ -18,7 +18,7 @@ interface CartSheetProps {
 }
 
 export function CartSheet({ isOpen, onClose }: CartSheetProps) {
-    const { cart, removeFromCart, updateCartQuantity, getCartTotal, isAuthenticated, cartLoading } = useStore();
+    const { cart, removeFromCart, updateCartQuantity, getCartTotal } = useStore();
     const isMobile = useIsMobile();
     const [hydrated, setHydrated] = useState(false);
     const [updatingItems, setUpdatingItems] = useState<Set<string>>(new Set());
@@ -26,6 +26,16 @@ export function CartSheet({ isOpen, onClose }: CartSheetProps) {
     useEffect(() => {
         setHydrated(true);
     }, []);
+
+    // Lock body scroll when cart is open
+    useEffect(() => {
+        if (isOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        return () => { document.body.style.overflow = 'unset'; };
+    }, [isOpen]);
 
     if (!hydrated) return null;
 
@@ -60,21 +70,31 @@ export function CartSheet({ isOpen, onClose }: CartSheetProps) {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
+                        transition={{ duration: 0.25 }}
                         onClick={onClose}
                         className="fixed inset-0 bg-black/50 z-[100] backdrop-blur-sm"
                     />
 
-                    {/* Drawer */}
+                    {/* Drawer — smooth spring slide */}
                     <motion.div
                         initial={{ x: "100%" }}
                         animate={{ x: 0 }}
                         exit={{ x: "100%" }}
-                        transition={isMobile ? { type: "tween", duration: 0.3 } : { type: "spring", stiffness: 300, damping: 30 }}
+                        transition={
+                            isMobile
+                                ? { type: "tween", duration: 0.32, ease: [0.32, 0.72, 0, 1] }
+                                : { type: "spring", stiffness: 320, damping: 32 }
+                        }
                         className="fixed right-0 top-0 h-[100dvh] w-full sm:w-[500px] bg-background shadow-2xl z-[101] flex flex-col mobile-gpu"
                     >
                         {/* Header */}
                         <div className="flex items-center justify-between p-6 border-b border-border">
-                            <h2 className="text-2xl font-serif">Shopping Bag ({cart.length})</h2>
+                            <h2 className="text-2xl font-serif">
+                                Your Cart
+                                <span className="ml-2 text-base font-normal text-muted-foreground">
+                                    ({cart.length} {cart.length === 1 ? 'item' : 'items'})
+                                </span>
+                            </h2>
                             <Button variant="ghost" size="icon" onClick={onClose}>
                                 <X className="h-6 w-6" />
                             </Button>
@@ -82,29 +102,13 @@ export function CartSheet({ isOpen, onClose }: CartSheetProps) {
 
                         {/* Cart Items */}
                         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                            {!isAuthenticated ? (
-                                <div className="h-full flex flex-col items-center justify-center text-center space-y-4">
-                                    <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center">
-                                        <ShoppingBag className="h-8 w-8 text-muted-foreground" />
-                                    </div>
-                                    <h3 className="text-xl font-medium">Please login to view your cart</h3>
-                                    <p className="text-muted-foreground">Your cart is synced across devices when logged in.</p>
-                                    <Link href="/login" onClick={onClose}>
-                                        <Button className="mt-4">Login</Button>
-                                    </Link>
-                                </div>
-                            ) : cartLoading ? (
-                                <div className="h-full flex flex-col items-center justify-center text-center space-y-4">
-                                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                                    <p className="text-muted-foreground">Loading your cart...</p>
-                                </div>
-                            ) : cart.length === 0 ? (
+                            {cart.length === 0 ? (
                                 <div className="h-full flex flex-col items-center justify-center text-center space-y-4">
                                     <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center">
                                         <ShoppingBag className="h-8 w-8 text-muted-foreground" />
                                     </div>
                                     <h3 className="text-xl font-medium">Your bag is empty</h3>
-                                    <p className="text-muted-foreground">Looks like you haven't added anything yet.</p>
+                                    <p className="text-muted-foreground">Looks like you haven&apos;t added anything yet.</p>
                                     <Button onClick={onClose} className="mt-4">Start Shopping</Button>
                                 </div>
                             ) : (
@@ -114,7 +118,10 @@ export function CartSheet({ isOpen, onClose }: CartSheetProps) {
                                     const price = getCartItemPrice(item);
 
                                     return (
-                                        <div key={item.id} className={`flex gap-4 p-4 bg-muted/30 rounded-lg border border-border/50 ${isUpdating ? 'opacity-50' : ''}`}>
+                                        <div
+                                            key={item.id}
+                                            className={`flex gap-4 p-4 bg-muted/30 rounded-lg border border-border/50 transition-opacity ${isUpdating ? 'opacity-50' : ''}`}
+                                        >
                                             <div className="relative w-24 h-32 bg-muted rounded-md overflow-hidden flex-shrink-0 border border-border">
                                                 {imageUrl ? (
                                                     <Image
@@ -125,7 +132,7 @@ export function CartSheet({ isOpen, onClose }: CartSheetProps) {
                                                     />
                                                 ) : (
                                                     <div className="w-full h-full bg-stone-200 flex items-center justify-center">
-                                                        <span className="text-xs text-stone-500">No Image</span>
+                                                        <ShoppingBag className="h-8 w-8 text-stone-400" />
                                                     </div>
                                                 )}
                                             </div>
@@ -163,19 +170,15 @@ export function CartSheet({ isOpen, onClose }: CartSheetProps) {
                                                 <div className="flex items-center gap-3">
                                                     <div className="flex items-center border border-border rounded-md bg-background">
                                                         <button
-                                                            className="p-1 hover:bg-muted transition-colors rounded-l-md"
+                                                            className="p-1 hover:bg-muted transition-colors rounded-l-md disabled:opacity-40"
                                                             disabled={isUpdating || item.quantity <= 1}
-                                                            onClick={() => {
-                                                                if (item.quantity > 1) {
-                                                                    handleUpdateQuantity(item.id, item.quantity - 1);
-                                                                }
-                                                            }}
+                                                            onClick={() => item.quantity > 1 && handleUpdateQuantity(item.id, item.quantity - 1)}
                                                         >
                                                             <Minus className="h-3 w-3" />
                                                         </button>
                                                         <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
                                                         <button
-                                                            className="p-1 hover:bg-muted transition-colors rounded-r-md"
+                                                            className="p-1 hover:bg-muted transition-colors rounded-r-md disabled:opacity-40"
                                                             disabled={isUpdating}
                                                             onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
                                                         >
@@ -191,26 +194,22 @@ export function CartSheet({ isOpen, onClose }: CartSheetProps) {
                         </div>
 
                         {/* Footer */}
-                        {isAuthenticated && cart.length > 0 && (
+                        {cart.length > 0 && (
                             <div className="p-6 border-t border-border space-y-4 bg-background">
                                 <div className="flex items-center justify-between text-lg">
                                     <span className="text-muted-foreground">Subtotal</span>
                                     <span className="font-semibold">{formatPrice(subtotal)}</span>
                                 </div>
-                                <p className="text-sm text-muted-foreground">Shipping calculated at checkout</p>
+                                <p className="text-xs text-muted-foreground">Inclusive of all taxes · Free shipping on orders ₹999+</p>
                                 <Button
                                     className="w-full h-14 rounded-full bg-gradient-to-r from-primary via-rose-600 to-primary bg-[length:200%_auto] hover:bg-[position:right_center] transition-all duration-500 shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 text-base font-bold tracking-widest uppercase"
                                     asChild
                                 >
                                     <Link href="/checkout" onClick={onClose}>
-                                        Proceed to Checkout
+                                        PROCEED TO CHECKOUT
                                     </Link>
                                 </Button>
-                                <Button
-                                    variant="outline"
-                                    className="w-full"
-                                    onClick={onClose}
-                                >
+                                <Button variant="outline" className="w-full" onClick={onClose}>
                                     Continue Shopping
                                 </Button>
                             </div>

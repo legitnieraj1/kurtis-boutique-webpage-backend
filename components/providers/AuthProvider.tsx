@@ -34,35 +34,36 @@ export function AuthProvider({ children }: AuthProviderProps) {
         isAuthenticated
     } = useStore();
 
-    // Use ref to track if auth state was set by onAuthStateChange
     const authSetByEvent = useRef(false);
 
     useEffect(() => {
         const supabase = getSupabaseClient();
         let isMounted = true;
 
-        console.log('AuthProvider mounting...');
-
-        // Listen for auth state changes first - this is the most reliable method
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (event: AuthChangeEvent, session: Session | null) => {
                 if (!isMounted) return;
 
-                console.log('Auth state change:', event, session?.user?.email);
-
                 if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') && session?.user) {
                     authSetByEvent.current = true;
-                    setUser({
-                        id: session.user.id,
-                        email: session.user.email || '',
-                        full_name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
-                        role: 'customer'
-                    });
-                    setIsAuthenticated(true);
+                    // Skip anonymous users from setting full user state (they stay as guests)
+                    const isAnon = session.user.is_anonymous;
+                    if (!isAnon) {
+                        setUser({
+                            id: session.user.id,
+                            email: session.user.email || '',
+                            full_name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
+                            role: 'customer'
+                        });
+                        setIsAuthenticated(true);
+                        syncAllData().catch(e => console.warn('Sync error:', e));
+                    } else {
+                        // Anonymous user — just mark loading done
+                        setIsAuthenticated(false);
+                        setIsLoading(false);
+                        syncAllData().catch(() => {});
+                    }
                     setIsLoading(false);
-
-                    // Sync data in background
-                    syncAllData().catch(e => console.warn('Sync error:', e));
                 } else if (event === 'SIGNED_OUT') {
                     authSetByEvent.current = true;
                     logout();
@@ -71,32 +72,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
             }
         );
 
-        // Fallback: after a delay, check if onAuthStateChange set the auth state
-        // If not, try getSession as backup
+        // Fallback after 500ms
         const fallbackTimeout = setTimeout(async () => {
-            if (!isMounted) return;
-
-            // If auth was already set by an event, skip the manual check
-            if (authSetByEvent.current) {
-                console.log('Auth already set by event, skipping fallback check');
-                return;
-            }
-
-            console.log('Running fallback session check...');
+            if (!isMounted || authSetByEvent.current) return;
 
             try {
-                const { data: { session }, error } = await supabase.auth.getSession();
-
+                const { data: { session } } = await supabase.auth.getSession();
                 if (!isMounted) return;
 
-                if (error) {
-                    console.log('Fallback session check error:', error.message);
-                    setIsLoading(false);
-                    return;
-                }
-
-                if (session?.user) {
-                    console.log('Fallback: found session for', session.user.email);
+                if (session?.user && !session.user.is_anonymous) {
                     setUser({
                         id: session.user.id,
                         email: session.user.email || '',
@@ -105,18 +89,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
                     });
                     setIsAuthenticated(true);
                     syncAllData().catch(e => console.warn('Sync error:', e));
-                } else {
-                    console.log('Fallback: no session found');
+                } else if (!session) {
+                    // No session at all — sign in anonymously so guest orders can be placed
+                    try {
+                        await supabase.auth.signInAnonymously();
+                    } catch {
+                        // Anonymous sign-in not enabled or failed — continue as guest
+                    }
                     setIsAuthenticated(false);
+                    syncAllData().catch(() => {});
+                } else {
+                    setIsAuthenticated(false);
+                    syncAllData().catch(() => {});
                 }
             } catch (error) {
                 console.warn('Fallback session check threw:', error);
             } finally {
-                if (isMounted) {
-                    setIsLoading(false);
-                }
+                if (isMounted) setIsLoading(false);
             }
-        }, 500); // Wait 500ms for onAuthStateChange to fire first
+        }, 500);
 
         return () => {
             isMounted = false;
@@ -124,7 +115,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
             subscription.unsubscribe();
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []); // Empty deps - only run once on mount
+    }, []);
 
     return (
         <AuthContext.Provider value={{ isLoading, isAuthenticated }}>

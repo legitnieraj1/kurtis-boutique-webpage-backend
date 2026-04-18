@@ -110,3 +110,31 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }
+
+// DELETE /api/admin/orders/:id - Delete order and its items (admin only)
+export async function DELETE(request: NextRequest, { params }: RouteParams) {
+    try {
+        await requireAdmin();
+        const { id } = await params;
+        const supabase = await createSupabaseServerClient();
+
+        // Delete child rows first
+        await supabase.from('order_items').delete().eq('order_id', id);
+        await supabase.from('order_timeline').delete().eq('order_id', id);
+
+        const { error } = await supabase.from('orders').delete().eq('id', id);
+
+        if (error) {
+            console.error('Order delete error:', error);
+            return NextResponse.json({ error: error.message }, { status: 500 });
+        }
+
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        if (error instanceof Error && error.message === 'Forbidden: Admin access required') {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+        }
+        console.error('Admin order delete error:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
+}

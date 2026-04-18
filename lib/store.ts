@@ -1,12 +1,10 @@
 import { create } from 'zustand';
 import { User, Order } from '@/types';
-import { CartService, CartItem, getCartItemPrice } from './cartService';
+import { getCartItemPrice } from './cartService';
+import { CartItem } from './cartService';
 
-
-// Extended cart item with product details from DB
 export type DBCartItem = CartItem;
 
-// Wishlist item from DB
 export interface DBWishlistItem {
     id: string;
     product_id: string;
@@ -22,40 +20,72 @@ export interface DBWishlistItem {
     };
 }
 
+const CART_KEY = 'kb_cart';
+const WISHLIST_KEY = 'kb_wishlist';
+
+function readLocalCart(): DBCartItem[] {
+    if (typeof window === 'undefined') return [];
+    try {
+        const raw = localStorage.getItem(CART_KEY);
+        return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+}
+
+function writeLocalCart(cart: DBCartItem[]) {
+    if (typeof window === 'undefined') return;
+    try { localStorage.setItem(CART_KEY, JSON.stringify(cart)); } catch { /* ignore */ }
+}
+
+function readLocalWishlist(): string[] {
+    if (typeof window === 'undefined') return [];
+    try {
+        const raw = localStorage.getItem(WISHLIST_KEY);
+        return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+}
+
+function writeLocalWishlist(ids: string[]) {
+    if (typeof window === 'undefined') return;
+    try { localStorage.setItem(WISHLIST_KEY, JSON.stringify(ids)); } catch { /* ignore */ }
+}
+
 interface StoreState {
-    // User - from Supabase auth
     user: User | null;
     isAuthenticated: boolean;
     isLoading: boolean;
 
-    // Wishlist - DB-driven
-    wishlist: string[];  // Just product IDs for quick lookup
-    wishlistItems: DBWishlistItem[];  // Full items with product details
+    wishlist: string[];
+    wishlistItems: DBWishlistItem[];
     wishlistLoading: boolean;
 
-    // Cart - DB-driven
     cart: DBCartItem[];
     cartLoading: boolean;
 
-    // Orders - from DB
+    isCartOpen: boolean;
+
     orders: Order[];
 
-    // Auth actions
     setUser: (user: User | null) => void;
     setIsAuthenticated: (value: boolean) => void;
     setIsLoading: (value: boolean) => void;
     login: (user: User) => void;
 
-    // Wishlist actions - all DB-driven
     setWishlist: (items: DBWishlistItem[]) => void;
     addToWishlist: (productId: string) => Promise<boolean>;
     removeFromWishlist: (productId: string) => Promise<boolean>;
     isInWishlist: (productId: string) => boolean;
     syncWishlist: () => Promise<void>;
 
-    // Cart actions - all DB-driven
     setCart: (items: DBCartItem[]) => void;
-    addToCart: (productId: string, size: string, color?: string | null, comboType?: string, quantity?: number, babySize?: string | null) => Promise<boolean>;
+    addToCart: (
+        productId: string,
+        size: string,
+        color?: string | null,
+        comboType?: string,
+        quantity?: number,
+        babySize?: string | null,
+        productData?: CartItem['product']
+    ) => Promise<boolean>;
     removeFromCart: (cartItemId: string) => Promise<boolean>;
     updateCartQuantity: (cartItemId: string, quantity: number) => Promise<boolean>;
     clearCart: () => Promise<boolean>;
@@ -63,16 +93,14 @@ interface StoreState {
     getCartTotal: () => number;
     getCartItemCount: () => number;
 
-    // Orders
-    setOrders: (orders: Order[]) => void;
+    setIsCartOpen: (open: boolean) => void;
 
-    // Combined sync
+    setOrders: (orders: Order[]) => void;
     syncAllData: () => Promise<void>;
     logout: () => void;
 }
 
 export const useStore = create<StoreState>()((set, get) => ({
-    // Initial state
     user: null,
     isAuthenticated: false,
     isLoading: true,
@@ -84,20 +112,20 @@ export const useStore = create<StoreState>()((set, get) => ({
     cart: [],
     cartLoading: false,
 
+    isCartOpen: false,
+
     orders: [],
 
-    // Auth
     setUser: (user) => set({ user, isAuthenticated: !!user }),
     setIsAuthenticated: (value) => set({ isAuthenticated: value }),
     setIsLoading: (value) => set({ isLoading: value }),
 
     login: (user) => {
         set({ user, isAuthenticated: true });
-        // Sync data from DB
         get().syncAllData();
     },
 
-    // === WISHLIST ===
+    // === WISHLIST (localStorage) ===
     setWishlist: (items) => set({
         wishlistItems: items,
         wishlist: items.map(item => item.product_id)
@@ -106,190 +134,94 @@ export const useStore = create<StoreState>()((set, get) => ({
     isInWishlist: (productId) => get().wishlist.includes(productId),
 
     syncWishlist: async () => {
-        set({ wishlistLoading: true });
-
-        const attemptSync = async (retryCount = 0): Promise<void> => {
-            try {
-                const res = await fetch('/api/wishlist');
-                if (res.ok) {
-                    const data = await res.json();
-                    set({
-                        wishlistItems: data.wishlist || [],
-                        wishlist: data.product_ids || [],
-                        wishlistLoading: false
-                    });
-                } else {
-                    set({ wishlistLoading: false });
-                }
-            } catch (error) {
-                const isAbortError = error instanceof Error &&
-                    (error.name === 'AbortError' || error.message?.includes('abort'));
-
-                // Retry once on AbortError (common in React StrictMode)
-                if (isAbortError && retryCount < 1) {
-                    console.log('[Wishlist] AbortError, retrying in 500ms...');
-                    await new Promise(r => setTimeout(r, 500));
-                    return attemptSync(retryCount + 1);
-                }
-
-                console.error('Failed to sync wishlist:', error);
-                set({ wishlistLoading: false });
-            }
-        };
-
-        await attemptSync();
+        const ids = readLocalWishlist();
+        set({ wishlist: ids, wishlistLoading: false });
     },
 
     addToWishlist: async (productId) => {
-        // Optimistic update
         const current = get().wishlist;
         if (current.includes(productId)) return true;
-        set({ wishlist: [...current, productId] });
-
-        try {
-            const res = await fetch('/api/wishlist', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ product_id: productId })
-            });
-
-            if (!res.ok) {
-                // Revert on failure
-                set({ wishlist: current });
-                return false;
-            }
-
-            // Refetch to get full item with product details
-            await get().syncWishlist();
-            return true;
-        } catch (error) {
-            console.error('Failed to add to wishlist:', error);
-            set({ wishlist: current });
-            return false;
-        }
+        const updated = [...current, productId];
+        set({ wishlist: updated });
+        writeLocalWishlist(updated);
+        return true;
     },
 
     removeFromWishlist: async (productId) => {
-        // Optimistic update
-        const currentWishlist = get().wishlist;
-        const currentItems = get().wishlistItems;
-        set({
-            wishlist: currentWishlist.filter(id => id !== productId),
-            wishlistItems: currentItems.filter(item => item.product_id !== productId)
-        });
-
-        try {
-            const res = await fetch(`/api/wishlist?product_id=${productId}`, {
-                method: 'DELETE'
-            });
-
-            if (!res.ok) {
-                // Revert on failure
-                set({ wishlist: currentWishlist, wishlistItems: currentItems });
-                return false;
-            }
-            return true;
-        } catch (error) {
-            console.error('Failed to remove from wishlist:', error);
-            set({ wishlist: currentWishlist, wishlistItems: currentItems });
-            return false;
-        }
+        const updated = get().wishlist.filter(id => id !== productId);
+        set({ wishlist: updated });
+        writeLocalWishlist(updated);
+        return true;
     },
 
-    // === CART ===
+    // === CART (localStorage) ===
     setCart: (items) => set({ cart: items }),
 
     syncCart: async () => {
-        set({ cartLoading: true });
-
-        const attemptSync = async (retryCount = 0): Promise<void> => {
-            try {
-                const items = await CartService.getCart();
-                set({ cart: items as DBCartItem[], cartLoading: false });
-            } catch (error) {
-                const isAbortError = error instanceof Error &&
-                    (error.name === 'AbortError' || error.message?.includes('abort'));
-
-                // Retry once on AbortError (common in React StrictMode)
-                if (isAbortError && retryCount < 1) {
-                    console.log('[Cart] AbortError, retrying in 500ms...');
-                    await new Promise(r => setTimeout(r, 500));
-                    return attemptSync(retryCount + 1);
-                }
-
-                console.error('Failed to sync cart:', error);
-                // Always set loading to false to prevent infinite loading state
-                set({ cartLoading: false });
-            }
-        };
-
-        await attemptSync();
+        const items = readLocalCart();
+        set({ cart: items, cartLoading: false });
     },
 
-    addToCart: async (productId, size, color = null, comboType = 'single', quantity = 1, babySize = null) => {
-        if (!get().isAuthenticated) return false;
+    addToCart: async (productId, size, color = null, comboType = 'single', quantity = 1, babySize = null, productData) => {
+        const current = get().cart;
 
-        try {
-            await CartService.addToCart(productId, size, color, comboType, quantity, babySize);
-            await get().syncCart();
-            return true;
-        } catch (error) {
-            console.error('Failed to add to cart:', error);
-            return false;
+        const existingIndex = current.findIndex(item =>
+            item.product_id === productId &&
+            item.size === size &&
+            (item.color || null) === (color || null) &&
+            (item.combo_type || 'single') === (comboType || 'single') &&
+            (item.baby_size || null) === (babySize || null)
+        );
+
+        let newCart: DBCartItem[];
+        if (existingIndex >= 0) {
+            newCart = current.map((item, idx) =>
+                idx === existingIndex
+                    ? { ...item, quantity: item.quantity + (quantity || 1) }
+                    : item
+            );
+        } else {
+            const newItem: DBCartItem = {
+                id: `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                product_id: productId,
+                size,
+                quantity: quantity || 1,
+                color: color || null,
+                combo_type: comboType || 'single',
+                baby_size: babySize || null,
+                product: productData,
+            };
+            newCart = [...current, newItem];
         }
+
+        set({ cart: newCart });
+        writeLocalCart(newCart);
+        return true;
     },
 
     removeFromCart: async (cartItemId) => {
-        const currentCart = get().cart;
-        set({ cart: currentCart.filter(item => item.id !== cartItemId) }); // Optimistic
-
-        try {
-            await CartService.removeFromCart(cartItemId);
-            // No need to sync if successful as we updated optimistically, but syncing ensures consistency
-            return true;
-        } catch (error) {
-            console.error('Failed to remove from cart:', error);
-            set({ cart: currentCart }); // Revert
-            return false;
-        }
+        const newCart = get().cart.filter(item => item.id !== cartItemId);
+        set({ cart: newCart });
+        writeLocalCart(newCart);
+        return true;
     },
 
     updateCartQuantity: async (cartItemId, quantity) => {
-        const currentCart = get().cart;
-
-        // Optimistic
-        if (quantity <= 0) {
-            set({ cart: currentCart.filter(item => item.id !== cartItemId) });
-        } else {
-            set({
-                cart: currentCart.map(item =>
-                    item.id === cartItemId ? { ...item, quantity } : item
-                )
-            });
-        }
-
-        try {
-            await CartService.updateQuantity(cartItemId, quantity);
-            return true;
-        } catch (error) {
-            console.error('Failed to update cart quantity:', error);
-            set({ cart: currentCart }); // Revert
-            return false;
-        }
+        const current = get().cart;
+        const newCart = quantity <= 0
+            ? current.filter(item => item.id !== cartItemId)
+            : current.map(item => item.id === cartItemId ? { ...item, quantity } : item);
+        set({ cart: newCart });
+        writeLocalCart(newCart);
+        return true;
     },
 
     clearCart: async () => {
-        const currentCart = get().cart;
-        set({ cart: [] }); // Optimistic
-
-        try {
-            await CartService.clearCart();
-            return true;
-        } catch (error) {
-            console.error('Failed to clear cart:', error);
-            set({ cart: currentCart }); // Revert
-            return false;
+        set({ cart: [] });
+        if (typeof window !== 'undefined') {
+            localStorage.removeItem(CART_KEY);
         }
+        return true;
     },
 
     getCartTotal: () => {
@@ -303,7 +235,8 @@ export const useStore = create<StoreState>()((set, get) => ({
         return get().cart.reduce((count, item) => count + item.quantity, 0);
     },
 
-    // === COMBINED ===
+    setIsCartOpen: (open) => set({ isCartOpen: open }),
+
     syncAllData: async () => {
         const { syncWishlist, syncCart } = get();
         await Promise.all([syncWishlist(), syncCart()]);
@@ -319,7 +252,7 @@ export const useStore = create<StoreState>()((set, get) => ({
             wishlistItems: [],
             cart: [],
             orders: [],
+            isCartOpen: false,
         });
     },
 }));
-

@@ -1,142 +1,75 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth, createSupabaseServerClient } from '@/lib/supabase/server';
 import { RazorpayService } from '@/lib/razorpay';
 import { ShiprocketService } from '@/lib/shiprocket';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+
+interface CartItemPayload {
+    product_id: string;
+    size: string;
+    quantity: number;
+    color?: string | null;
+    combo_type?: string;
+    baby_size?: string | null;
+    unit_price: number;
+    product_name: string;
+    product_image?: string | null;
+}
 
 export async function POST(request: NextRequest) {
-    console.log('[Checkout] Starting Razorpay checkout initiation...');
-
     try {
-        // 0. Validate Razorpay config first
         const configCheck = RazorpayService.validateConfig();
         if (!configCheck.valid) {
-            console.error('[Checkout] ❌ Missing config:', configCheck.missing);
             return NextResponse.json({
                 error: 'Razorpay configuration error',
                 details: `Missing: ${configCheck.missing.join(', ')}`
             }, { status: 500 });
         }
 
-        const user = await requireAuth();
-        console.log('[Checkout] User authenticated:', user.email);
-
-        const supabase = await createSupabaseServerClient();
-
         const body = await request.json();
-        const { shippingAddress, billingAddress, sameAsShipping } = body;
-
-        // 1. Fetch Cart Items with Product Details (including combo pricing)
-        const { data: cartItems, error } = await supabase
-            .from('cart_items')
-            .select(`
-                *,
-                product:products (
-                    id,
-                    name,
-                    slug,
-                    price,
-                    discount_price,
-                    is_mom_baby,
-                    is_family_combo,
-                    images:product_images(image_url),
-                    mom_baby_combos (
-                        mom_price,
-                        baby_base_price
-                    ),
-                    family_combos (
-                        mother_price,
-                        father_price,
-                        baby_base_price
-                    ),
-                    baby_size_prices (
-                        size,
-                        price
-                    )
-                )
-            `)
-            .eq('user_id', user.id);
-
-        if (error) {
-            console.error('[Checkout] ❌ Cart fetch error:', error);
-            return NextResponse.json({ error: 'Failed to fetch cart items' }, { status: 500 });
-        }
+        const { shippingAddress, billingAddress, sameAsShipping, cartItems, customerEmail } = body as {
+            shippingAddress: Record<string, string>;
+            billingAddress: Record<string, string>;
+            sameAsShipping: boolean;
+            cartItems: CartItemPayload[];
+            customerEmail: string;
+        };
 
         if (!cartItems || cartItems.length === 0) {
-            console.log('[Checkout] Cart is empty');
             return NextResponse.json({ error: 'Cart is empty' }, { status: 400 });
         }
 
-        console.log('[Checkout] Cart items found:', cartItems.length);
+        if (!shippingAddress?.name || !shippingAddress?.phone) {
+            return NextResponse.json({ error: 'Shipping address is required' }, { status: 400 });
+        }
 
-        // 2. Calculate Total Amount (combo-aware pricing)
-        let totalAmount = 0;
-        const orderItems = cartItems.map((item) => {
-            let price = item.product.discount_price || item.product.price;
+        // Calculate total from submitted cart
+        let totalAmount = cartItems.reduce((sum, item) => sum + item.unit_price * item.quantity, 0);
 
-            // Combo pricing override
-            if (item.combo_type === 'mom_baby' && item.product.mom_baby_combos?.[0]) {
-                const combo = item.product.mom_baby_combos[0];
-                if (item.baby_size && item.product.baby_size_prices?.length) {
-                    const babySizePrice = item.product.baby_size_prices.find((p: any) => p.size === item.baby_size);
-                    price = combo.mom_price + (babySizePrice?.price || combo.baby_base_price);
-                } else {
-                    price = combo.mom_price + combo.baby_base_price;
-                }
-            } else if (item.combo_type === 'family' && item.product.family_combos?.[0]) {
-                const fCombo = item.product.family_combos[0];
-                if (item.baby_size && item.product.baby_size_prices?.length) {
-                    const babySizePrice = item.product.baby_size_prices.find((p: any) => p.size === item.baby_size);
-                    price = (fCombo.mother_price || 0) + (fCombo.father_price || 0) + (babySizePrice?.price || fCombo.baby_base_price || 0);
-                } else {
-                    price = (fCombo.mother_price || 0) + (fCombo.father_price || 0) + (fCombo.baby_base_price || 0);
-                }
-            }
-
-            const itemTotal = price * item.quantity;
-            totalAmount += itemTotal;
-
-            return {
-                product_id: item.product.id,
-                name: item.product.name,
-                size: item.size,
-                quantity: item.quantity,
-                price: price,
-                total: itemTotal,
-            };
-        });
-
-        // 2.1 Calculate Shipping (Dynamic via Shiprocket)
+        // Calculate shipping
         let shippingCost = 0;
         const deliveryPincode = shippingAddress?.pincode;
 
         if (deliveryPincode) {
             try {
-                // Default pickup postcode
-                const pickupPostcode = process.env.SHIPROCKET_PICKUP_POSTCODE ?
-                    parseInt(process.env.SHIPROCKET_PICKUP_POSTCODE) : 110001;
+                const pickupPostcode = process.env.SHIPROCKET_PICKUP_POSTCODE
+                    ? parseInt(process.env.SHIPROCKET_PICKUP_POSTCODE) : 110001;
 
-                // Check serviceability
                 const serviceResponse: any = await ShiprocketService.checkServiceability({
                     pickup_postcode: pickupPostcode,
                     delivery_postcode: parseInt(deliveryPincode),
-                    weight: 0.5, // Default weight, should ideally verify from product weight
-                    cod: 0 // Prepaid
+                    weight: 0.5,
+                    cod: 0
                 });
 
                 if (serviceResponse.status === 200 && serviceResponse.data?.available_courier_companies?.length > 0) {
                     const couriers = serviceResponse.data.available_courier_companies;
                     couriers.sort((a: any, b: any) => a.rate - b.rate);
                     shippingCost = couriers[0].rate;
-                    console.log(`[Checkout] Dynamic Shipping Cost for ${deliveryPincode}: ₹${shippingCost}`);
                 } else {
-                    console.warn('[Checkout] Shiprocket serviceability check failed/empty, falling back');
-                    // Fallback logic
-                    shippingCost = 99;
+                    shippingCost = totalAmount >= 999 ? 0 : 99;
                 }
-            } catch (srError) {
-                console.error('[Checkout] Shiprocket error:', srError);
-                // Fallback on error
-                shippingCost = 99;
+            } catch {
+                shippingCost = totalAmount >= 999 ? 0 : 99;
             }
         } else {
             shippingCost = 99;
@@ -144,48 +77,34 @@ export async function POST(request: NextRequest) {
 
         totalAmount += shippingCost;
 
-        // Generate unique order ID
         const orderId = `ORD-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
-        // 3. Create Razorpay Order
         const razorpayOrder = await RazorpayService.createOrder({
-            amount: Math.round(totalAmount * 100), // Convert to paise
+            amount: Math.round(totalAmount * 100),
             currency: 'INR',
             receipt: orderId,
             notes: {
-                user_id: user.id,
-                user_email: user.email || '',
+                customer_email: customerEmail || '',
+                customer_phone: shippingAddress?.phone || '',
             },
         });
 
-        console.log('[Checkout] ✅ Razorpay order created:', razorpayOrder.id);
-
-        // 4. Store pending order in database (optional - for tracking)
-        const finalBillingAddress = sameAsShipping ? shippingAddress : billingAddress;
-
-        // 5. Return Razorpay order details for frontend checkout
         return NextResponse.json({
             success: true,
-            orderId: orderId,
+            orderId,
             razorpayOrderId: razorpayOrder.id,
             razorpayKeyId: RazorpayService.getPublicKey(),
             amount: razorpayOrder.amount,
             currency: razorpayOrder.currency,
             prefill: {
-                name: shippingAddress?.name || user.user_metadata?.full_name || '',
-                email: user.email || '',
+                name: shippingAddress?.name || '',
+                email: customerEmail || '',
                 contact: shippingAddress?.phone || '',
-            },
-            notes: {
-                orderId: orderId,
-                shippingAddress: JSON.stringify(shippingAddress),
-                billingAddress: JSON.stringify(finalBillingAddress),
             },
         });
 
     } catch (error) {
-        console.error('[Checkout] ❌ Error:', error);
-
+        console.error('[Checkout] Error:', error);
         return NextResponse.json(
             { error: error instanceof Error ? error.message : 'Internal Server Error' },
             { status: 500 }

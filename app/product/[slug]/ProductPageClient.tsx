@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { AnimatePresence, motion } from "framer-motion";
 import { formatPrice, cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Heart, Minus, Plus, Truck, ShieldCheck, RefreshCw } from "lucide-react";
+import { Heart, Minus, Plus, Truck, ShieldCheck, RefreshCw, Zap, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { useStore } from "@/lib/store";
 import { CustomisationForm } from "@/components/product/CustomisationForm";
@@ -27,9 +28,9 @@ interface Product {
     colors?: string[] | null;
     is_mom_baby?: boolean;
     is_family_combo?: boolean;
-    mom_baby_combos?: { id: string; product_id: string; mom_price: number; baby_base_price: number; }[];
-    family_combos?: { id: string; product_id: string; mother_price: number; father_price: number; baby_base_price: number; }[];
-    baby_size_prices?: { id: string; product_id: string; size: string; price: number; }[];
+    mom_baby_combos?: { id: string; product_id: string; mom_price: number; baby_base_price: number }[];
+    family_combos?: { id: string; product_id: string; mother_price: number; father_price: number; baby_base_price: number }[];
+    baby_size_prices?: { id: string; product_id: string; size: string; price: number }[];
 }
 
 interface ProductPageClientProps {
@@ -37,7 +38,8 @@ interface ProductPageClientProps {
 }
 
 export function ProductPageClient({ product }: ProductPageClientProps) {
-    const { addToCart, addToWishlist, removeFromWishlist, isInWishlist } = useStore();
+    const { addToCart, addToWishlist, removeFromWishlist, isInWishlist, setIsCartOpen } = useStore();
+    const router = useRouter();
     const isWishlisted = isInWishlist(product.id);
 
     const [selectedSize, setSelectedSize] = useState<string | null>(null);
@@ -50,9 +52,9 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
     const [quantity, setQuantity] = useState(1);
     const [activeImage, setActiveImage] = useState<string>(product.images?.[0]?.image_url || "");
     const [showSticky, setShowSticky] = useState(false);
+    const [descOpen, setDescOpen] = useState(false);
     const actionsRef = useRef<HTMLDivElement>(null);
 
-    // Scroll Observer for sticky bar
     useEffect(() => {
         const observer = new IntersectionObserver(
             ([entry]) => setShowSticky(!entry.isIntersecting),
@@ -63,17 +65,13 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
     }, []);
 
     const inStock = product.stock_remaining > 0;
-    
-    // Dynamic Price Calculation
+
     let finalPrice = product.discount_price || product.price;
     let originalPrice = product.price;
-    
-    // Is base product using discount?
     let isDiscounted = !!product.discount_price && product.discount_price < product.price;
 
     if (comboType === 'mom_baby' && product.mom_baby_combos?.[0]) {
         const combo = product.mom_baby_combos[0];
-        // If a baby size is selected and has a specific price, use it
         if (selectedBabySize && product.baby_size_prices?.length) {
             const babySizePrice = product.baby_size_prices.find(p => p.size === selectedBabySize);
             finalPrice = combo.mom_price + (babySizePrice?.price || combo.baby_base_price);
@@ -94,60 +92,83 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
         isDiscounted = false;
     } else if (selectedSize && product.baby_size_prices?.length) {
         const babyPrice = product.baby_size_prices.find(p => p.size === selectedSize);
-        if (babyPrice && babyPrice.price) {
+        if (babyPrice?.price) {
             finalPrice = babyPrice.price;
             originalPrice = babyPrice.price;
-            isDiscounted = false; // Baby sizes have fixed prices overriding base
+            isDiscounted = false;
         }
     }
+
     const categoryName = product.category?.name || "Uncategorized";
 
-    const handleAddToCart = async () => {
+    // Build product data snapshot for localStorage cart
+    const buildProductData = () => ({
+        name: product.name,
+        price: product.price,
+        discount_price: product.discount_price,
+        images: product.images?.map(img => ({ image_url: img.image_url })) || [],
+        is_mom_baby: product.is_mom_baby,
+        is_family_combo: product.is_family_combo,
+        mom_baby_combos: product.mom_baby_combos?.map(c => ({ mom_price: c.mom_price, baby_base_price: c.baby_base_price })),
+        family_combos: product.family_combos?.map(c => ({ mother_price: c.mother_price, father_price: c.father_price, baby_base_price: c.baby_base_price })),
+        baby_size_prices: product.baby_size_prices?.map(bp => ({ size: bp.size, price: bp.price })),
+    });
+
+    const buildFinalSize = () => {
+        if (comboType === 'family') {
+            return `Father: ${selectedFatherSize}, Mother: ${selectedMotherSize}${selectedBabyGender ? `, Baby: ${selectedBabyGender}` : ''}`;
+        }
+        let s = selectedSize!;
+        if ((comboType === 'mom_baby') && selectedBabyGender) {
+            s = `Mom: ${selectedSize}, Baby: ${selectedBabyGender}`;
+        }
+        return s;
+    };
+
+    const validateSelections = (): boolean => {
         if (comboType === 'family') {
             if (!selectedFatherSize || !selectedMotherSize) {
                 toast.error("Please select both Father and Mother sizes");
-                return;
+                return false;
             }
         } else if (!selectedSize) {
             toast.error(comboType === 'mom_baby' ? "Please select Mom's size" : "Please select a size");
-            return;
+            return false;
         }
 
         if (product.colors && product.colors.length > 0 && !selectedColor) {
             toast.error("Please select a color");
-            return;
+            return false;
         }
 
-        // Validate baby size for combo orders
-        if ((comboType === 'mom_baby' || comboType === 'family') && product.baby_size_prices && product.baby_size_prices.length > 0) {
-            if (!selectedBabySize) {
-                toast.error("Please select a baby size");
-                return;
-            }
-            if (!selectedBabyGender) {
-                toast.error("Please select baby gender (Boy/Girl)");
-                return;
-            }
+        if ((comboType === 'mom_baby' || comboType === 'family') && product.baby_size_prices?.length) {
+            if (!selectedBabySize) { toast.error("Please select a baby size"); return false; }
+            if (!selectedBabyGender) { toast.error("Please select baby gender"); return false; }
         }
+
+        return true;
+    };
+
+    const handleAddToCart = async () => {
+        if (!validateSelections()) return;
 
         const babySize = (comboType === 'mom_baby' || comboType === 'family') ? selectedBabySize : null;
-        let finalSize = comboType === 'family' ? `Father: ${selectedFatherSize}, Mother: ${selectedMotherSize}` : selectedSize!;
-        
-        if ((comboType === 'mom_baby' || comboType === 'family') && selectedBabyGender) {
-             if (comboType === 'mom_baby') {
-                 finalSize = `Mom: ${selectedSize}, Baby: ${selectedBabyGender}`;
-             } else {
-                 finalSize += `, Baby: ${selectedBabyGender}`;
-             }
-        }
-        
-        const success = await addToCart(product.id, finalSize, selectedColor, comboType, quantity, babySize);
+        const finalSize = buildFinalSize();
 
-        if (success) {
-            toast.success("Added to Cart");
-        } else {
-            toast.error("Please login to add to cart");
-        }
+        await addToCart(product.id, finalSize, selectedColor, comboType, quantity, babySize, buildProductData());
+        toast.success("Added to cart!");
+        // Auto-open cart drawer
+        setIsCartOpen(true);
+    };
+
+    const handleBuyNow = async () => {
+        if (!validateSelections()) return;
+
+        const babySize = (comboType === 'mom_baby' || comboType === 'family') ? selectedBabySize : null;
+        const finalSize = buildFinalSize();
+
+        await addToCart(product.id, finalSize, selectedColor, comboType, quantity, babySize, buildProductData());
+        router.push('/checkout');
     };
 
     const toggleWishlist = () => {
@@ -196,7 +217,7 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
                                             activeImage === img ? "border-primary" : "border-transparent"
                                         )}
                                     >
-                                        <img src={img} alt={`${product.name} - Image ${idx + 1} - Kurtis Boutique India`} loading="lazy" className="w-full h-full object-cover" />
+                                        <img src={img} alt={`${product.name} - Image ${idx + 1}`} loading="lazy" className="w-full h-full object-cover" />
                                     </button>
                                 ))}
                             </div>
@@ -227,28 +248,17 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
                             </div>
                         </div>
 
-                        <div className="prose prose-stone text-muted-foreground">
-                            <p>{product.description}</p>
-                        </div>
-
-                        {/* COMBO TYPES */}
+                                        {/* COMBO TYPES */}
                         {(product.is_mom_baby || product.is_family_combo) && (
                             <div className="mb-6 space-y-3">
                                 <label className="font-medium text-sm">Select Option</label>
                                 <div className="flex flex-col gap-2">
-                                    <button
-                                        onClick={() => setComboType('single')}
-                                        className={cn("flex items-center justify-between p-3 border rounded-lg text-left transition-all", comboType === 'single' ? "border-primary ring-1 ring-primary" : "hover:border-primary/50")}
-                                    >
+                                    <button onClick={() => setComboType('single')} className={cn("flex items-center justify-between p-3 border rounded-lg text-left transition-all", comboType === 'single' ? "border-primary ring-1 ring-primary" : "hover:border-primary/50")}>
                                         <span className="font-medium text-sm">Just for Me (Single)</span>
                                         {comboType === 'single' && <span className="w-2 h-2 rounded-full bg-primary" />}
                                     </button>
-
                                     {product.is_mom_baby && (
-                                        <button
-                                            onClick={() => setComboType('mom_baby')}
-                                            className={cn("flex items-center justify-between p-3 border rounded-lg text-left transition-all", comboType === 'mom_baby' ? "border-primary ring-1 ring-primary" : "hover:border-primary/50")}
-                                        >
+                                        <button onClick={() => setComboType('mom_baby')} className={cn("flex items-center justify-between p-3 border rounded-lg text-left transition-all", comboType === 'mom_baby' ? "border-primary ring-1 ring-primary" : "hover:border-primary/50")}>
                                             <div className="flex flex-col">
                                                 <span className="font-medium text-sm">Mom & Baby Combo</span>
                                                 <span className="text-xs text-muted-foreground mt-0.5">Matching outfit for mother and child</span>
@@ -256,12 +266,8 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
                                             {comboType === 'mom_baby' && <span className="w-2 h-2 rounded-full bg-primary" />}
                                         </button>
                                     )}
-
                                     {product.is_family_combo && (
-                                        <button
-                                            onClick={() => setComboType('family')}
-                                            className={cn("flex items-center justify-between p-3 border rounded-lg text-left transition-all", comboType === 'family' ? "border-primary ring-1 ring-primary" : "hover:border-primary/50")}
-                                        >
+                                        <button onClick={() => setComboType('family')} className={cn("flex items-center justify-between p-3 border rounded-lg text-left transition-all", comboType === 'family' ? "border-primary ring-1 ring-primary" : "hover:border-primary/50")}>
                                             <div className="flex flex-col">
                                                 <span className="font-medium text-sm">Family Combo</span>
                                                 <span className="text-xs text-muted-foreground mt-0.5">Matching outfits for mother, father, and child</span>
@@ -273,7 +279,7 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
                             </div>
                         )}
 
-                        {/* BABY SIZE PICKER (for combos) */}
+                        {/* BABY SIZE PICKER */}
                         {(comboType === 'mom_baby' || comboType === 'family') && product.baby_size_prices && product.baby_size_prices.length > 0 && (
                             <div id="baby-size-selector" className="mb-6 space-y-4">
                                 <div>
@@ -282,16 +288,7 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
                                     </div>
                                     <div className="flex flex-col gap-2">
                                         {product.baby_size_prices.map(bp => (
-                                            <button
-                                                key={bp.id}
-                                                onClick={() => setSelectedBabySize(bp.size)}
-                                                className={cn(
-                                                    "flex items-center justify-between p-3 border rounded-lg text-left transition-all",
-                                                    selectedBabySize === bp.size
-                                                        ? "border-primary ring-1 ring-primary bg-primary/5"
-                                                        : "hover:border-primary/50"
-                                                )}
-                                            >
+                                            <button key={bp.id} onClick={() => setSelectedBabySize(bp.size)} className={cn("flex items-center justify-between p-3 border rounded-lg text-left transition-all", selectedBabySize === bp.size ? "border-primary ring-1 ring-primary bg-primary/5" : "hover:border-primary/50")}>
                                                 <span className="font-medium text-sm">{bp.size}</span>
                                                 <span className="text-sm text-muted-foreground">{formatPrice(bp.price)}</span>
                                             </button>
@@ -304,16 +301,7 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
                                     </div>
                                     <div className="flex gap-3">
                                         {['Boy', 'Girl'].map(gender => (
-                                            <button
-                                                key={gender}
-                                                onClick={() => setSelectedBabyGender(gender)}
-                                                className={cn(
-                                                    "flex-1 p-3 border rounded-lg text-center font-medium text-sm transition-all",
-                                                    selectedBabyGender === gender
-                                                        ? "border-primary ring-1 ring-primary bg-primary/5 text-primary"
-                                                        : "hover:border-primary/50 text-foreground"
-                                                )}
-                                            >
+                                            <button key={gender} onClick={() => setSelectedBabyGender(gender)} className={cn("flex-1 p-3 border rounded-lg text-center font-medium text-sm transition-all", selectedBabyGender === gender ? "border-primary ring-1 ring-primary bg-primary/5 text-primary" : "hover:border-primary/50 text-foreground")}>
                                                 {gender}
                                             </button>
                                         ))}
@@ -321,7 +309,6 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
                                 </div>
                             </div>
                         )}
-
 
                         {/* COLORS */}
                         {product.colors && product.colors.length > 0 && (
@@ -331,23 +318,9 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
                                     {product.colors.map(colorStr => {
                                         const [name, hex] = colorStr.includes('|') ? colorStr.split('|') : [colorStr, '#cccccc'];
                                         return (
-                                            <button
-                                                key={colorStr}
-                                                onClick={() => setSelectedColor(colorStr)}
-                                                className={cn(
-                                                    "flex items-center gap-2 px-3 py-1.5 border rounded-full text-sm transition-all",
-                                                    selectedColor === colorStr
-                                                        ? "border-primary ring-2 ring-primary/20 bg-primary/5"
-                                                        : "border-input hover:border-primary/50 bg-background text-foreground"
-                                                )}
-                                            >
-                                                <span 
-                                                    className="w-4 h-4 rounded-full border border-black/10 shadow-sm"
-                                                    style={{ backgroundColor: hex }}
-                                                />
-                                                <span className={selectedColor === colorStr ? "font-medium text-primary" : ""}>
-                                                    {name}
-                                                </span>
+                                            <button key={colorStr} onClick={() => setSelectedColor(colorStr)} className={cn("flex items-center gap-2 px-3 py-1.5 border rounded-full text-sm transition-all", selectedColor === colorStr ? "border-primary ring-2 ring-primary/20 bg-primary/5" : "border-input hover:border-primary/50 bg-background text-foreground")}>
+                                                <span className="w-4 h-4 rounded-full border border-black/10 shadow-sm" style={{ backgroundColor: hex }} />
+                                                <span className={selectedColor === colorStr ? "font-medium text-primary" : ""}>{name}</span>
                                             </button>
                                         );
                                     })}
@@ -364,18 +337,7 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
                                 </div>
                                 <div className="flex gap-3 flex-wrap">
                                     {product.sizes?.map(sizeObj => (
-                                        <button
-                                            key={sizeObj.size}
-                                            onClick={() => setSelectedSize(sizeObj.size)}
-                                            disabled={!inStock}
-                                            className={cn(
-                                                "w-10 h-10 rounded-full border flex items-center justify-center text-sm transition-all",
-                                                selectedSize === sizeObj.size
-                                                    ? "border-primary bg-primary text-white"
-                                                    : "border-input hover:border-primary/50",
-                                                !inStock && "opacity-50 cursor-not-allowed"
-                                            )}
-                                        >
+                                        <button key={sizeObj.size} onClick={() => setSelectedSize(sizeObj.size)} disabled={!inStock} className={cn("w-10 h-10 rounded-full border flex items-center justify-center text-sm transition-all", selectedSize === sizeObj.size ? "border-primary bg-primary text-white" : "border-input hover:border-primary/50", !inStock && "opacity-50 cursor-not-allowed")}>
                                             {sizeObj.size}
                                         </button>
                                     ))}
@@ -390,18 +352,7 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
                                     </div>
                                     <div className="flex gap-3 flex-wrap">
                                         {product.sizes?.map(sizeObj => (
-                                            <button
-                                                key={`father-${sizeObj.size}`}
-                                                onClick={() => setSelectedFatherSize(sizeObj.size)}
-                                                disabled={!inStock}
-                                                className={cn(
-                                                    "w-10 h-10 rounded-full border flex items-center justify-center text-sm transition-all",
-                                                    selectedFatherSize === sizeObj.size
-                                                        ? "border-primary bg-primary text-white"
-                                                        : "border-input hover:border-primary/50",
-                                                    !inStock && "opacity-50 cursor-not-allowed"
-                                                )}
-                                            >
+                                            <button key={`father-${sizeObj.size}`} onClick={() => setSelectedFatherSize(sizeObj.size)} disabled={!inStock} className={cn("w-10 h-10 rounded-full border flex items-center justify-center text-sm transition-all", selectedFatherSize === sizeObj.size ? "border-primary bg-primary text-white" : "border-input hover:border-primary/50", !inStock && "opacity-50 cursor-not-allowed")}>
                                                 {sizeObj.size}
                                             </button>
                                         ))}
@@ -413,18 +364,7 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
                                     </div>
                                     <div className="flex gap-3 flex-wrap">
                                         {product.sizes?.map(sizeObj => (
-                                            <button
-                                                key={`mother-${sizeObj.size}`}
-                                                onClick={() => setSelectedMotherSize(sizeObj.size)}
-                                                disabled={!inStock}
-                                                className={cn(
-                                                    "w-10 h-10 rounded-full border flex items-center justify-center text-sm transition-all",
-                                                    selectedMotherSize === sizeObj.size
-                                                        ? "border-primary bg-primary text-white"
-                                                        : "border-input hover:border-primary/50",
-                                                    !inStock && "opacity-50 cursor-not-allowed"
-                                                )}
-                                            >
+                                            <button key={`mother-${sizeObj.size}`} onClick={() => setSelectedMotherSize(sizeObj.size)} disabled={!inStock} className={cn("w-10 h-10 rounded-full border flex items-center justify-center text-sm transition-all", selectedMotherSize === sizeObj.size ? "border-primary bg-primary text-white" : "border-input hover:border-primary/50", !inStock && "opacity-50 cursor-not-allowed")}>
                                                 {sizeObj.size}
                                             </button>
                                         ))}
@@ -434,42 +374,84 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
                         )}
 
                         {/* ACTIONS */}
-                        <div ref={actionsRef} className="flex items-center gap-2 md:gap-3 pt-4 border-t border-border">
-                            <div className="flex items-center border border-input rounded-md h-10 md:h-14">
-                                <button
-                                    className="px-2 md:px-3 h-full hover:bg-muted border-r border-input"
-                                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                        <div ref={actionsRef} className="space-y-3 pt-4 border-t border-border">
+                            <div className="flex items-center gap-2 md:gap-3">
+                                {/* Quantity */}
+                                <div className="flex items-center border border-input rounded-md h-10 md:h-14">
+                                    <button className="px-2 md:px-3 h-full hover:bg-muted border-r border-input" onClick={() => setQuantity(Math.max(1, quantity - 1))}>
+                                        <Minus className="w-3 h-3 md:w-4 md:h-4" />
+                                    </button>
+                                    <span className="w-8 md:w-10 text-center text-sm font-medium">{quantity}</span>
+                                    <button className="px-2 md:px-3 h-full hover:bg-muted border-l border-input" onClick={() => setQuantity(quantity + 1)}>
+                                        <Plus className="w-3 h-3 md:w-4 md:h-4" />
+                                    </button>
+                                </div>
+
+                                {/* Add to Cart */}
+                                <Button
+                                    size="lg"
+                                    variant="outline"
+                                    className="flex-1 h-10 md:h-14 rounded-full border-primary text-primary hover:bg-primary hover:text-white transition-all duration-300 text-sm md:text-base font-bold tracking-widest uppercase"
+                                    onClick={handleAddToCart}
+                                    disabled={!inStock}
                                 >
-                                    <Minus className="w-3 h-3 md:w-4 md:h-4" />
-                                </button>
-                                <span className="w-8 md:w-10 text-center text-sm font-medium">{quantity}</span>
-                                <button
-                                    className="px-2 md:px-3 h-full hover:bg-muted border-l border-input"
-                                    onClick={() => setQuantity(quantity + 1)}
+                                    {inStock ? "Add to Cart" : "Out of Stock"}
+                                </Button>
+
+                                {/* Wishlist */}
+                                <Button
+                                    variant="outline"
+                                    size="icon"
+                                    className={cn("h-10 w-10 md:h-14 md:w-14 rounded-full flex-shrink-0", isWishlisted && "text-red-500 bg-red-50 border-red-200")}
+                                    onClick={toggleWishlist}
                                 >
-                                    <Plus className="w-3 h-3 md:w-4 md:h-4" />
-                                </button>
+                                    <Heart className={cn("w-4 h-4 md:w-5 md:h-5", isWishlisted && "fill-current")} />
+                                </Button>
                             </div>
 
-                            <Button
-                                size="lg"
-                                className="flex-1 h-12 md:h-14 rounded-full bg-gradient-to-r from-primary via-rose-600 to-primary bg-[length:200%_auto] hover:bg-[position:right_center] transition-all duration-500 shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 text-sm md:text-base font-bold tracking-widest uppercase hover:-translate-y-0.5"
-                                onClick={handleAddToCart}
-                                disabled={!inStock}
-                            >
-                                {inStock ? "Add to Cart" : "Out of Stock"}
-                            </Button>
-
-                            <Button
-                                variant="outline"
-                                size="icon"
-                                className={cn("h-10 w-10 md:h-14 md:w-14 rounded-full flex-shrink-0", isWishlisted && "text-red-500 bg-red-50")}
-                                onClick={toggleWishlist}
-                            >
-                                <Heart className={cn("w-4 h-4 md:w-5 md:h-5", isWishlisted && "fill-current")} />
-                            </Button>
+                            {/* Buy Now */}
+                            {inStock && (
+                                <Button
+                                    size="lg"
+                                    className="w-full h-12 md:h-14 rounded-full bg-gradient-to-r from-primary via-rose-600 to-primary bg-[length:200%_auto] hover:bg-[position:right_center] transition-all duration-500 shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 text-sm md:text-base font-bold tracking-widest uppercase hover:-translate-y-0.5 flex items-center gap-2"
+                                    onClick={handleBuyNow}
+                                >
+                                    <Zap className="w-4 h-4" />
+                                    Buy Now
+                                </Button>
+                            )}
                         </div>
 
+                        {/* DESCRIPTION BOX */}
+                        {product.description && (
+                            <div className="rounded-xl border border-border/60 bg-muted/20 overflow-hidden">
+                                <button
+                                    onClick={() => setDescOpen(prev => !prev)}
+                                    className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-foreground hover:bg-muted/40 transition-colors"
+                                >
+                                    <span>Product Details</span>
+                                    <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform duration-300", descOpen && "rotate-180")} />
+                                </button>
+                                <AnimatePresence initial={false}>
+                                    {descOpen && (
+                                        <motion.div
+                                            key="desc"
+                                            initial={{ height: 0, opacity: 0 }}
+                                            animate={{ height: "auto", opacity: 1 }}
+                                            exit={{ height: 0, opacity: 0 }}
+                                            transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
+                                            style={{ overflow: "hidden" }}
+                                        >
+                                            <div className="px-4 pb-4 pt-1 text-sm text-muted-foreground leading-relaxed border-t border-border/40">
+                                                {product.description}
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </div>
+                        )}
+
+                        {/* TRUST BADGES */}
                         <div className="grid grid-cols-1 gap-4 pt-6">
                             <div className="flex items-center gap-3 text-sm text-foreground/80">
                                 <Truck className="w-5 h-5 text-muted-foreground" />
@@ -500,21 +482,42 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
                             exit={{ y: 20, opacity: 0 }}
                             className="pointer-events-auto"
                         >
-                            <div className="flex items-center gap-3 p-3 pl-4 rounded-xl bg-white/80 backdrop-blur-xl border border-white/40 shadow-xl ring-1 ring-black/5">
+                            <div className="flex items-center gap-2 p-3 pl-4 rounded-xl bg-white/80 backdrop-blur-xl border border-white/40 shadow-xl ring-1 ring-black/5">
                                 <div className="flex flex-col min-w-0 flex-1">
                                     <span className="text-xs font-medium text-muted-foreground truncate">{product.name}</span>
                                     <span className="font-bold text-base text-foreground">{formatPrice(finalPrice)}</span>
                                 </div>
-                                <Button className="shadow-md h-10 px-5 rounded-lg bg-primary text-white text-sm" onClick={() => {
-                                    if (comboType === 'family' && (!selectedFatherSize || !selectedMotherSize)) {
-                                        document.getElementById('family-sizes-selector')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                        toast.info("Please select both Father and Mother sizes");
-                                    } else if (comboType !== 'family' && !selectedSize) {
-                                        document.getElementById('size-selector')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                        toast.info("Please select a size");
-                                    } else handleAddToCart();
-                                }} disabled={!inStock}>
+                                <Button
+                                    className="shadow-md h-10 px-4 rounded-lg bg-white border border-primary text-primary text-sm font-bold"
+                                    variant="outline"
+                                    onClick={() => {
+                                        if (comboType === 'family' && (!selectedFatherSize || !selectedMotherSize)) {
+                                            document.getElementById('family-sizes-selector')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                            toast.info("Please select both Father and Mother sizes");
+                                        } else if (comboType !== 'family' && !selectedSize) {
+                                            document.getElementById('size-selector')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                            toast.info("Please select a size");
+                                        } else handleAddToCart();
+                                    }}
+                                    disabled={!inStock}
+                                >
                                     {inStock ? "Add" : "No Stock"}
+                                </Button>
+                                <Button
+                                    className="shadow-md h-10 px-4 rounded-lg bg-primary text-white text-sm font-bold flex items-center gap-1"
+                                    onClick={() => {
+                                        if (comboType === 'family' && (!selectedFatherSize || !selectedMotherSize)) {
+                                            document.getElementById('family-sizes-selector')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                            toast.info("Please select both Father and Mother sizes");
+                                        } else if (comboType !== 'family' && !selectedSize) {
+                                            document.getElementById('size-selector')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                            toast.info("Please select a size");
+                                        } else handleBuyNow();
+                                    }}
+                                    disabled={!inStock}
+                                >
+                                    <Zap className="w-3 h-3" />
+                                    Buy Now
                                 </Button>
                             </div>
                         </motion.div>

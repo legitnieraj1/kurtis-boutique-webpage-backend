@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Eye, Search, RefreshCw, Package, Filter, CheckCircle } from "lucide-react";
+import { Eye, Search, RefreshCw, Package, CheckCircle, MessageCircle, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { formatPrice } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -14,7 +14,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-
 
 interface Order {
     id: string;
@@ -46,11 +45,54 @@ const statusStyles: Record<string, string> = {
     refunded: "bg-gray-100 text-gray-800",
 };
 
+function buildWhatsAppMessage(order: Order): string {
+    const trackingUrl = `https://shiprocket.co/tracking/order/${order.orderNumber}?company_id=9186815`;
+
+    const statusLabel: Record<string, string> = {
+        pending: "Pending",
+        confirmed: "Confirmed",
+        processing: "Processing",
+        shipped: "Shipped",
+        in_transit: "Out for Delivery",
+        delivered: "Delivered",
+        cancelled: "Cancelled",
+    };
+
+    const statusVerb: Record<string, string> = {
+        pending: "received",
+        confirmed: "confirmed",
+        processing: "processed",
+        shipped: "shipped",
+        in_transit: "dispatched",
+        delivered: "delivered",
+        cancelled: "cancelled",
+    };
+
+    const currentStatus = statusLabel[order.status] || order.status;
+    const verb = statusVerb[order.status] || "confirmed";
+
+    const message =
+        `Hey ${order.customer.name || "there"},\n\n` +
+        `Thank you for shopping with *Kurtis Boutique*! Your order has been successfully ${verb}.\n\n` +
+        `*Order Details:*\n` +
+        `• Order ID: ${order.orderNumber}\n` +
+        `• Order Total: ₹${order.total}\n` +
+        `• Status: ${currentStatus}\n\n` +
+        `You can track your order and receive further updates using the link below:\n` +
+        `${trackingUrl}\n\n` +
+        `If you have any questions or need assistance, feel free to reply to this message — we're always happy to help.\n\n` +
+        `Warm regards,\n` +
+        `*Team Kurtis Boutique*\n` +
+        `kurtisboutique.in`;
+
+    return message;
+}
+
 export default function AdminOrdersPage() {
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
-    const [dateFilter, setDateFilter] = useState("all"); // 'all' or 'today'
+    const [dateFilter, setDateFilter] = useState("all");
 
     const fetchOrders = async () => {
         setLoading(true);
@@ -72,15 +114,12 @@ export default function AdminOrdersPage() {
         try {
             const response = await fetch(`/api/admin/orders/${orderId}/status`, {
                 method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: 'confirmed' }),
             });
 
             if (response.ok) {
                 toast.success("Order confirmed successfully");
-                // Optimistic update
                 setOrders(orders.map(o => o.id === orderId ? { ...o, status: 'confirmed' } : o));
             } else {
                 const data = await response.json();
@@ -90,6 +129,37 @@ export default function AdminOrdersPage() {
             console.error('Error confirming order:', error);
             toast.error("Error confirming order");
         }
+    };
+
+    const deleteOrder = async (order: Order) => {
+        if (!confirm(`Delete order ${order.orderNumber}? This cannot be undone.`)) return;
+        try {
+            const response = await fetch(`/api/admin/orders/${order.id}`, { method: 'DELETE' });
+            if (response.ok) {
+                toast.success("Order deleted");
+                setOrders(orders.filter(o => o.id !== order.id));
+            } else {
+                const data = await response.json();
+                toast.error(data.error || "Failed to delete order");
+            }
+        } catch {
+            toast.error("Error deleting order");
+        }
+    };
+
+    const sendWhatsApp = (order: Order) => {
+        const phone = order.customer.phone?.replace(/\D/g, '');
+        if (!phone) {
+            toast.error("No phone number available for this customer");
+            return;
+        }
+
+        const message = buildWhatsAppMessage(order);
+        const encodedMessage = encodeURIComponent(message);
+        const waNumber = phone.startsWith('91') ? phone : `91${phone}`;
+        const url = `https://wa.me/${waNumber}?text=${encodedMessage}`;
+
+        window.open(url, '_blank');
     };
 
     useEffect(() => {
@@ -133,7 +203,7 @@ export default function AdminOrdersPage() {
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">All Orders</SelectItem>
-                            <SelectItem value="today">Today's Orders</SelectItem>
+                            <SelectItem value="today">Today&apos;s Orders</SelectItem>
                         </SelectContent>
                     </Select>
 
@@ -146,7 +216,7 @@ export default function AdminOrdersPage() {
 
             <div className="bg-background rounded-lg border border-border overflow-hidden shadow-sm">
                 <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left min-w-[800px] md:min-w-full">
+                    <table className="w-full text-sm text-left min-w-[900px]">
                         <thead className="bg-muted/50 text-muted-foreground font-medium border-b border-border">
                             <tr>
                                 <th className="px-6 py-3">Order ID</th>
@@ -154,21 +224,21 @@ export default function AdminOrdersPage() {
                                 <th className="px-6 py-3 hidden md:table-cell">Date</th>
                                 <th className="px-6 py-3">Status</th>
                                 <th className="px-6 py-3">Total</th>
-                                <th className="px-6 py-3 hidden md:table-cell">Tracking</th>
-                                {/* Actions column removed as requested */}
+                                <th className="px-6 py-3">Send Status</th>
+                                <th className="px-6 py-3"></th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
                             {loading ? (
                                 <tr>
-                                    <td colSpan={6} className="text-center py-12">
+                                    <td colSpan={7} className="text-center py-12">
                                         <RefreshCw className="w-6 h-6 animate-spin mx-auto text-muted-foreground" />
                                         <p className="mt-2 text-muted-foreground">Loading orders...</p>
                                     </td>
                                 </tr>
                             ) : filteredOrders.length === 0 ? (
                                 <tr>
-                                    <td colSpan={6} className="text-center py-12">
+                                    <td colSpan={7} className="text-center py-12">
                                         <Package className="w-12 h-12 mx-auto text-muted-foreground/30 mb-4" />
                                         <p className="text-muted-foreground">No orders found.</p>
                                     </td>
@@ -183,7 +253,7 @@ export default function AdminOrdersPage() {
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="font-medium">{order.customer.name}</div>
-                                            <div className="text-xs text-muted-foreground">{order.customer.email}</div>
+                                            <div className="text-xs text-muted-foreground">{order.customer.phone || order.customer.email}</div>
                                         </td>
                                         <td className="px-6 py-4 hidden md:table-cell">{order.date}</td>
                                         <td className="px-6 py-4">
@@ -200,8 +270,7 @@ export default function AdminOrdersPage() {
                                             ) : (
                                                 <span className={cn(
                                                     "px-2.5 py-1 rounded-full text-xs font-medium capitalize",
-                                                    order.status === 'confirmed' ? "bg-blue-100 text-blue-800 border border-blue-200" :
-                                                        statusStyles[order.status] || "bg-gray-100 text-gray-800"
+                                                    statusStyles[order.status] || "bg-gray-100 text-gray-800"
                                                 )}>
                                                     {order.status.replace('_', ' ')}
                                                 </span>
@@ -210,12 +279,27 @@ export default function AdminOrdersPage() {
                                         <td className="px-6 py-4 font-medium">
                                             {formatPrice(order.total)}
                                         </td>
-                                        <td className="px-6 py-4 hidden md:table-cell">
-                                            {order.tracking?.awb ? (
-                                                <span className="text-xs font-mono">{order.tracking.awb}</span>
-                                            ) : (
-                                                <span className="text-muted-foreground text-xs italic">Not shipped</span>
-                                            )}
+                                        <td className="px-6 py-4">
+                                            <Button
+                                                size="sm"
+                                                className="bg-green-500 hover:bg-green-600 text-white h-8 gap-1.5 shadow-sm"
+                                                onClick={() => sendWhatsApp(order)}
+                                                title={order.customer.phone ? `Send to ${order.customer.phone}` : "No phone number"}
+                                            >
+                                                <MessageCircle className="w-3.5 h-3.5" />
+                                                <span className="hidden sm:inline">Send Update</span>
+                                            </Button>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                className="text-red-400 hover:text-red-600 hover:bg-red-50 h-8 w-8 p-0"
+                                                onClick={() => deleteOrder(order)}
+                                                title="Delete order"
+                                            >
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                            </Button>
                                         </td>
                                     </tr>
                                 ))

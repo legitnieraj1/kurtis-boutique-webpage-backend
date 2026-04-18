@@ -1,13 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth, createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { RazorpayService } from '@/lib/razorpay';
 import { ShiprocketService } from '@/lib/shiprocket';
 
-export async function POST(request: NextRequest) {
-    console.log('[Razorpay] Verifying payment...');
+interface CartItemPayload {
+    product_id: string;
+    size: string;
+    quantity: number;
+    color?: string | null;
+    combo_type?: string;
+    baby_size?: string | null;
+    unit_price: number;
+    product_name: string;
+    product_image?: string | null;
+}
 
+export async function POST(request: NextRequest) {
     try {
-        const user = await requireAuth();
         const supabase = await createSupabaseServerClient();
 
         const body = await request.json();
@@ -18,9 +27,20 @@ export async function POST(request: NextRequest) {
             orderId,
             shippingAddress,
             billingAddress,
-        } = body;
+            cartItems,
+            customerEmail,
+        } = body as {
+            razorpay_order_id: string;
+            razorpay_payment_id: string;
+            razorpay_signature: string;
+            orderId: string;
+            shippingAddress: Record<string, string>;
+            billingAddress: Record<string, string>;
+            cartItems: CartItemPayload[];
+            customerEmail: string;
+        };
 
-        // 1. Verify payment signature
+        // 1. Verify Razorpay signature
         const isValid = RazorpayService.verifyPaymentSignature(
             razorpay_order_id,
             razorpay_payment_id,
@@ -28,112 +48,43 @@ export async function POST(request: NextRequest) {
         );
 
         if (!isValid) {
-            console.error('[Razorpay] ❌ Invalid payment signature');
-            return NextResponse.json(
-                { error: 'Invalid payment signature', success: false },
-                { status: 400 }
-            );
+            return NextResponse.json({ error: 'Invalid payment signature', success: false }, { status: 400 });
         }
 
-        console.log('[Razorpay] ✅ Payment verified:', razorpay_payment_id);
-
-        // 2. Fetch cart items for order creation (including combo pricing)
-        const { data: cartItems, error: cartError } = await supabase
-            .from('cart_items')
-            .select(`
-                *,
-                product:products (
-                    id,
-                    name,
-                    slug,
-                    price,
-                    discount_price,
-                    is_mom_baby,
-                    is_family_combo,
-                    images:product_images(image_url),
-                    mom_baby_combos (
-                        mom_price,
-                        baby_base_price
-                    ),
-                    family_combos (
-                        mother_price,
-                        father_price,
-                        baby_base_price
-                    ),
-                    baby_size_prices (
-                        size,
-                        price
-                    )
-                )
-            `)
-            .eq('user_id', user.id);
-
-        if (cartError || !cartItems || cartItems.length === 0) {
-            console.error('[Razorpay] ❌ Cart fetch error:', cartError);
-            return NextResponse.json(
-                { error: 'Failed to fetch cart items', success: false },
-                { status: 500 }
-            );
+        if (!cartItems || cartItems.length === 0) {
+            return NextResponse.json({ error: 'Cart items missing', success: false }, { status: 400 });
         }
 
-        // 3. Calculate totals (combo-aware pricing)
+        // 2. Build order items from submitted cart
         let subtotal = 0;
         const orderItemsData = cartItems.map((item) => {
-            let price = item.product.discount_price || item.product.price;
-
-            // Combo pricing override
-            if (item.combo_type === 'mom_baby' && item.product.mom_baby_combos?.[0]) {
-                const combo = item.product.mom_baby_combos[0];
-                if (item.baby_size && item.product.baby_size_prices?.length) {
-                    const babySizePrice = item.product.baby_size_prices.find((p: any) => p.size === item.baby_size);
-                    price = combo.mom_price + (babySizePrice?.price || combo.baby_base_price);
-                } else {
-                    price = combo.mom_price + combo.baby_base_price;
-                }
-            } else if (item.combo_type === 'family' && item.product.family_combos?.[0]) {
-                const fCombo = item.product.family_combos[0];
-                if (item.baby_size && item.product.baby_size_prices?.length) {
-                    const babySizePrice = item.product.baby_size_prices.find((p: any) => p.size === item.baby_size);
-                    price = (fCombo.mother_price || 0) + (fCombo.father_price || 0) + (babySizePrice?.price || fCombo.baby_base_price || 0);
-                } else {
-                    price = (fCombo.mother_price || 0) + (fCombo.father_price || 0) + (fCombo.baby_base_price || 0);
-                }
-            }
-
-            const itemTotal = price * item.quantity;
+            const itemTotal = item.unit_price * item.quantity;
             subtotal += itemTotal;
-
             return {
-                product_id: item.product.id,
-                product_name: item.product.name,
-                product_image: item.product.images?.[0]?.image_url || null,
+                product_id: item.product_id,
+                product_name: item.product_name,
+                product_image: item.product_image || null,
                 size: item.size,
                 color: item.color || null,
                 combo_type: item.combo_type || 'single',
                 baby_size: item.baby_size || null,
                 quantity: item.quantity,
-                unit_price: price,
+                unit_price: item.unit_price,
                 total_price: itemTotal,
             };
         });
 
-
-        // 3.1 Calculate Shipping (Dynamic via Shiprocket)
+        // 3. Calculate shipping
         let shippingCost = 0;
         const parsedShipping = typeof shippingAddress === 'string'
-            ? JSON.parse(shippingAddress)
-            : shippingAddress;
-
-        const deliveryPincode = parsedShipping?.pincode || parsedShipping?.zip;
+            ? JSON.parse(shippingAddress) : shippingAddress;
+        const deliveryPincode = parsedShipping?.pincode;
 
         if (deliveryPincode) {
             try {
-                // Default pickup postcode
-                const pickupPostcode = process.env.SHIPROCKET_PICKUP_POSTCODE ?
-                    parseInt(process.env.SHIPROCKET_PICKUP_POSTCODE) : 110001;
+                const pickupPostcode = process.env.SHIPROCKET_PICKUP_POSTCODE
+                    ? parseInt(process.env.SHIPROCKET_PICKUP_POSTCODE) : 110001;
 
-                // Check serviceability
-                // We use await here, assuming verify doesn't need to be instant-instant, but it should be fast enough.
                 const serviceResponse: any = await ShiprocketService.checkServiceability({
                     pickup_postcode: pickupPostcode,
                     delivery_postcode: parseInt(deliveryPincode),
@@ -146,47 +97,50 @@ export async function POST(request: NextRequest) {
                     couriers.sort((a: any, b: any) => a.rate - b.rate);
                     shippingCost = couriers[0].rate;
                 } else {
-                    // Fallback
                     shippingCost = subtotal >= 999 ? 0 : 99;
                 }
-            } catch (error) {
-                console.error('[Razorpay] Shipping calc error:', error);
+            } catch {
                 shippingCost = subtotal >= 999 ? 0 : 99;
             }
         } else {
             shippingCost = subtotal >= 999 ? 0 : 99;
         }
 
-        const discountAmount = 0;
-        const total = subtotal + shippingCost - discountAmount;
+        const total = subtotal + shippingCost;
 
-        // 4. Parse addresses (Already done above)
+        // 4. Try to get anonymous/logged-in user for user_id (optional)
+        let userId: string | null = null;
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) userId = user.id;
+        } catch { /* continue as guest */ }
 
-        // 5. Create order in database (matching schema columns exactly)
+        // 5. Create order in DB
+        const orderInsert: Record<string, any> = {
+            status: 'pending',
+            subtotal,
+            shipping_cost: shippingCost,
+            discount_amount: 0,
+            total,
+            shipping_name: parsedShipping?.name || '',
+            shipping_phone: parsedShipping?.phone || '',
+            shipping_address_line1: parsedShipping?.address || '',
+            shipping_address_line2: '',
+            shipping_city: parsedShipping?.city || '',
+            shipping_state: parsedShipping?.state || '',
+            shipping_pincode: parsedShipping?.pincode || '',
+        };
+
+        if (userId) orderInsert.user_id = userId;
+
         const { data: order, error: orderError } = await supabase
             .from('orders')
-            .insert({
-                user_id: user.id,
-                status: 'pending', // Default status for new orders
-                subtotal: subtotal,
-                shipping_cost: shippingCost,
-                discount_amount: discountAmount,
-                total: total,
-                // Shipping address fields (from schema)
-                shipping_name: parsedShipping?.name || '',
-                shipping_phone: parsedShipping?.phone || '',
-                shipping_address_line1: parsedShipping?.address || parsedShipping?.addressLine1 || '',
-                shipping_address_line2: parsedShipping?.apartment || parsedShipping?.addressLine2 || '',
-                shipping_city: parsedShipping?.city || '',
-                shipping_state: parsedShipping?.state || '',
-                shipping_pincode: parsedShipping?.pincode || parsedShipping?.zip || '',
-            })
+            .insert(orderInsert)
             .select()
             .single();
 
         if (orderError) {
-            console.error('[Razorpay] ❌ Order creation error:', orderError);
-            // Payment was successful but order creation failed
+            console.error('[Razorpay] Order creation error:', orderError);
             return NextResponse.json({
                 success: true,
                 warning: 'Payment successful but order creation failed. Please contact support.',
@@ -194,84 +148,53 @@ export async function POST(request: NextRequest) {
             });
         }
 
-        console.log('[Razorpay] ✅ Order created:', order.id, 'Order Number:', order.order_number);
-
         // 6. Insert order items
-        const orderItemsToInsert = orderItemsData.map(item => ({
-            ...item,
-            order_id: order.id,
-        }));
-
         const { error: itemsError } = await supabase
             .from('order_items')
-            .insert(orderItemsToInsert);
+            .insert(orderItemsData.map(item => ({ ...item, order_id: order.id })));
 
         if (itemsError) {
-            console.error('[Razorpay] ⚠️ Order items insert error:', itemsError);
+            console.error('[Razorpay] Order items error:', itemsError);
         }
 
-        // 7. Decrement stock for each product
+        // 7. Decrement stock
         for (const item of cartItems) {
             const { error: stockError } = await supabase.rpc('decrement_stock', {
-                p_product_id: item.product.id,
+                p_product_id: item.product_id,
                 p_quantity: item.quantity,
                 p_size: item.size || null,
                 p_color: item.color || null,
                 p_combo_type: item.combo_type || 'single'
             });
-
-            if (stockError) {
-                console.error('[Razorpay] ⚠️ Stock decrement error for product:', item.product.id, stockError);
-            } else {
-                console.log('[Razorpay] Stock decremented for:', item.product.name, 'by', item.quantity);
-            }
+            if (stockError) console.error('[Razorpay] Stock decrement error:', stockError);
         }
 
-        // 8. Clear user's cart
-        const { error: clearError } = await supabase
-            .from('cart_items')
-            .delete()
-            .eq('user_id', user.id);
-
-        if (clearError) {
-            console.warn('[Razorpay] Warning: Failed to clear cart:', clearError);
-        }
-
-        // 9. Create Shiprocket Order
+        // 8. Create Shiprocket order
         try {
-            console.log('[Shiprocket] Creating order...');
             const shiprocketOrder = await ShiprocketService.createOrder({
                 order_id: order.order_number,
                 order_date: new Date().toISOString().split('T')[0] + ' ' + new Date().toTimeString().split(' ')[0],
-                pickup_location: 'warehouse', // Needs to be configured in Shiprocket
+                pickup_location: 'warehouse',
                 billing_customer_name: parsedShipping?.name || 'Customer',
                 billing_last_name: '',
-                billing_address: parsedShipping?.address || parsedShipping?.addressLine1 || '',
-                billing_address_2: parsedShipping?.apartment || parsedShipping?.addressLine2 || '',
+                billing_address: parsedShipping?.address || '',
+                billing_address_2: '',
                 billing_city: parsedShipping?.city || '',
-                billing_pincode: parsedShipping?.pincode || parsedShipping?.zip || '',
+                billing_pincode: parsedShipping?.pincode || '',
                 billing_state: parsedShipping?.state || '',
                 billing_country: 'India',
-                billing_email: user.email || 'customer@example.com',
+                billing_email: customerEmail || 'customer@kurtisboutique.in',
                 billing_phone: parsedShipping?.phone || '9999999999',
                 shipping_is_billing: true,
-                order_items: orderItemsData.map(item => {
-                    let variantStr = '';
-                    if (item.combo_type && item.combo_type !== 'single') variantStr += ` [${item.combo_type}]`;
-                    if (item.color) variantStr += ` - ${item.color}`;
-                    if (item.size) variantStr += ` - Size: ${item.size}`;
-                    if (item.baby_size) variantStr += ` - Baby Size: ${item.baby_size}`;
-                    
-                    return {
-                        name: item.product_name + variantStr,
-                        sku: item.product_id, // Using product_id as SKU since column is missing
-                        units: item.quantity,
-                        selling_price: item.unit_price,
-                        discount: 0,
-                        tax: 0,
-                        hsn: 0
-                    };
-                }),
+                order_items: orderItemsData.map(item => ({
+                    name: item.product_name + (item.size ? ` - ${item.size}` : ''),
+                    sku: item.product_id,
+                    units: item.quantity,
+                    selling_price: item.unit_price,
+                    discount: 0,
+                    tax: 0,
+                    hsn: 0
+                })),
                 payment_method: 'Prepaid',
                 sub_total: subtotal,
                 length: 10,
@@ -279,9 +202,7 @@ export async function POST(request: NextRequest) {
                 height: 10,
                 weight: 0.5
             });
-            console.log('[Shiprocket] Order created:', shiprocketOrder);
 
-            // Update order with Shiprocket ID if available
             if (shiprocketOrder.order_id) {
                 await supabase
                     .from('orders')
@@ -292,35 +213,29 @@ export async function POST(request: NextRequest) {
                     })
                     .eq('id', order.id);
             }
-
         } catch (srError) {
-            console.error('[Shiprocket] ❌ Creation Error:', srError);
-            if (srError instanceof Error) {
-                console.error("[Shiprocket] Error stack:", srError.stack);
-            }
-            // Don't fail the request, just log it. Admin can sync later.
+            console.error('[Shiprocket] Error:', srError);
         }
 
-        // Trigger push notification to admins
+        // 9. Push notification to admin
         try {
             const { sendAdminOrderNotification } = await import('@/lib/webpush');
-            const productNames = orderItemsData.map(item => `${item.product_name} x${item.quantity}`).join(', ');
+            const productNames = orderItemsData.map(i => `${i.product_name} x${i.quantity}`).join(', ');
             await sendAdminOrderNotification(order.order_number, total, productNames);
         } catch (pushErr) {
-            console.error('[WebPush] Error triggering push:', pushErr);
+            console.error('[WebPush] Error:', pushErr);
         }
 
-        // 10. Return success with order_number from database
         return NextResponse.json({
             success: true,
             orderId: order.id,
-            orderNumber: order.order_number, // This comes from the DB trigger
+            orderNumber: order.order_number,
             paymentId: razorpay_payment_id,
             message: 'Payment successful! Your order has been placed.',
         });
 
     } catch (error) {
-        console.error('[Razorpay] ❌ Verification Error:', error);
+        console.error('[Razorpay] Verification Error:', error);
         return NextResponse.json(
             { error: error instanceof Error ? error.message : 'Verification failed', success: false },
             { status: 500 }

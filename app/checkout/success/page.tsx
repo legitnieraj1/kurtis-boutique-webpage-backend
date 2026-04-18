@@ -2,7 +2,7 @@
 
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { CheckCircle, Package, ArrowRight } from 'lucide-react';
+import { CheckCircle, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Suspense } from 'react';
 
@@ -18,43 +18,34 @@ function SuccessContent() {
                         <CheckCircle className="w-12 h-12 text-green-600" />
                     </div>
                     <h1 className="text-3xl font-serif font-bold text-gray-900 mb-3">
-                        Payment Successful!
+                        Order Placed!
                     </h1>
                     <p className="text-gray-600">
-                        Thank you for your order. We&apos;ve received your payment and your order is being processed.
+                        Thank you for shopping with Kurtis Boutique. Your payment was successful and your order is being processed.
                     </p>
                 </div>
 
                 {orderId && (
                     <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-                        <div className="flex items-center justify-center gap-3 mb-4">
+                        <div className="flex items-center justify-center gap-3 mb-3">
                             <Package className="w-5 h-5 text-primary" />
-                            <span className="text-sm text-gray-500">Order ID</span>
+                            <span className="text-sm text-gray-500 font-medium">Order ID</span>
                         </div>
-                        <p className="text-lg font-mono font-semibold text-gray-900">
+                        <p className="text-lg font-mono font-semibold text-gray-900 tracking-wide">
                             {orderId}
+                        </p>
+                        <p className="text-xs text-gray-400 mt-3">
+                            Save this Order ID to track your shipment via the link sent to your WhatsApp / email.
                         </p>
                     </div>
                 )}
 
                 <div className="space-y-4">
-                    <p className="text-sm text-gray-500">
-                        A confirmation email has been sent to your registered email address.
-                    </p>
-
-                    <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                        <Link href="/orders">
-                            <Button className="w-full sm:w-auto bg-primary hover:bg-primary/90">
-                                View Orders
-                                <ArrowRight className="ml-2 w-4 h-4" />
-                            </Button>
-                        </Link>
-                        <Link href="/shop">
-                            <Button variant="outline" className="w-full sm:w-auto">
-                                Continue Shopping
-                            </Button>
-                        </Link>
-                    </div>
+                    <Link href="/shop">
+                        <Button className="w-full sm:w-auto bg-primary hover:bg-primary/90 px-8">
+                            Continue Shopping
+                        </Button>
+                    </Link>
                 </div>
             </div>
         </div>

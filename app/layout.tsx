@@ -124,6 +124,7 @@ export const metadata: Metadata = {
 };
 
 import { BackgroundGradientAnimation } from "@/components/ui/background-gradient-animation";
+import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 
 // JSON-LD Schema Markup for SEO
 function SchemaMarkup() {
@@ -465,6 +466,7 @@ export default function RootLayout({
             {children}
           </div>
         </AuthProvider>
+        <PWAInstallPrompt />
         <Toaster
           position="bottom-right"
           toastOptions={{

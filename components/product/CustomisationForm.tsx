@@ -1,11 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
-import { Check, Lock, Loader2 } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import Link from "next/link";
 import { toast } from "sonner";
 
 interface CustomisationFormProps {
@@ -25,7 +23,6 @@ const CUSTOMISATION_TYPES = [
 const PREFERRED_SIZES = ["XS", "S", "M", "L", "XL", "XXL", "Custom Measurement"];
 
 export function CustomisationForm({ productId, productName }: CustomisationFormProps) {
-    const { user } = useStore();
     const [isOpen, setIsOpen] = useState(false);
 
     // Form State
@@ -36,21 +33,6 @@ export function CustomisationForm({ productId, productName }: CustomisationFormP
     const [mobileNumber, setMobileNumber] = useState("");
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
-
-    if (!user) {
-        return (
-            <div className="bg-stone-50 rounded-xl p-8 border border-stone-200 text-center space-y-4 my-8">
-                <Lock className="w-8 h-8 mx-auto text-muted-foreground" />
-                <h3 className="text-xl font-serif font-medium">Looking for Customisation?</h3>
-                <p className="text-muted-foreground">
-                    Please log in to submit a customisation request for this product.
-                </p>
-                <Button asChild variant="default">
-                    <Link href="/login">Login to Request</Link>
-                </Button>
-            </div>
-        );
-    }
 
     const toggleType = (type: string) => {
         setSelectedTypes(prev =>
