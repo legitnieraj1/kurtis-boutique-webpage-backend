@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseAdmin, requireAdmin } from '@/lib/supabase/server';
+import { createSupabaseAdmin, createSupabaseServerClient, requireAdmin } from '@/lib/supabase/server';
 import Razorpay from 'razorpay';
 
 /**
@@ -7,10 +7,6 @@ import Razorpay from 'razorpay';
  *
  * Fetches captured Razorpay payments from the last N days and creates
  * DB orders for any that don't already have a matching order.
- *
- * Body (optional):
- *   { days?: number }            — defaults to 60
- *   { payment_ids?: string[] }   — only recover these specific payment IDs
  */
 export async function POST(request: NextRequest) {
     try {
@@ -19,67 +15,70 @@ export async function POST(request: NextRequest) {
         const body = await request.json().catch(() => ({}));
         const days: number = body.days ?? 60;
 
-        // ── 1. Init Razorpay client ─────────────────────────────────────
+        // ── 1. Get admin user_id to satisfy the NOT NULL user_id FK ────
+        const anonClient = await createSupabaseServerClient();
+        const { data: { user: adminUser } } = await anonClient.auth.getUser();
+        if (!adminUser) {
+            return NextResponse.json({ error: 'Admin session not found' }, { status: 401 });
+        }
+        const adminUserId = adminUser.id;
+
+        // ── 2. Init Razorpay ────────────────────────────────────────────
         const razorpay = new Razorpay({
             key_id: process.env.RAZORPAY_KEY_ID!,
             key_secret: process.env.RAZORPAY_KEY_SECRET!,
         });
 
-        // ── 2. Fetch captured payments ──────────────────────────────────
+        // ── 3. Fetch payments from Razorpay ─────────────────────────────
         const fromTs = Math.floor(Date.now() / 1000) - days * 24 * 60 * 60;
-
-        const paymentsResp = await (razorpay.payments as any).all({
-            from: fromTs,
-            count: 100,
-        });
-
+        const paymentsResp = await (razorpay.payments as any).all({ from: fromTs, count: 100 });
         const payments: any[] = paymentsResp?.items ?? [];
         const captured = payments.filter((p: any) => p.status === 'captured');
 
         if (captured.length === 0) {
-            return NextResponse.json({ message: 'No captured payments found in Razorpay.', recovered: 0, debug: { totalFetched: payments.length } });
+            return NextResponse.json({
+                message: 'No captured payments found.',
+                recovered: 0,
+                debug: { totalFetched: payments.length }
+            });
         }
 
         const adminDb = createSupabaseAdmin();
 
-        // ── 3. Determine which payments to process ──────────────────────
+        // ── 4. Which payments to process ────────────────────────────────
         const paymentIds: string[] | undefined = body.payment_ids;
         const toProcess = paymentIds
             ? captured.filter((p: any) => paymentIds.includes(p.id))
             : captured;
 
-        // ── 4. Get existing orders for duplicate detection ──────────────
+        // ── 5. Existing orders for duplicate detection ──────────────────
         const { data: existingOrders } = await adminDb
             .from('orders')
-            .select('id, order_number, total, created_at')
-            .order('created_at', { ascending: false });
+            .select('id, order_number, total, created_at');
 
         const recovered: any[] = [];
         const skipped: any[] = [];
         const failed: any[] = [];
 
         for (const payment of toProcess) {
-            const amountInRupees = Math.round((payment.amount / 100) * 100) / 100;
+            const amountRupees = Math.round((payment.amount / 100) * 100) / 100;
             const paymentDate = new Date(payment.created_at * 1000);
-            const paymentId = payment.id;
 
-            // ── Duplicate check: same total ±10 AND within 30 minutes ──
-            const duplicate = existingOrders?.find((o) => {
-                const diff = Math.abs(Number(o.total) - amountInRupees);
-                const timeDiff = Math.abs(
-                    new Date(o.created_at).getTime() - paymentDate.getTime()
-                );
-                return diff <= 10 && timeDiff <= 30 * 60 * 1000;
+            // ── Duplicate: same total ±₹10 AND within 30 min ───────────
+            const dup = existingOrders?.find((o) => {
+                const diff = Math.abs(Number(o.total) - amountRupees);
+                const tDiff = Math.abs(new Date(o.created_at).getTime() - paymentDate.getTime());
+                return diff <= 10 && tDiff <= 30 * 60 * 1000;
             });
 
-            if (duplicate) {
-                skipped.push({ paymentId, amount: amountInRupees, reason: `Matches existing order ${duplicate.order_number}` });
+            if (dup) {
+                skipped.push({ paymentId: payment.id, amount: amountRupees, reason: `Matches ${dup.order_number}` });
                 continue;
             }
 
             // ── Extract customer info from Razorpay ─────────────────────
-            // Razorpay stores contact (phone) and email on the payment object
-            const phone: string = payment.contact?.replace(/\D/g, '') ?? '';
+            const rawPhone: string = payment.contact ?? '';
+            const phone: string = rawPhone.replace(/\D/g, '').replace(/^91/, ''); // strip country code
             const email: string = payment.email ?? '';
             const name: string =
                 payment.notes?.customer_name ||
@@ -87,19 +86,21 @@ export async function POST(request: NextRequest) {
                 (email ? email.split('@')[0] : '') ||
                 'Customer';
 
-            // ── Insert order — do NOT set order_number (DB trigger handles it) ──
-            const { data: order, error: orderError } = await adminDb
+            // ── INSERT order ─────────────────────────────────────────────
+            // user_id: use admin's UUID as placeholder (column is NOT NULL)
+            // order_number: NOT set — DB trigger auto-generates it
+            const { data: order, error: insertErr } = await adminDb
                 .from('orders')
                 .insert({
+                    user_id: adminUserId,          // satisfies NOT NULL constraint
                     status: 'confirmed',
-                    // order_number is auto-generated by DB trigger — do not set it
-                    subtotal: amountInRupees,
+                    subtotal: amountRupees,
                     shipping_cost: 0,
                     discount_amount: 0,
-                    total: amountInRupees,
+                    total: amountRupees,
                     shipping_name: name,
                     shipping_phone: phone,
-                    shipping_address_line1: `RECOVERED — contact customer for address`,
+                    shipping_address_line1: 'RECOVERED — contact customer for address',
                     shipping_address_line2: '',
                     shipping_city: '',
                     shipping_state: '',
@@ -108,62 +109,54 @@ export async function POST(request: NextRequest) {
                 .select()
                 .single();
 
-            if (orderError || !order) {
-                console.error(`[Recover] ❌ Order insert failed for payment ${paymentId}:`, orderError);
-                failed.push({ paymentId, amount: amountInRupees, error: orderError?.message ?? 'Insert failed' });
+            if (insertErr || !order) {
+                console.error(`[Recover] ❌ Insert failed for ${payment.id}:`, JSON.stringify(insertErr));
+                failed.push({
+                    paymentId: payment.id,
+                    amount: amountRupees,
+                    error: insertErr?.message ?? 'Unknown insert error',
+                    details: insertErr?.details ?? '',
+                    hint: insertErr?.hint ?? '',
+                });
                 continue;
             }
 
             const orderNumber = order.order_number ?? order.id;
 
-            // ── Insert placeholder order item (no FK — product_id omitted) ─
-            // We insert without product_id; if the column is NOT NULL this will
-            // fail silently — that's acceptable, the order record is what matters.
-            await adminDb.from('order_items').insert({
+            // ── order_items (best-effort, skip if FK fails) ──────────────
+            const { error: itemErr } = await adminDb.from('order_items').insert({
                 order_id: order.id,
-                product_name: `RECOVERED PAYMENT ${paymentId} — Customer: ${phone || email || 'unknown'} — Please update`,
-                size: 'unknown',
+                product_name: `RECOVERED PAYMENT — ₹${amountRupees} | Contact: ${phone || email || 'unknown'} | Razorpay: ${payment.id}`,
+                size: 'N/A',
                 color: null,
                 combo_type: 'single',
                 quantity: 1,
-                unit_price: amountInRupees,
-                total_price: amountInRupees,
-            }).then(({ error }) => {
-                if (error) console.warn(`[Recover] order_items insert skipped for ${orderNumber}:`, error.message);
+                unit_price: amountRupees,
+                total_price: amountRupees,
             });
+            if (itemErr) console.warn(`[Recover] order_items skipped (${orderNumber}):`, itemErr.message);
 
-            // ── Add timeline entry ──────────────────────────────────────
+            // ── order_timeline (best-effort) ─────────────────────────────
             await adminDb.from('order_timeline').insert({
                 order_id: order.id,
                 status: 'confirmed',
-                description: `Recovered from Razorpay | Payment ID: ${paymentId} | Contact: ${phone || email || 'unknown'}`,
-            }).then(({ error }) => {
-                if (error) console.warn(`[Recover] timeline insert skipped:`, error.message);
+                description: `Recovered from Razorpay | Payment: ${payment.id} | Contact: ${phone || email}`,
+            }).then(({ error: tlErr }) => {
+                if (tlErr) console.warn(`[Recover] timeline skipped:`, tlErr.message);
             });
 
-            recovered.push({
-                orderNumber,
-                paymentId,
-                amount: amountInRupees,
-                phone,
-                email,
-                date: paymentDate.toLocaleDateString('en-IN'),
-            });
+            recovered.push({ orderNumber, paymentId: payment.id, amount: amountRupees, phone, email, date: paymentDate.toLocaleDateString('en-IN') });
         }
 
         return NextResponse.json({
-            message: `Recovery complete.`,
+            message: 'Recovery complete.',
             recovered: recovered.length,
             skipped: skipped.length,
             failed: failed.length,
             recoveredOrders: recovered,
             skippedPayments: skipped,
             failedPayments: failed,
-            debug: {
-                totalFetched: payments.length,
-                totalCaptured: captured.length,
-                processed: toProcess.length,
-            },
+            debug: { totalFetched: payments.length, totalCaptured: captured.length, processed: toProcess.length },
         });
 
     } catch (error) {
@@ -171,9 +164,6 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
         }
         console.error('[Recover] Unexpected error:', error);
-        return NextResponse.json(
-            { error: error instanceof Error ? error.message : 'Internal server error' },
-            { status: 500 }
-        );
+        return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal server error' }, { status: 500 });
     }
 }
