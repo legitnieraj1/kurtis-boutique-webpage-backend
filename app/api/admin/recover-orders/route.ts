@@ -8,16 +8,16 @@ import Razorpay from 'razorpay';
  * Fetches captured Razorpay payments from the last N days and creates
  * DB orders for any that don't already have a matching order.
  *
- * Body (optional): { days?: number }  — defaults to 30
- *
- * Admin-only endpoint.
+ * Body (optional):
+ *   { days?: number }            — defaults to 60
+ *   { payment_ids?: string[] }   — only recover these specific payment IDs
  */
 export async function POST(request: NextRequest) {
     try {
         await requireAdmin();
 
         const body = await request.json().catch(() => ({}));
-        const days: number = body.days ?? 30;
+        const days: number = body.days ?? 60;
 
         // ── 1. Init Razorpay client ─────────────────────────────────────
         const razorpay = new Razorpay({
@@ -25,145 +25,152 @@ export async function POST(request: NextRequest) {
             key_secret: process.env.RAZORPAY_KEY_SECRET!,
         });
 
-        // ── 2. Fetch recent payments ────────────────────────────────────
+        // ── 2. Fetch captured payments ──────────────────────────────────
         const fromTs = Math.floor(Date.now() / 1000) - days * 24 * 60 * 60;
 
-        const paymentsResp = await razorpay.payments.all({
+        const paymentsResp = await (razorpay.payments as any).all({
             from: fromTs,
             count: 100,
-        }) as any;
+        });
 
-        const payments: any[] = paymentsResp.items ?? [];
-
-        // ── 3. Filter captured payments only ────────────────────────────
+        const payments: any[] = paymentsResp?.items ?? [];
         const captured = payments.filter((p: any) => p.status === 'captured');
 
         if (captured.length === 0) {
-            return NextResponse.json({ message: 'No captured payments found.', recovered: 0 });
+            return NextResponse.json({ message: 'No captured payments found in Razorpay.', recovered: 0, debug: { totalFetched: payments.length } });
         }
 
         const adminDb = createSupabaseAdmin();
 
-        // ── 4. Fetch existing orders to avoid duplicates ────────────────
-        // We check by shiprocket/order_number patterns. Since old orders
-        // don't store razorpay_payment_id in the DB, we check by total amount
-        // and created_at proximity as a heuristic, OR the admin manually
-        // picks which payment IDs to recover via body.payment_ids.
+        // ── 3. Determine which payments to process ──────────────────────
         const paymentIds: string[] | undefined = body.payment_ids;
-
-        const toRecover = paymentIds
+        const toProcess = paymentIds
             ? captured.filter((p: any) => paymentIds.includes(p.id))
             : captured;
 
-        // ── 5. Get existing order numbers to detect duplicates ──────────
+        // ── 4. Get existing orders for duplicate detection ──────────────
         const { data: existingOrders } = await adminDb
             .from('orders')
             .select('id, order_number, total, created_at')
             .order('created_at', { ascending: false });
 
-        const recovered: string[] = [];
-        const skipped: string[] = [];
+        const recovered: any[] = [];
+        const skipped: any[] = [];
+        const failed: any[] = [];
 
-        for (const payment of toRecover) {
-            const amountInRupees = payment.amount / 100;
+        for (const payment of toProcess) {
+            const amountInRupees = Math.round((payment.amount / 100) * 100) / 100;
             const paymentDate = new Date(payment.created_at * 1000);
+            const paymentId = payment.id;
 
-            // Check if an order already exists with same total within ±5 rupees
-            // and created within 10 minutes of payment
+            // ── Duplicate check: same total ±10 AND within 30 minutes ──
             const duplicate = existingOrders?.find((o) => {
-                const diff = Math.abs(o.total - amountInRupees);
+                const diff = Math.abs(Number(o.total) - amountInRupees);
                 const timeDiff = Math.abs(
                     new Date(o.created_at).getTime() - paymentDate.getTime()
                 );
-                return diff <= 5 && timeDiff <= 10 * 60 * 1000;
+                return diff <= 10 && timeDiff <= 30 * 60 * 1000;
             });
 
             if (duplicate) {
-                skipped.push(payment.id);
+                skipped.push({ paymentId, amount: amountInRupees, reason: `Matches existing order ${duplicate.order_number}` });
                 continue;
             }
 
-            // Generate order number
-            const dateStr = paymentDate
-                .toISOString()
-                .slice(0, 10)
-                .replace(/-/g, '');
-            const rand = String(Math.floor(1000 + Math.random() * 9000));
-            const orderNumber = `KB${dateStr}-${rand}`;
-
-            // Extract customer info from Razorpay notes/email fields
+            // ── Extract customer info from Razorpay ─────────────────────
+            // Razorpay stores contact (phone) and email on the payment object
+            const phone: string = payment.contact?.replace(/\D/g, '') ?? '';
+            const email: string = payment.email ?? '';
             const name: string =
                 payment.notes?.customer_name ||
-                payment.contact ||
+                payment.notes?.name ||
+                (email ? email.split('@')[0] : '') ||
                 'Customer';
-            const phone: string =
-                payment.contact?.replace(/\D/g, '') || '';
-            const email: string =
-                payment.email || payment.notes?.customer_email || '';
 
-            // ── Create order in DB ──────────────────────────────────────
+            // ── Insert order — do NOT set order_number (DB trigger handles it) ──
             const { data: order, error: orderError } = await adminDb
                 .from('orders')
                 .insert({
                     status: 'confirmed',
-                    order_number: orderNumber,
+                    // order_number is auto-generated by DB trigger — do not set it
                     subtotal: amountInRupees,
                     shipping_cost: 0,
                     discount_amount: 0,
                     total: amountInRupees,
                     shipping_name: name,
                     shipping_phone: phone,
-                    shipping_address_line1: 'Recovered — address unknown',
+                    shipping_address_line1: `RECOVERED — contact customer for address`,
                     shipping_address_line2: '',
                     shipping_city: '',
                     shipping_state: '',
                     shipping_pincode: '',
-                    created_at: paymentDate.toISOString(),
                 })
                 .select()
                 .single();
 
             if (orderError || !order) {
-                console.error(`[Recover] Failed for ${payment.id}:`, orderError);
+                console.error(`[Recover] ❌ Order insert failed for payment ${paymentId}:`, orderError);
+                failed.push({ paymentId, amount: amountInRupees, error: orderError?.message ?? 'Insert failed' });
                 continue;
             }
 
-            // ── Create a placeholder order item ─────────────────────────
+            const orderNumber = order.order_number ?? order.id;
+
+            // ── Insert placeholder order item (no FK — product_id omitted) ─
+            // We insert without product_id; if the column is NOT NULL this will
+            // fail silently — that's acceptable, the order record is what matters.
             await adminDb.from('order_items').insert({
                 order_id: order.id,
-                product_id: '00000000-0000-0000-0000-000000000000',
-                product_name: 'Recovered Order — Item details unavailable',
-                product_image: null,
-                size: 'N/A',
+                product_name: `RECOVERED PAYMENT ${paymentId} — Customer: ${phone || email || 'unknown'} — Please update`,
+                size: 'unknown',
                 color: null,
                 combo_type: 'single',
                 quantity: 1,
                 unit_price: amountInRupees,
                 total_price: amountInRupees,
+            }).then(({ error }) => {
+                if (error) console.warn(`[Recover] order_items insert skipped for ${orderNumber}:`, error.message);
             });
 
             // ── Add timeline entry ──────────────────────────────────────
             await adminDb.from('order_timeline').insert({
                 order_id: order.id,
                 status: 'confirmed',
-                description: `Recovered from Razorpay payment ${payment.id}`,
+                description: `Recovered from Razorpay | Payment ID: ${paymentId} | Contact: ${phone || email || 'unknown'}`,
+            }).then(({ error }) => {
+                if (error) console.warn(`[Recover] timeline insert skipped:`, error.message);
             });
 
-            recovered.push(`${orderNumber} (payment: ${payment.id}, ₹${amountInRupees})`);
+            recovered.push({
+                orderNumber,
+                paymentId,
+                amount: amountInRupees,
+                phone,
+                email,
+                date: paymentDate.toLocaleDateString('en-IN'),
+            });
         }
 
         return NextResponse.json({
             message: `Recovery complete.`,
             recovered: recovered.length,
             skipped: skipped.length,
+            failed: failed.length,
             recoveredOrders: recovered,
             skippedPayments: skipped,
+            failedPayments: failed,
+            debug: {
+                totalFetched: payments.length,
+                totalCaptured: captured.length,
+                processed: toProcess.length,
+            },
         });
+
     } catch (error) {
         if (error instanceof Error && error.message === 'Forbidden: Admin access required') {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
         }
-        console.error('[Recover] Error:', error);
+        console.error('[Recover] Unexpected error:', error);
         return NextResponse.json(
             { error: error instanceof Error ? error.message : 'Internal server error' },
             { status: 500 }

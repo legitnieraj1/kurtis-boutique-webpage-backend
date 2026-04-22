@@ -149,23 +149,36 @@ export default function AdminOrdersPage() {
     };
 
     const recoverOrders = async () => {
-        if (!confirm("This will scan Razorpay for captured payments in the last 30 days and create missing orders. Continue?")) return;
+        if (!confirm("This will scan Razorpay for captured payments in the last 60 days and create missing orders. Continue?")) return;
         setIsRecovering(true);
         try {
             const response = await fetch('/api/admin/recover-orders', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ days: 30 }),
+                body: JSON.stringify({ days: 60 }),
             });
             const data = await response.json();
             if (response.ok) {
-                toast.success(`Recovered ${data.recovered} order(s), skipped ${data.skipped} duplicate(s).`);
-                if (data.recovered > 0) fetchOrders();
+                if (data.recovered > 0) {
+                    // Build a readable summary of what was recovered
+                    const lines = data.recoveredOrders.map((o: any) =>
+                        `• ${o.orderNumber} — ₹${o.amount} — ${o.phone || o.email || 'no contact'} (${o.date})`
+                    ).join('\n');
+                    alert(`✅ Recovered ${data.recovered} order(s):\n\n${lines}\n\nℹ️ Skipped ${data.skipped} (already existed). ${data.failed > 0 ? `⚠️ ${data.failed} failed — see console.` : ''}`);
+                    fetchOrders();
+                } else {
+                    const debugInfo = `Fetched: ${data.debug?.totalFetched ?? '?'} | Captured: ${data.debug?.totalCaptured ?? '?'} | Processed: ${data.debug?.processed ?? '?'}`;
+                    const failInfo = data.failedPayments?.length > 0
+                        ? `\n\nFailed:\n${data.failedPayments.map((f: any) => `• ${f.paymentId} ₹${f.amount}: ${f.error}`).join('\n')}`
+                        : '';
+                    alert(`No new orders recovered.\nSkipped ${data.skipped} duplicate(s).\n\nDebug: ${debugInfo}${failInfo}`);
+                }
             } else {
                 toast.error(data.error || "Recovery failed");
             }
-        } catch {
+        } catch (err) {
             toast.error("Recovery request failed");
+            console.error(err);
         } finally {
             setIsRecovering(false);
         }
