@@ -15,6 +15,17 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 
+interface OrderItem {
+    product_name: string;
+    size: string;
+    color?: string | null;
+    combo_type?: string;
+    baby_size?: string | null;
+    quantity: number;
+    unit_price: number;
+    total_price: number;
+}
+
 interface Order {
     id: string;
     orderNumber: string;
@@ -27,6 +38,14 @@ interface Order {
         email: string;
         phone: string;
     };
+    shippingAddress?: {
+        line1?: string;
+        line2?: string;
+        city?: string;
+        state?: string;
+        pincode?: string;
+    };
+    items?: OrderItem[];
     tracking: {
         awb: string | null;
         courier: string | null;
@@ -86,6 +105,36 @@ function buildWhatsAppMessage(order: Order): string {
         `kurtisboutique.in`;
 
     return message;
+}
+
+const ADMIN_PHONE = '919787635982'; // Order manager number
+
+function buildAdminWhatsAppMessage(order: Order): string {
+    const itemLines = (order.items || []).map((item, i) => {
+        const parts = [`   ${i + 1}. *${item.product_name}*`];
+        if (item.size && item.size !== 'N/A') parts.push(`      Size: ${item.size}`);
+        if (item.color) parts.push(`      Colour: ${item.color}`);
+        if (item.combo_type && item.combo_type !== 'single') parts.push(`      Type: ${item.combo_type === 'mom_baby' ? 'Mom & Baby Combo' : 'Family Combo'}`);
+        if (item.baby_size) parts.push(`      Baby Size: ${item.baby_size}`);
+        parts.push(`      Qty: ${item.quantity}  |  ₹${item.unit_price} × ${item.quantity} = ₹${item.total_price}`);
+        return parts.join('\n');
+    }).join('\n\n');
+
+    const addr = order.shippingAddress;
+    const location = [addr?.line1, addr?.city, addr?.state, addr?.pincode].filter(Boolean).join(', ');
+
+    return (
+        `🛍️ *NEW ORDER ALERT — Kurtis Boutique*\n\n` +
+        `📦 *Order ID:* ${order.orderNumber}\n` +
+        `📅 *Date:* ${order.date}\n` +
+        `💰 *Total Paid:* ₹${order.total}\n\n` +
+        `👤 *Customer Details*\n` +
+        `   Name: ${order.customer.name}\n` +
+        `   Phone: ${order.customer.phone}\n` +
+        `   Location: ${location || 'N/A'}\n\n` +
+        `🛒 *Products Ordered*\n${itemLines || '   (details not available)'}\n\n` +
+        `Please pack & process this order. Thank you! 🙏`
+    );
 }
 
 export default function AdminOrdersPage() {
@@ -182,6 +231,12 @@ export default function AdminOrdersPage() {
         } finally {
             setIsRecovering(false);
         }
+    };
+
+    const sendAdminWhatsApp = (order: Order) => {
+        const message = buildAdminWhatsAppMessage(order);
+        const url = `https://wa.me/${ADMIN_PHONE}?text=${encodeURIComponent(message)}`;
+        window.open(url, '_blank');
     };
 
     const sendWhatsApp = (order: Order) => {
@@ -321,15 +376,28 @@ export default function AdminOrdersPage() {
                                             {formatPrice(order.total)}
                                         </td>
                                         <td className="px-6 py-4">
-                                            <Button
-                                                size="sm"
-                                                className="bg-green-500 hover:bg-green-600 text-white h-8 gap-1.5 shadow-sm"
-                                                onClick={() => sendWhatsApp(order)}
-                                                title={order.customer.phone ? `Send to ${order.customer.phone}` : "No phone number"}
-                                            >
-                                                <MessageCircle className="w-3.5 h-3.5" />
-                                                <span className="hidden sm:inline">Send Update</span>
-                                            </Button>
+                                            <div className="flex gap-2 flex-wrap">
+                                                {/* Customer WhatsApp update */}
+                                                <Button
+                                                    size="sm"
+                                                    className="bg-green-500 hover:bg-green-600 text-white h-8 gap-1.5 shadow-sm"
+                                                    onClick={() => sendWhatsApp(order)}
+                                                    title={order.customer.phone ? `Send update to customer ${order.customer.phone}` : "No phone number"}
+                                                >
+                                                    <MessageCircle className="w-3.5 h-3.5" />
+                                                    <span className="hidden sm:inline">Send Update</span>
+                                                </Button>
+                                                {/* Admin/order-manager alert */}
+                                                <Button
+                                                    size="sm"
+                                                    className="bg-purple-600 hover:bg-purple-700 text-white h-8 gap-1.5 shadow-sm"
+                                                    onClick={() => sendAdminWhatsApp(order)}
+                                                    title="Notify order manager (9787635982)"
+                                                >
+                                                    <MessageCircle className="w-3.5 h-3.5" />
+                                                    <span className="hidden sm:inline">Notify Admin</span>
+                                                </Button>
+                                            </div>
                                         </td>
                                         <td className="px-6 py-4">
                                             <Button
