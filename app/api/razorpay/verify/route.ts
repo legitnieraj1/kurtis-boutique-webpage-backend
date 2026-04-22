@@ -145,8 +145,8 @@ export async function POST(request: NextRequest) {
 
         // ── 6. Use shipping cost from initiate (exact amount charged) ───
         // Fall back to calculation only if client didn't send it.
-        let shippingCost = typeof clientShippingCost === 'number' ? clientShippingCost : null;
-        if (shippingCost === null) {
+        let shippingCost: number = typeof clientShippingCost === 'number' ? clientShippingCost : -1;
+        if (shippingCost === -1) {
             shippingCost = subtotal >= 999 ? 0 : 99;
             const pincode = parsedShipping?.pincode;
             if (pincode) {
