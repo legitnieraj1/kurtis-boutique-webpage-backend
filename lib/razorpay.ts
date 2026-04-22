@@ -8,6 +8,7 @@ export interface RazorpayOrderOptions {
     amount: number; // Amount in paise (e.g., 50000 for ₹500)
     currency?: string;
     receipt: string;
+    payment_capture?: 0 | 1; // 1 = auto-capture (required for live mode)
     notes?: Record<string, string>;
 }
 

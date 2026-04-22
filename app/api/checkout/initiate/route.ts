@@ -83,6 +83,7 @@ export async function POST(request: NextRequest) {
             amount: Math.round(totalAmount * 100),
             currency: 'INR',
             receipt: orderId,
+            payment_capture: 1,  // auto-capture on live mode (prevents 'authorized' limbo)
             notes: {
                 customer_email: customerEmail || '',
                 customer_phone: shippingAddress?.phone || '',

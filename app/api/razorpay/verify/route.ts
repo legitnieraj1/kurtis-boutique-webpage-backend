@@ -79,18 +79,22 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Invalid payment signature', success: false }, { status: 400 });
         }
 
-        // ── 3. Confirm payment is actually captured via Razorpay API ────
+        // ── 3. Confirm payment is valid via Razorpay API ────────────────
         // Signature only proves the request came from Razorpay modal; this
         // confirms the money actually moved (guards against replayed requests).
+        // Accept both 'captured' (auto-capture on) and 'authorized' (live mode
+        // default when payment_capture=1 hasn't propagated yet, or older orders).
         try {
             const payment = await RazorpayService.fetchPayment(razorpay_payment_id);
-            if (payment.status !== 'captured') {
-                console.error(`[Razorpay] Payment ${razorpay_payment_id} not captured — status: ${payment.status}`);
-                return NextResponse.json({ error: 'Payment not captured', success: false }, { status: 402 });
+            const validStatuses = ['captured', 'authorized'];
+            if (!validStatuses.includes(payment.status)) {
+                console.error(`[Razorpay] Payment ${razorpay_payment_id} has invalid status: ${payment.status}`);
+                return NextResponse.json({ error: `Payment not completed (status: ${payment.status})`, success: false }, { status: 402 });
             }
+            console.log(`[Razorpay] Payment ${razorpay_payment_id} status: ${payment.status} ✓`);
         } catch (fetchErr) {
             // Non-fatal — if Razorpay API is down we still proceed (signature was valid)
-            console.warn('[Razorpay] Could not confirm capture status:', fetchErr);
+            console.warn('[Razorpay] Could not confirm payment status:', fetchErr);
         }
 
         const adminDb = createSupabaseAdmin();
