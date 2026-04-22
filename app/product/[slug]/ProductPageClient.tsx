@@ -171,6 +171,36 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
         router.push('/checkout');
     };
 
+    /**
+     * Called by CustomisationForm when the customer fills their requirements and clicks "Buy Customised".
+     * Validates size is selected (in the main product section above), embeds the full customisation note
+     * into the product name so it appears in the order description in both admin panel and Shiprocket.
+     */
+    const handleBuyCustomised = async (
+        note: string,
+        mobile: string,
+        contactPref: "whatsapp" | "call"
+    ) => {
+        if (!validateSelections()) {
+            toast.error("Please scroll up and select your size before buying the customised option.");
+            return;
+        }
+
+        const babySize = (comboType === 'mom_baby' || comboType === 'family') ? selectedBabySize : null;
+        const finalSize = buildFinalSize();
+
+        // Embed the customisation note inside the product name snapshot.
+        // This flows through to order_items.product_name → admin panel → Shiprocket item name.
+        const customProductData = {
+            ...buildProductData(),
+            name: `${product.name} ✂ CUSTOM — ${note}`,
+        };
+
+        await addToCart(product.id, finalSize, selectedColor, comboType, quantity, babySize, customProductData);
+        toast.success("Customised order added! Proceeding to checkout…");
+        router.push('/checkout');
+    };
+
     const toggleWishlist = () => {
         if (isWishlisted) {
             removeFromWishlist(product.id);
@@ -467,7 +497,11 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
                             </div>
                         </div>
 
-                        <CustomisationForm productId={product.id} productName={product.name} />
+                        <CustomisationForm
+                            productId={product.id}
+                            productName={product.name}
+                            onBuyCustomised={handleBuyCustomised}
+                        />
                     </div>
                 </div>
             </main>
