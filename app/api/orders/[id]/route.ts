@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServerClient, requireAuth, isAdmin } from '@/lib/supabase/server';
+import { createSupabaseAdmin, requireAuth, isAdmin } from '@/lib/supabase/server';
 
 interface RouteParams {
     params: Promise<{ id: string }>;
@@ -10,7 +10,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     try {
         const user = await requireAuth();
         const { id } = await params;
-        const supabase = await createSupabaseServerClient();
+        const supabase = createSupabaseAdmin();
         const adminUser = await isAdmin();
 
         // Build query with nested joins for items->products and user profile
@@ -43,14 +43,15 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             return NextResponse.json({ error: 'Order not found' }, { status: 404 });
         }
 
-        // Transform items to include image_url easier
+        // Transform items — always prefer the stored snapshot (product_name) as it
+        // contains customisation notes. Use the DB product name only as a last resort.
         const formattedOrder = {
             ...order,
             items: order.items.map((item: any) => ({
                 ...item,
-                product_name: item.product?.name || item.product_name || 'Unknown Product', // Fallback to snapshot
+                product_name: item.product_name || item.product?.name || 'Unknown Product',
                 image_url: item.product?.images?.[0]?.image_url || null,
-                slug: item.product?.slug
+                slug: item.product?.slug,
             }))
         };
 
