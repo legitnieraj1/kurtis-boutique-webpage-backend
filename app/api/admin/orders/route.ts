@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServerClient, requireAdmin } from '@/lib/supabase/server';
+import { createSupabaseAdmin, requireAdmin } from '@/lib/supabase/server';
 
 // GET /api/admin/orders - List all orders with filters (admin only)
 export async function GET(request: NextRequest) {
     try {
         await requireAdmin();
-        const supabase = await createSupabaseServerClient();
+
+        // Use admin client so RLS never filters out guest/anonymous orders
+        const supabase = createSupabaseAdmin();
         const { searchParams } = new URL(request.url);
 
         const status = searchParams.get('status');

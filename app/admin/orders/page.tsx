@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Eye, Search, RefreshCw, Package, CheckCircle, MessageCircle, Trash2 } from "lucide-react";
+import { Eye, Search, RefreshCw, Package, CheckCircle, MessageCircle, Trash2, CloudDownload } from "lucide-react";
 import Link from "next/link";
 import { formatPrice } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -93,6 +93,7 @@ export default function AdminOrdersPage() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [dateFilter, setDateFilter] = useState("all");
+    const [isRecovering, setIsRecovering] = useState(false);
 
     const fetchOrders = async () => {
         setLoading(true);
@@ -144,6 +145,29 @@ export default function AdminOrdersPage() {
             }
         } catch {
             toast.error("Error deleting order");
+        }
+    };
+
+    const recoverOrders = async () => {
+        if (!confirm("This will scan Razorpay for captured payments in the last 30 days and create missing orders. Continue?")) return;
+        setIsRecovering(true);
+        try {
+            const response = await fetch('/api/admin/recover-orders', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ days: 30 }),
+            });
+            const data = await response.json();
+            if (response.ok) {
+                toast.success(`Recovered ${data.recovered} order(s), skipped ${data.skipped} duplicate(s).`);
+                if (data.recovered > 0) fetchOrders();
+            } else {
+                toast.error(data.error || "Recovery failed");
+            }
+        } catch {
+            toast.error("Recovery request failed");
+        } finally {
+            setIsRecovering(false);
         }
     };
 
@@ -210,6 +234,10 @@ export default function AdminOrdersPage() {
                     <Button variant="outline" onClick={fetchOrders} disabled={loading}>
                         <RefreshCw className={cn("w-4 h-4 mr-2", loading && "animate-spin")} />
                         Refresh
+                    </Button>
+                    <Button variant="outline" onClick={recoverOrders} disabled={isRecovering} className="border-blue-200 text-blue-700 hover:bg-blue-50">
+                        <CloudDownload className={cn("w-4 h-4 mr-2", isRecovering && "animate-pulse")} />
+                        {isRecovering ? "Recovering..." : "Recover from Razorpay"}
                     </Button>
                 </div>
             </div>
