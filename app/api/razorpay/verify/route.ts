@@ -239,23 +239,14 @@ export async function POST(request: NextRequest) {
             shipping_pincode: (parsedShipping?.pincode || '').trim(),
         };
 
-        // Store razorpay_order_id if the column exists (enables idempotency on retry)
-        // If column doesn't exist, Supabase returns an error we catch below.
+        // razorpay_order_id enables idempotency — duplicate verify calls return the existing order (step 4 above)
         orderInsert.razorpay_order_id = razorpay_order_id;
 
-        let { data: order, error: orderError } = await adminDb
+        const { data: order, error: orderError } = await adminDb
             .from('orders')
             .insert(orderInsert)
             .select()
             .single();
-
-        // If razorpay_order_id column doesn't exist, retry without it
-        if (orderError?.message?.includes('razorpay_order_id')) {
-            delete orderInsert.razorpay_order_id;
-            const retry = await adminDb.from('orders').insert(orderInsert).select().single();
-            order = retry.data;
-            orderError = retry.error;
-        }
 
         if (orderError || !order) {
             const dbErrMsg = orderError?.message || 'unknown DB error';
@@ -339,9 +330,9 @@ export async function POST(request: NextRequest) {
 
             if (shiprocketOrder?.order_id) {
                 await adminDb.from('orders').update({
-                    shiprocket_order_id: shiprocketOrder.order_id,
-                    shiprocket_shipment_id: shiprocketOrder.shipment_id,
-                    awb_code: shiprocketOrder.awb_code,
+                    shiprocket_order_id: shiprocketOrder.order_id,   // column added in migration
+                    shipment_id: shiprocketOrder.shipment_id ? String(shiprocketOrder.shipment_id) : null,
+                    awb_id: shiprocketOrder.awb_code || null,          // DB column is awb_id not awb_code
                 }).eq('id', order.id);
             }
         } catch (srErr) {
