@@ -169,8 +169,9 @@ export async function POST(request: NextRequest) {
         const total = subtotal + shippingCost;
 
         // ── 7. Resolve user_id ──────────────────────────────────────────
-        // Priority: body (client session) → server cookie → null
-        // user_id is NOT NULL in orders table so we need a reliable value.
+        // user_id is NOT NULL in orders — we MUST have a real UUID.
+        // Priority: body (client session) → server cookie → signInAnonymously
+        //           → admin-created guest user (nuclear fallback)
         let userId: string | null = (bodyUserId && isValidUUID(bodyUserId)) ? bodyUserId : null;
 
         if (!userId) {
@@ -182,7 +183,6 @@ export async function POST(request: NextRequest) {
         }
 
         if (!userId) {
-            // Last resort: sign in anonymously server-side to get a real UUID
             try {
                 const anonClient = await createSupabaseServerClient();
                 const { data } = await anonClient.auth.signInAnonymously();
@@ -190,11 +190,41 @@ export async function POST(request: NextRequest) {
             } catch { /* continue */ }
         }
 
+        // Nuclear fallback: create a ghost guest user via admin client.
+        // This fires only if anonymous auth is disabled or cookies are broken.
+        if (!userId) {
+            try {
+                const guestEmail = `guest-${Date.now()}-${Math.floor(Math.random() * 9999)}@checkout.kurtisboutique.in`;
+                const { data } = await adminDb.auth.admin.createUser({
+                    email: guestEmail,
+                    email_confirm: true,
+                    user_metadata: { source: 'guest_checkout', payment_id: razorpay_payment_id },
+                });
+                if (data.user?.id) {
+                    userId = data.user.id;
+                    console.log('[Razorpay] Created ghost guest user for order:', guestEmail);
+                }
+            } catch (adminUserErr) {
+                console.error('[Razorpay] ❌ Could not create guest user:', adminUserErr);
+            }
+        }
+
+        if (!userId) {
+            // Absolute last resort: fail clearly rather than hit DB NOT NULL constraint
+            console.error('[Razorpay] ❌ Cannot resolve user_id — aborting order creation. Payment:', razorpay_payment_id);
+            return NextResponse.json({
+                success: false,
+                error: `Payment captured (${razorpay_payment_id}) but order could not be created (auth issue). Please contact support — your money is safe.`,
+                paymentId: razorpay_payment_id,
+            }, { status: 500 });
+        }
+
         // ── 8. Insert order ─────────────────────────────────────────────
         const fallbackOrderNumber = generateOrderNumber();
         const phone10 = sanitizePhone(parsedShipping?.phone || '');
 
         const orderInsert: Record<string, any> = {
+            user_id: userId,
             status: 'pending',
             subtotal,
             shipping_cost: shippingCost,
@@ -212,8 +242,6 @@ export async function POST(request: NextRequest) {
         // Store razorpay_order_id if the column exists (enables idempotency on retry)
         // If column doesn't exist, Supabase returns an error we catch below.
         orderInsert.razorpay_order_id = razorpay_order_id;
-
-        if (userId) orderInsert.user_id = userId;
 
         let { data: order, error: orderError } = await adminDb
             .from('orders')
