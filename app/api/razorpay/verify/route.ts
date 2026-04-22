@@ -348,33 +348,7 @@ export async function POST(request: NextRequest) {
             console.error('[WebPush] ⚠️ Error:', pushErr);
         }
 
-        // ── 14. Email notification to owner ────────────────────────────
-        try {
-            const { sendOwnerOrderNotification } = await import('@/lib/email');
-            await sendOwnerOrderNotification({
-                orderNumber,
-                total,
-                customerName: (parsedShipping?.name || 'Customer').trim(),
-                customerPhone: phone10,
-                customerEmail: customerEmail || '',
-                shippingAddress: [
-                    parsedShipping?.address,
-                    parsedShipping?.city,
-                    parsedShipping?.state,
-                    parsedShipping?.pincode,
-                ].filter(Boolean).join(', '),
-                items: orderItemsData.map(i => ({
-                    name: i.product_name,
-                    quantity: i.quantity,
-                    price: i.unit_price,
-                })),
-                paymentId: razorpay_payment_id,
-            });
-        } catch (emailErr) {
-            console.error('[Email] ⚠️ Owner notification failed (non-fatal):', emailErr);
-        }
-
-        // ── 15. Success ─────────────────────────────────────────────────
+        // ── 14. Success ─────────────────────────────────────────────────
         return NextResponse.json({
             success: true,
             orderId: order.id,
