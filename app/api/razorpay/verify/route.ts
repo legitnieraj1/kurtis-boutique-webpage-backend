@@ -258,11 +258,23 @@ export async function POST(request: NextRequest) {
         }
 
         if (orderError || !order) {
+            const dbErrMsg = orderError?.message || 'unknown DB error';
+            const dbErrDetails = orderError?.details || '';
+            const dbErrHint = orderError?.hint || '';
             console.error('[Razorpay] ❌ Order insert failed:', JSON.stringify(orderError));
+            console.error('[Razorpay] ❌ Insert payload (no secrets):', JSON.stringify({
+                user_id: orderInsert.user_id,
+                status: orderInsert.status,
+                subtotal: orderInsert.subtotal,
+                total: orderInsert.total,
+                shipping_name: orderInsert.shipping_name,
+                shipping_pincode: orderInsert.shipping_pincode,
+            }));
             return NextResponse.json({
                 success: false,
-                error: `Payment captured (${razorpay_payment_id}) but order creation failed. Please contact support — your money is safe.`,
+                error: `Payment captured (${razorpay_payment_id}) but order creation failed — ${dbErrMsg}${dbErrDetails ? ` | ${dbErrDetails}` : ''}${dbErrHint ? ` | Hint: ${dbErrHint}` : ''}. Money is safe.`,
                 paymentId: razorpay_payment_id,
+                dbError: dbErrMsg,
             }, { status: 500 });
         }
 
