@@ -4,7 +4,7 @@ import { RazorpayService } from '@/lib/razorpay';
 import { ShiprocketService } from '@/lib/shiprocket';
 
 interface CartItemPayload {
-    product_id: string;
+    product_id?: string | null;
     size: string;
     quantity: number;
     color?: string | null;
@@ -15,26 +15,39 @@ interface CartItemPayload {
     product_image?: string | null;
 }
 
-/** Generate order number in format KB{YYYYMMDD}-{4 random digits} */
+/** Generate KB{YYYYMMDD}-{4 rand} order number (fallback if DB trigger absent) */
 function generateOrderNumber(): string {
-    const now = new Date();
-    const date = now.toISOString().slice(0, 10).replace(/-/g, '');
+    const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     const rand = String(Math.floor(1000 + Math.random() * 9000));
     return `KB${date}-${rand}`;
 }
 
+/** Sanitize phone to exactly 10 Indian digits (Shiprocket requirement) */
+function sanitizePhone(raw: string): string {
+    const digits = (raw || '').replace(/\D/g, '');
+    if (digits.startsWith('91') && digits.length === 12) return digits.slice(2);
+    if (digits.startsWith('0') && digits.length === 11) return digits.slice(1);
+    return digits.slice(-10);
+}
+
+/** UUID v4 regex check */
+function isValidUUID(v: string) {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+}
+
 export async function POST(request: NextRequest) {
     try {
-        // ── 1. Parse body ───────────────────────────────────────────────
+        // ── 1. Parse & validate body ────────────────────────────────────
         const body = await request.json();
         const {
             razorpay_order_id,
             razorpay_payment_id,
             razorpay_signature,
             shippingAddress,
-            billingAddress,
             cartItems,
             customerEmail,
+            userId: bodyUserId,
+            shippingCost: clientShippingCost,
         } = body as {
             razorpay_order_id: string;
             razorpay_payment_id: string;
@@ -44,187 +57,216 @@ export async function POST(request: NextRequest) {
             billingAddress: Record<string, string>;
             cartItems: CartItemPayload[];
             customerEmail: string;
+            userId?: string;
+            shippingCost?: number;
         };
 
-        // ── 2. Verify Razorpay signature ────────────────────────────────
+        if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+            return NextResponse.json({ error: 'Missing payment fields', success: false }, { status: 400 });
+        }
+
+        if (!cartItems || cartItems.length === 0) {
+            return NextResponse.json({ error: 'Cart items missing', success: false }, { status: 400 });
+        }
+
+        // ── 2. Verify Razorpay HMAC signature ───────────────────────────
         const isValid = RazorpayService.verifyPaymentSignature(
             razorpay_order_id,
             razorpay_payment_id,
             razorpay_signature
         );
-
         if (!isValid) {
-            return NextResponse.json(
-                { error: 'Invalid payment signature', success: false },
-                { status: 400 }
-            );
+            return NextResponse.json({ error: 'Invalid payment signature', success: false }, { status: 400 });
         }
 
-        if (!cartItems || cartItems.length === 0) {
-            return NextResponse.json(
-                { error: 'Cart items missing from request', success: false },
-                { status: 400 }
-            );
+        // ── 3. Confirm payment is actually captured via Razorpay API ────
+        // Signature only proves the request came from Razorpay modal; this
+        // confirms the money actually moved (guards against replayed requests).
+        try {
+            const payment = await RazorpayService.fetchPayment(razorpay_payment_id);
+            if (payment.status !== 'captured') {
+                console.error(`[Razorpay] Payment ${razorpay_payment_id} not captured — status: ${payment.status}`);
+                return NextResponse.json({ error: 'Payment not captured', success: false }, { status: 402 });
+            }
+        } catch (fetchErr) {
+            // Non-fatal — if Razorpay API is down we still proceed (signature was valid)
+            console.warn('[Razorpay] Could not confirm capture status:', fetchErr);
         }
 
-        // ── 3. Use ADMIN client for all DB writes (bypasses RLS) ────────
         const adminDb = createSupabaseAdmin();
 
-        // ── 4. Parse shipping address ───────────────────────────────────
-        const parsedShipping =
-            typeof shippingAddress === 'string'
-                ? JSON.parse(shippingAddress)
-                : shippingAddress;
+        // ── 4. Idempotency — prevent duplicate orders ───────────────────
+        // If this razorpay_order_id was already processed, return the existing order.
+        const { data: existingOrder } = await adminDb
+            .from('orders')
+            .select('id, order_number')
+            .eq('razorpay_order_id', razorpay_order_id)
+            .maybeSingle();
 
-        // ── 5. Build order items + calculate subtotal ───────────────────
+        if (existingOrder) {
+            console.log(`[Razorpay] Duplicate verify for ${razorpay_order_id} — returning existing order`);
+            return NextResponse.json({
+                success: true,
+                orderId: existingOrder.id,
+                orderNumber: existingOrder.order_number,
+                paymentId: razorpay_payment_id,
+                message: 'Order already created.',
+            });
+        }
+
+        // ── 5. Parse shipping & validate cart items ─────────────────────
+        const parsedShipping = typeof shippingAddress === 'string'
+            ? JSON.parse(shippingAddress) : shippingAddress;
+
         let subtotal = 0;
         const orderItemsData = cartItems.map((item) => {
-            const itemTotal = item.unit_price * item.quantity;
+            const price = Math.max(0, Number(item.unit_price) || 0);
+            const qty = Math.max(1, Number(item.quantity) || 1);
+            const itemTotal = price * qty;
             subtotal += itemTotal;
             return {
-                product_id: item.product_id,
-                product_name: item.product_name,
+                // Only include product_id if it's a valid UUID — avoids FK violations
+                ...(item.product_id && isValidUUID(item.product_id) ? { product_id: item.product_id } : {}),
+                product_name: item.product_name || 'Product',
                 product_image: item.product_image || null,
-                size: item.size,
+                size: item.size || 'N/A',
                 color: item.color || null,
                 combo_type: item.combo_type || 'single',
                 baby_size: item.baby_size || null,
-                quantity: item.quantity,
-                unit_price: item.unit_price,
+                quantity: qty,
+                unit_price: price,
                 total_price: itemTotal,
             };
         });
 
-        // ── 6. Calculate shipping cost ──────────────────────────────────
-        let shippingCost = subtotal >= 999 ? 0 : 99;
-        const deliveryPincode = parsedShipping?.pincode;
-
-        if (deliveryPincode) {
-            try {
-                const pickupPostcode = process.env.SHIPROCKET_PICKUP_POSTCODE
-                    ? parseInt(process.env.SHIPROCKET_PICKUP_POSTCODE)
-                    : 110001;
-
-                const serviceResponse: any = await ShiprocketService.checkServiceability({
-                    pickup_postcode: pickupPostcode,
-                    delivery_postcode: parseInt(deliveryPincode),
-                    weight: 0.5,
-                    cod: 0,
-                });
-
-                if (
-                    serviceResponse.status === 200 &&
-                    serviceResponse.data?.available_courier_companies?.length > 0
-                ) {
-                    const couriers = serviceResponse.data.available_courier_companies;
-                    couriers.sort((a: any, b: any) => a.rate - b.rate);
-                    shippingCost = couriers[0].rate;
-                }
-            } catch {
-                // keep default
+        // ── 6. Use shipping cost from initiate (exact amount charged) ───
+        // Fall back to calculation only if client didn't send it.
+        let shippingCost = typeof clientShippingCost === 'number' ? clientShippingCost : null;
+        if (shippingCost === null) {
+            shippingCost = subtotal >= 999 ? 0 : 99;
+            const pincode = parsedShipping?.pincode;
+            if (pincode) {
+                try {
+                    const pickup = process.env.SHIPROCKET_PICKUP_POSTCODE
+                        ? parseInt(process.env.SHIPROCKET_PICKUP_POSTCODE) : 110001;
+                    const sr: any = await ShiprocketService.checkServiceability({
+                        pickup_postcode: pickup,
+                        delivery_postcode: parseInt(pincode),
+                        weight: 0.5, cod: 0,
+                    });
+                    if (sr.status === 200 && sr.data?.available_courier_companies?.length > 0) {
+                        const sorted = [...sr.data.available_courier_companies].sort((a: any, b: any) => a.rate - b.rate);
+                        shippingCost = sorted[0].rate;
+                    }
+                } catch { /* keep default */ }
             }
         }
 
         const total = subtotal + shippingCost;
 
-        // ── 7. Try to get logged-in / anonymous user id ─────────────────
-        let userId: string | null = null;
-        try {
-            const anonClient = await createSupabaseServerClient();
-            const {
-                data: { user },
-            } = await anonClient.auth.getUser();
-            if (user) userId = user.id;
-        } catch {
-            /* guest without session cookie — that's fine */
+        // ── 7. Resolve user_id ──────────────────────────────────────────
+        // Priority: body (client session) → server cookie → null
+        // user_id is NOT NULL in orders table so we need a reliable value.
+        let userId: string | null = (bodyUserId && isValidUUID(bodyUserId)) ? bodyUserId : null;
+
+        if (!userId) {
+            try {
+                const anonClient = await createSupabaseServerClient();
+                const { data: { user } } = await anonClient.auth.getUser();
+                if (user?.id) userId = user.id;
+            } catch { /* no session */ }
         }
 
-        // ── 8. Generate order number server-side ───────────────────────
-        // We generate it here so the redirect URL is always correct.
-        // The DB may also have a trigger; if so, the trigger value wins
-        // (we'll read the returned row).
-        const fallbackOrderNumber = generateOrderNumber();
+        if (!userId) {
+            // Last resort: sign in anonymously server-side to get a real UUID
+            try {
+                const anonClient = await createSupabaseServerClient();
+                const { data } = await anonClient.auth.signInAnonymously();
+                if (data.user?.id) userId = data.user.id;
+            } catch { /* continue */ }
+        }
 
-        // ── 9. Insert order ─────────────────────────────────────────────
-        // IMPORTANT: Only include columns that exist in the orders table schema.
-        // Do NOT add new columns here without adding them to the DB first.
+        // ── 8. Insert order ─────────────────────────────────────────────
+        const fallbackOrderNumber = generateOrderNumber();
+        const phone10 = sanitizePhone(parsedShipping?.phone || '');
+
         const orderInsert: Record<string, any> = {
             status: 'pending',
             subtotal,
             shipping_cost: shippingCost,
             discount_amount: 0,
             total,
-            shipping_name: parsedShipping?.name || '',
-            shipping_phone: parsedShipping?.phone || '',
-            shipping_address_line1: parsedShipping?.address || '',
+            shipping_name: (parsedShipping?.name || '').trim(),
+            shipping_phone: phone10,
+            shipping_address_line1: (parsedShipping?.address || '').trim(),
             shipping_address_line2: '',
-            shipping_city: parsedShipping?.city || '',
-            shipping_state: parsedShipping?.state || '',
-            shipping_pincode: parsedShipping?.pincode || '',
+            shipping_city: (parsedShipping?.city || '').trim(),
+            shipping_state: (parsedShipping?.state || '').trim(),
+            shipping_pincode: (parsedShipping?.pincode || '').trim(),
         };
+
+        // Store razorpay_order_id if the column exists (enables idempotency on retry)
+        // If column doesn't exist, Supabase returns an error we catch below.
+        orderInsert.razorpay_order_id = razorpay_order_id;
 
         if (userId) orderInsert.user_id = userId;
 
-        const { data: order, error: orderError } = await adminDb
+        let { data: order, error: orderError } = await adminDb
             .from('orders')
             .insert(orderInsert)
             .select()
             .single();
 
+        // If razorpay_order_id column doesn't exist, retry without it
+        if (orderError?.message?.includes('razorpay_order_id')) {
+            delete orderInsert.razorpay_order_id;
+            const retry = await adminDb.from('orders').insert(orderInsert).select().single();
+            order = retry.data;
+            orderError = retry.error;
+        }
+
         if (orderError || !order) {
-            console.error('[Razorpay] ❌ Order creation failed:', orderError);
-            // Payment was captured but order not created — still return a usable response
-            // so we can show the payment_id to the customer
+            console.error('[Razorpay] ❌ Order insert failed:', JSON.stringify(orderError));
             return NextResponse.json({
                 success: false,
-                error: 'Payment successful but order creation failed. Please contact support with payment ID: ' + razorpay_payment_id,
+                error: `Payment captured (${razorpay_payment_id}) but order creation failed. Please contact support — your money is safe.`,
                 paymentId: razorpay_payment_id,
             }, { status: 500 });
         }
 
-        // Use DB-generated order_number if available, else our fallback
+        // ── 9. Ensure order_number ──────────────────────────────────────
         const orderNumber: string = order.order_number || fallbackOrderNumber;
-
-        // If the DB didn't auto-generate order_number, write our fallback back
         if (!order.order_number) {
-            await adminDb
-                .from('orders')
-                .update({ order_number: orderNumber })
-                .eq('id', order.id);
+            await adminDb.from('orders').update({ order_number: orderNumber }).eq('id', order.id);
         }
 
         // ── 10. Insert order items ──────────────────────────────────────
-        const { error: itemsError } = await adminDb
+        const { error: itemsErr } = await adminDb
             .from('order_items')
-            .insert(orderItemsData.map((item) => ({ ...item, order_id: order.id })));
+            .insert(orderItemsData.map(item => ({ ...item, order_id: order.id })));
+        if (itemsErr) console.error('[Razorpay] ⚠️ order_items error:', itemsErr.message);
 
-        if (itemsError) {
-            console.error('[Razorpay] ⚠️ Order items insert error:', itemsError);
-        }
-
-        // ── 11. Decrement stock ─────────────────────────────────────────
+        // ── 11. Decrement stock (best-effort) ───────────────────────────
         for (const item of cartItems) {
-            const { error: stockError } = await adminDb.rpc('decrement_stock', {
+            if (!item.product_id || !isValidUUID(item.product_id)) continue;
+            const { error: stockErr } = await adminDb.rpc('decrement_stock', {
                 p_product_id: item.product_id,
                 p_quantity: item.quantity,
                 p_size: item.size || null,
                 p_color: item.color || null,
                 p_combo_type: item.combo_type || 'single',
             });
-            if (stockError) console.error('[Razorpay] Stock decrement error:', stockError);
+            if (stockErr) console.error('[Razorpay] Stock decrement error:', stockErr.message);
         }
 
         // ── 12. Push to Shiprocket ──────────────────────────────────────
         try {
             const shiprocketOrder = await ShiprocketService.createOrder({
                 order_id: orderNumber,
-                order_date:
-                    new Date().toISOString().split('T')[0] +
-                    ' ' +
-                    new Date().toTimeString().split(' ')[0],
+                order_date: new Date().toISOString().slice(0, 10) + ' ' + new Date().toTimeString().slice(0, 8),
                 pickup_location: 'warehouse',
-                billing_customer_name: parsedShipping?.name || 'Customer',
-                billing_last_name: '',
+                billing_customer_name: (parsedShipping?.name || 'Customer').split(' ')[0],
+                billing_last_name: (parsedShipping?.name || '').split(' ').slice(1).join(' ') || '',
                 billing_address: parsedShipping?.address || '',
                 billing_address_2: '',
                 billing_city: parsedShipping?.city || '',
@@ -232,11 +274,11 @@ export async function POST(request: NextRequest) {
                 billing_state: parsedShipping?.state || '',
                 billing_country: 'India',
                 billing_email: customerEmail || 'customer@kurtisboutique.in',
-                billing_phone: parsedShipping?.phone || '9999999999',
+                billing_phone: phone10 || '9999999999',
                 shipping_is_billing: true,
-                order_items: orderItemsData.map((item) => ({
-                    name: item.product_name + (item.size ? ` - ${item.size}` : ''),
-                    sku: item.product_id,
+                order_items: orderItemsData.map(item => ({
+                    name: (item.product_name + (item.size && item.size !== 'N/A' ? ` - ${item.size}` : '')).slice(0, 255),
+                    sku: item.product_id || orderNumber,
                     units: item.quantity,
                     selling_price: item.unit_price,
                     discount: 0,
@@ -251,33 +293,27 @@ export async function POST(request: NextRequest) {
                 weight: 0.5,
             });
 
-            if (shiprocketOrder.order_id) {
-                await adminDb
-                    .from('orders')
-                    .update({
-                        shiprocket_order_id: shiprocketOrder.order_id,
-                        shiprocket_shipment_id: shiprocketOrder.shipment_id,
-                        awb_code: shiprocketOrder.awb_code,
-                    })
-                    .eq('id', order.id);
+            if (shiprocketOrder?.order_id) {
+                await adminDb.from('orders').update({
+                    shiprocket_order_id: shiprocketOrder.order_id,
+                    shiprocket_shipment_id: shiprocketOrder.shipment_id,
+                    awb_code: shiprocketOrder.awb_code,
+                }).eq('id', order.id);
             }
-        } catch (srError) {
-            console.error('[Shiprocket] ⚠️ Error:', srError);
-            // Non-fatal — order is still created
+        } catch (srErr) {
+            console.error('[Shiprocket] ⚠️ Non-fatal error (order still created):', srErr);
         }
 
         // ── 13. Admin push notification ─────────────────────────────────
         try {
             const { sendAdminOrderNotification } = await import('@/lib/webpush');
-            const productNames = orderItemsData
-                .map((i) => `${i.product_name} x${i.quantity}`)
-                .join(', ');
-            await sendAdminOrderNotification(orderNumber, total, productNames);
+            const names = orderItemsData.map(i => `${i.product_name} x${i.quantity}`).join(', ');
+            await sendAdminOrderNotification(orderNumber, total, names);
         } catch (pushErr) {
             console.error('[WebPush] ⚠️ Error:', pushErr);
         }
 
-        // ── 14. Return success ──────────────────────────────────────────
+        // ── 14. Success ─────────────────────────────────────────────────
         return NextResponse.json({
             success: true,
             orderId: order.id,
@@ -285,14 +321,12 @@ export async function POST(request: NextRequest) {
             paymentId: razorpay_payment_id,
             message: 'Payment successful! Your order has been placed.',
         });
+
     } catch (error) {
-        console.error('[Razorpay] ❌ Verification Error:', error);
-        return NextResponse.json(
-            {
-                error: error instanceof Error ? error.message : 'Verification failed',
-                success: false,
-            },
-            { status: 500 }
-        );
+        console.error('[Razorpay] ❌ Unhandled error:', error);
+        return NextResponse.json({
+            error: error instanceof Error ? error.message : 'Verification failed',
+            success: false,
+        }, { status: 500 });
     }
 }

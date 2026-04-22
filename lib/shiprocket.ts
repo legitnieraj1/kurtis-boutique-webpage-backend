@@ -76,7 +76,7 @@ export class ShiprocketService {
         }
     }
 
-    private static async request<T>(endpoint: string, method: string, body?: any): Promise<T> {
+    private static async request<T>(endpoint: string, method: string, body?: any, isRetry = false): Promise<T> {
         const token = await this.getToken();
 
         if (!token) {
@@ -92,18 +92,21 @@ export class ShiprocketService {
             method,
             headers,
             body: body ? JSON.stringify(body) : undefined,
-            cache: 'no-store' // Ensure we don't cache Shiprocket responses
+            cache: 'no-store',
         });
 
-        console.log(`[Shiprocket] Request to ${endpoint} status:`, response.status);
+        console.log(`[Shiprocket] ${method} ${endpoint} → ${response.status}`);
 
-
-        // Handle 401 specifically to retry once with new token could be added here
+        // 401: token expired — clear cache and retry once with a fresh token
         if (response.status === 401) {
-            console.error('[Shiprocket] Unauthorized access. Token might be expired or invalid.');
-            this.token = null; // Clear token
-            // Retry logic could go here, but for now throwing error to let caller handle or fail
-            throw new Error('Shiprocket Unauthorized - Token might be expired');
+            if (isRetry) {
+                console.error('[Shiprocket] Still 401 after token refresh — giving up.');
+                throw new Error('Shiprocket Unauthorized after token refresh');
+            }
+            console.warn('[Shiprocket] 401 received — clearing token cache and retrying with fresh token…');
+            this.token = null;
+            this.tokenExpiry = null;
+            return this.request<T>(endpoint, method, body, true);
         }
 
         if (!response.ok) {

@@ -96,6 +96,7 @@ export async function POST(request: NextRequest) {
             razorpayKeyId: RazorpayService.getPublicKey(),
             amount: razorpayOrder.amount,
             currency: razorpayOrder.currency,
+            shippingCost,          // pass to verify so it uses the exact same value
             prefill: {
                 name: shippingAddress?.name || '',
                 email: customerEmail || '',

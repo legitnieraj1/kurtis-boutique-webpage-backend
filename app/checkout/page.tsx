@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import Script from 'next/script';
 import { getCartItemPrice } from '@/lib/cartService';
 import { PaymentProcessingLoader } from '@/components/orders/PaymentProcessingLoader';
+import { getSupabaseClient } from '@/lib/supabase/client';
 
 declare global {
     interface Window {
@@ -196,6 +197,15 @@ export default function CheckoutPage() {
                     setIsProcessingPayment(true);
 
                     try {
+                        // Get current anonymous/logged-in user ID from client session.
+                        // This is the most reliable source — avoids server-side cookie issues.
+                        let currentUserId: string | undefined;
+                        try {
+                            const sb = getSupabaseClient();
+                            const { data: { session } } = await sb.auth.getSession();
+                            currentUserId = session?.user?.id;
+                        } catch { /* continue without userId */ }
+
                         const verifyResponse = await fetch('/api/razorpay/verify', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -208,6 +218,8 @@ export default function CheckoutPage() {
                                 billingAddress: finalBillingData,
                                 cartItems: cartPayload,
                                 customerEmail: formData.email,
+                                userId: currentUserId,        // avoids server cookie lookup failure
+                                shippingCost: data.shippingCost, // exact amount charged at initiate
                             })
                         });
                         const verifyData = await verifyResponse.json();
