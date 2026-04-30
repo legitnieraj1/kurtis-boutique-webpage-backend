@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { RazorpayService } from '@/lib/razorpay';
 import { ShiprocketService } from '@/lib/shiprocket';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabaseServerClient, createSupabaseAdmin } from '@/lib/supabase/server';
 
 interface CartItemPayload {
     product_id: string;
@@ -89,6 +89,25 @@ export async function POST(request: NextRequest) {
                 customer_phone: shippingAddress?.phone || '',
             },
         });
+
+        // ── Save session so webhook can reconstruct order without browser ──
+        // This is the key to never losing an order — webhook reads this table.
+        try {
+            const adminDb = createSupabaseAdmin();
+            const subtotalForSession = cartItems.reduce((sum, item) => sum + item.unit_price * item.quantity, 0);
+            await adminDb.from('checkout_sessions').upsert({
+                razorpay_order_id: razorpayOrder.id,
+                cart_items: cartItems,
+                shipping_address: shippingAddress,
+                customer_email: customerEmail || '',
+                shipping_cost: shippingCost,
+                subtotal: subtotalForSession,
+                total: totalAmount,
+            }, { onConflict: 'razorpay_order_id' });
+        } catch (sessionErr) {
+            // Non-fatal — verify route still works if this fails
+            console.error('[Checkout] ⚠️ Could not save checkout_session:', sessionErr);
+        }
 
         return NextResponse.json({
             success: true,

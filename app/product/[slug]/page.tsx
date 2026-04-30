@@ -26,7 +26,7 @@ export async function generateMetadata({
 
     const { data: product } = await supabase
         .from("products")
-        .select("name, description, price, sale_price, images:product_images(image_url, display_order), category:categories(name, slug)")
+        .select("name, description, price, discount_price, images:product_images(image_url, display_order), category:categories(name, slug)")
         .eq("slug", slug)
         .eq("is_active", true)
         .single();
@@ -38,7 +38,7 @@ export async function generateMetadata({
     const sortedImages = product.images?.sort((a: any, b: any) => a.display_order - b.display_order) || [];
     const mainImage = sortedImages[0]?.image_url || "/kurtis-logo-large.png";
     const categoryName = (product.category as any)?.name || "Ethnic Wear";
-    const displayPrice = product.sale_price || product.price;
+    const displayPrice = product.discount_price || product.price;
 
     // SEO optimized title: "Product Name | Kurtis Boutique India"
     const title = `${product.name} | Kurtis Boutique India`;
@@ -143,7 +143,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             "@type": "Offer",
             url: `https://kurtisboutique.in/product/${slug}`,
             priceCurrency: "INR",
-            price: product.sale_price || product.price,
+            price: product.discount_price || product.price,
             priceValidUntil: "2027-12-31",
             availability: product.stock_remaining > 0
                 ? "https://schema.org/InStock"
