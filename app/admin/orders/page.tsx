@@ -303,10 +303,6 @@ export default function AdminOrdersPage() {
                         <RefreshCw className={cn("w-4 h-4 mr-2", loading && "animate-spin")} />
                         Refresh
                     </Button>
-                    <Button variant="outline" onClick={recoverOrders} disabled={isRecovering} className="border-blue-200 text-blue-700 hover:bg-blue-50">
-                        <CloudDownload className={cn("w-4 h-4 mr-2", isRecovering && "animate-pulse")} />
-                        {isRecovering ? "Recovering..." : "Recover from Razorpay"}
-                    </Button>
                 </div>
             </div>
 
