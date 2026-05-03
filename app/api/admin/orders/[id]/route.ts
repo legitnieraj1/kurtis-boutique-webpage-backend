@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServerClient, requireAdmin } from '@/lib/supabase/server';
+import { createSupabaseServerClient, createSupabaseAdmin, requireAdmin } from '@/lib/supabase/server';
 
 interface RouteParams {
     params: Promise<{ id: string }>;
@@ -116,7 +116,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     try {
         await requireAdmin();
         const { id } = await params;
-        const supabase = await createSupabaseServerClient();
+        const supabase = createSupabaseAdmin(); // bypass RLS so delete actually executes
 
         // Delete child rows first
         await supabase.from('order_items').delete().eq('order_id', id);
