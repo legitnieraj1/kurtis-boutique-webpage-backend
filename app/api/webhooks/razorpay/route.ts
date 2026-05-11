@@ -97,8 +97,9 @@ export async function POST(request: NextRequest) {
 
     if (sessionErr || !session) {
         console.error('[Webhook] ❌ checkout_session not found for', razorpayOrderId, sessionErr?.message);
-        // Return 200 so Razorpay doesn't retry — we can't recover without session data
-        return NextResponse.json({ ok: true, warning: 'session_not_found' });
+        // Return 500 so Razorpay retries — covers race where session row not yet committed
+        // when webhook fires. Idempotency check above prevents duplicates on successful retry.
+        return NextResponse.json({ error: 'session_not_found_retry', razorpayOrderId }, { status: 500 });
     }
 
     const cartItems: any[] = session.cart_items || [];
@@ -149,7 +150,8 @@ export async function POST(request: NextRequest) {
 
     if (!userId) {
         console.error('[Webhook] ❌ Cannot resolve user_id — aborting');
-        return NextResponse.json({ ok: true, warning: 'user_id_resolution_failed' });
+        // Return 500 so Razorpay retries; transient auth issue may resolve on retry.
+        return NextResponse.json({ error: 'user_id_resolution_failed', razorpayOrderId }, { status: 500 });
     }
 
     // ── 7. Insert order ──────────────────────────────────────────────────
@@ -179,7 +181,8 @@ export async function POST(request: NextRequest) {
 
     if (orderError || !order) {
         console.error('[Webhook] ❌ Order insert failed:', orderError?.message);
-        return NextResponse.json({ ok: true, warning: 'order_insert_failed', error: orderError?.message });
+        // Return 500 so Razorpay retries; transient DB error may resolve on retry.
+        return NextResponse.json({ error: 'order_insert_failed', dbError: orderError?.message, razorpayOrderId }, { status: 500 });
     }
 
     // ── 8. Ensure order_number ───────────────────────────────────────────
