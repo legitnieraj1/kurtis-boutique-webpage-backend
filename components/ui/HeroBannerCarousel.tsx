@@ -115,7 +115,7 @@ export function HeroBannerCarousel({ initialBanners }: { initialBanners?: Banner
                                 fill
                                 sizes="100vw"
                                 priority={currentIndex === 0}
-                                unoptimized={true}
+                                quality={75}
                                 className="object-cover"
                             />
                         ) : (

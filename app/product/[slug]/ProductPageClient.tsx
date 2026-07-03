@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
@@ -224,10 +225,14 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
                     <div className="w-full md:w-1/2 space-y-4">
                         <div className="relative aspect-[4/5] md:aspect-[3/4] bg-secondary/20 rounded-lg overflow-hidden group">
                             {activeImage ? (
-                                <img
+                                <Image
                                     src={activeImage}
                                     alt={`${product.name} - ${categoryName} from Kurtis Boutique online store India`}
-                                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                    fill
+                                    sizes="(max-width: 768px) 100vw, 50vw"
+                                    quality={80}
+                                    priority
+                                    className="object-cover transition-transform duration-500 group-hover:scale-110"
                                 />
                             ) : (
                                 <div className="absolute inset-0 bg-stone-200 flex items-center justify-center text-stone-400">
@@ -247,7 +252,7 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
                                             activeImage === img ? "border-primary" : "border-transparent"
                                         )}
                                     >
-                                        <img src={img} alt={`${product.name} - Image ${idx + 1}`} loading="lazy" className="w-full h-full object-cover" />
+                                        <Image src={img} alt={`${product.name} - Image ${idx + 1}`} fill sizes="80px" quality={70} className="object-cover" />
                                     </button>
                                 ))}
                             </div>

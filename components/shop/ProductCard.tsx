@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Heart } from "lucide-react";
 import { Product } from "@/types";
 import { formatPrice } from "@/lib/utils";
@@ -39,11 +40,13 @@ export function ProductCard({ product, hideWishlist }: ProductCardProps) {
             <div className="relative aspect-[3/4] overflow-hidden rounded-lg bg-secondary/10">
                 <Link href={`/product/${product.slug}`} className="block w-full h-full" title={`Buy ${product.name} online at Kurtis Boutique India`}>
                     {mainImage ? (
-                        <img
+                        <Image
                             src={mainImage}
                             alt={imageAlt}
-                            loading="lazy"
-                            className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 mobile-gpu"
+                            fill
+                            sizes="(max-width: 768px) 50vw, (max-width: 1280px) 33vw, 25vw"
+                            quality={75}
+                            className="object-cover transition-transform duration-700 group-hover:scale-105 mobile-gpu"
                         />
                     ) : (
                         <div className="absolute inset-0 bg-stone-200 flex items-center justify-center text-stone-400">

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useState, useEffect } from "react";
 import { Category } from "@/types";
 
@@ -39,13 +40,14 @@ function BubbleItem({ category }: BubbleItemProps) {
                 <div className="w-20 h-20 md:w-24 md:h-24 rounded-full border-4 border-background overflow-hidden relative bg-secondary/30">
                     {allImages.length > 0 ? (
                         allImages.map((imgUrl, idx) => (
-                            <img
+                            <Image
                                 key={imgUrl}
                                 src={imgUrl}
                                 alt={category.name}
-                                loading="lazy"
-                                decoding="async"
-                                className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ease-out group-hover:scale-110 mobile-gpu ${idx === currentIndex ? 'opacity-100' : 'opacity-0'
+                                fill
+                                sizes="96px"
+                                quality={70}
+                                className={`object-cover transition-opacity duration-500 ease-out group-hover:scale-110 mobile-gpu ${idx === currentIndex ? 'opacity-100' : 'opacity-0'
                                     }`}
                             />
                         ))

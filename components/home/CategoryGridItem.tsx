@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useState, useEffect } from "react";
 import { Category } from "@/types";
 
@@ -38,11 +39,14 @@ export function CategoryGridItem({ category }: CategoryGridItemProps) {
             <div className="absolute inset-0 transition-transform duration-700 group-hover:scale-105 bg-stone-300">
                 {allImages.length > 0 ? (
                     allImages.map((imgUrl, idx) => (
-                        <img
+                        <Image
                             key={imgUrl}
                             src={imgUrl}
                             alt={category.name}
-                            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${idx === currentIndex ? 'opacity-100' : 'opacity-0'
+                            fill
+                            sizes="(max-width: 1024px) 50vw, 20vw"
+                            quality={75}
+                            className={`object-cover transition-opacity duration-700 ${idx === currentIndex ? 'opacity-100' : 'opacity-0'
                                 }`}
                         />
                     ))
