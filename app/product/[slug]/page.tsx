@@ -3,9 +3,9 @@ import { createClient } from '@supabase/supabase-js';
 import { ProductPageClient } from "./ProductPageClient";
 import type { Metadata } from "next";
 
-// Force dynamic rendering - never cache this page
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+// ISR: statically render, re-generate in background every 10 minutes.
+// Stock displayed may lag up to 10 min; checkout APIs validate live stock.
+export const revalidate = 600;
 
 // Helper to create Supabase client
 function getSupabase() {
