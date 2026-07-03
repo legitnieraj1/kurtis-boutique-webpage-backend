@@ -26,7 +26,9 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
 
-        return NextResponse.json({ reviews: reviews || [] });
+        // Cache public testimonial fetches (no product_id filter) for 30 min at CDN
+        const headers = productId ? {} : { 'Cache-Control': 'public, s-maxage=1800, stale-while-revalidate=300' };
+        return NextResponse.json({ reviews: reviews || [] }, { headers });
     } catch (error) {
         if (error instanceof Error && error.message === 'Forbidden: Admin access required') {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });

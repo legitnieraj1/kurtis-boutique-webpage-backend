@@ -57,6 +57,17 @@ export function createSupabaseAdmin() {
     );
 }
 
+// Cookie-free anon client for public cacheable routes (banners, categories, reviews).
+// Using createSupabaseServerClient on public routes opts them into cookies →
+// Next.js marks the response dynamic → Vercel CDN cannot cache it.
+export function createSupabasePublic() {
+    return createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        { cookies: { get: () => '', set: () => {}, remove: () => {} } }
+    );
+}
+
 // Helper to check if user is admin
 export async function isAdmin() {
     const supabase = await createSupabaseServerClient();

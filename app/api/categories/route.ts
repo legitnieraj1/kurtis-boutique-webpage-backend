@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServerClient, requireAdmin } from '@/lib/supabase/server';
+import { createSupabasePublic, requireAdmin } from '@/lib/supabase/server';
 
-// GET /api/categories - List all categories with product images (public)
+// GET /api/categories - List all categories with product images (public, cached 1 hour at CDN)
 export async function GET() {
     try {
-        const supabase = await createSupabaseServerClient();
+        const supabase = createSupabasePublic();
 
         const { data: categories, error } = await supabase
             .from('categories')
@@ -25,7 +25,9 @@ export async function GET() {
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
 
-        return NextResponse.json({ categories });
+        return NextResponse.json({ categories }, {
+            headers: { 'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=300' }
+        });
     } catch (error) {
         console.error('Categories API error:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

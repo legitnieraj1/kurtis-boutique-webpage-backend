@@ -77,14 +77,15 @@ export async function GET(request: NextRequest) {
 
         console.log(`Fetch success: ${products?.length} products found. (Admin: ${admin})`);
 
+        // Cache public product listings at CDN for 5 min. Admin requests bypass cache.
+        const cacheHeaders = !admin
+            ? { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60' }
+            : { 'Cache-Control': 'no-store' };
+
         return NextResponse.json({
             products: products || [],
-            pagination: {
-                limit,
-                offset,
-                total: count || 0
-            }
-        });
+            pagination: { limit, offset, total: count || 0 }
+        }, { headers: cacheHeaders });
     } catch (error) {
         console.error('Products API error:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
