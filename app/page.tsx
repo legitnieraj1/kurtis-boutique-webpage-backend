@@ -1,5 +1,3 @@
-"use client";
-
 import Link from "next/link";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
@@ -8,36 +6,73 @@ import { CategoryGridItem } from "@/components/home/CategoryGridItem";
 import { HeroBannerCarousel } from "@/components/ui/HeroBannerCarousel";
 import { CircularTestimonialsWrapper } from "@/components/ui/circular-testimonials-wrapper";
 import { NewArrivalsSection } from "@/components/NewArrivalsSection";
-import { useEffect, useState } from "react";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Category } from "@/types";
-import { LoadingScreen } from "@/components/ui/LoadingScreen";
+import { createSupabasePublic, createSupabaseAdmin } from "@/lib/supabase/server";
+import { Category, Product } from "@/types";
 
-export default function Home() {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [banners, setBanners] = useState([]);
-  const [loading, setLoading] = useState(true);
+// ISR: statically render homepage, re-generate in background every 5 minutes.
+export const revalidate = 300;
 
-  useEffect(() => {
-    Promise.all([
-      fetch('/api/categories').then(res => res.json()),
-      fetch('/api/banners').then(res => res.json())
-    ])
-    .then(([categoriesData, bannersData]) => {
-      if (categoriesData.categories) setCategories(categoriesData.categories);
-      if (bannersData.banners) setBanners(bannersData.banners);
-    })
-    .catch(err => console.error("Failed to load homepage data:", err))
-    .finally(() => setLoading(false));
-  }, []);
+async function getHomeData() {
+  const supabase = createSupabasePublic();
 
-  if (loading) {
-    return (
-      <div className="w-screen h-screen">
-        <LoadingScreen />
-      </div>
-    );
+  const [bannersRes, categoriesRes, productsRes] = await Promise.all([
+    supabase
+      .from("banners")
+      .select("*")
+      .eq("is_active", true)
+      .order("display_order"),
+    supabase
+      .from("categories")
+      .select(`
+        *,
+        products:products(
+          id,
+          name,
+          product_images(image_url)
+        )
+      `)
+      .eq("is_active", true)
+      .eq("products.is_active", true)
+      .order("display_order"),
+    supabase
+      .from("products")
+      .select(`
+        *,
+        category:categories(id, name, slug),
+        images:product_images(id, image_url, display_order),
+        sizes:product_sizes(id, size, stock_count),
+        mom_baby_combos(id, mom_price, baby_base_price),
+        family_combos(id, mother_price, father_price, baby_base_price),
+        baby_size_prices(id, size, price)
+      `)
+      .eq("is_active", true)
+      .order("created_at", { ascending: false })
+      .limit(20),
+  ]);
+
+  // Reviews require the admin client (RLS blocks anon reads); server-only, never exposed to client bundle.
+  let reviews: any[] = [];
+  try {
+    const admin = createSupabaseAdmin();
+    const { data } = await admin
+      .from("reviews")
+      .select("*")
+      .order("created_at", { ascending: false });
+    reviews = data || [];
+  } catch (error) {
+    console.error("Failed to fetch reviews for homepage:", error);
   }
+
+  return {
+    banners: bannersRes.data || [],
+    categories: (categoriesRes.data || []) as unknown as Category[],
+    products: (productsRes.data || []) as unknown as Product[],
+    reviews,
+  };
+}
+
+export default async function Home() {
+  const { banners, categories, products, reviews } = await getHomeData();
 
   return (
     <div className="min-h-screen font-sans selection:bg-primary/20">
@@ -79,7 +114,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* MARQUEE — promotional ticker */}
+        {/* MARQUEE — promotional ticker (keyframes defined in globals.css) */}
         <div className="w-full overflow-hidden bg-[#f9e8ef] border-y border-pink-200/60 py-2.5">
           <div
             className="flex whitespace-nowrap"
@@ -110,13 +145,6 @@ export default function Home() {
           </div>
         </div>
 
-        <style jsx global>{`
-          @keyframes marquee {
-            0% { transform: translateX(0%); }
-            100% { transform: translateX(-50%); }
-          }
-        `}</style>
-
         {/* CATEGORY GRID - SEO Optimized with keyword-rich headings */}
         <section className="pt-12 md:pt-20 pb-20 container mx-auto px-4 md:px-8 hidden md:block" aria-label="Shop kurtis by category">
           <div className="flex justify-between items-end mb-12">
@@ -125,18 +153,14 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-            {loading ? (
-              [1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="aspect-[4/5] rounded-lg" />)
-            ) : (
-              categories.map((cat) => (
-                <CategoryGridItem key={cat.id} category={cat} />
-              ))
-            )}
+            {categories.map((cat) => (
+              <CategoryGridItem key={cat.id} category={cat} />
+            ))}
           </div>
         </section>
 
         {/* NEW ARRIVALS */}
-        <NewArrivalsSection />
+        <NewArrivalsSection initialProducts={products} />
 
         {/* INSTAGRAM AUTHORITY SECTION - SEO Signal */}
         <section className="py-16 bg-gradient-to-b from-pink-50/60 to-white" aria-label="Follow Kurtis Boutique on Instagram">
@@ -161,7 +185,7 @@ export default function Home() {
 
         {/* CUSTOMER TESTIMONIALS */}
         <section className="flex justify-center bg-background py-12" aria-label="Customer reviews and testimonials for Kurtis Boutique">
-          <CircularTestimonialsWrapper />
+          <CircularTestimonialsWrapper initialReviews={reviews} />
         </section>
 
         {/* TRUST SIGNALS & SEO CONTENT BLOCK */}

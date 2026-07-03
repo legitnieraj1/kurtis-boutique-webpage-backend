@@ -12,12 +12,13 @@ interface Review {
     verified: boolean;
 }
 
-export function CircularTestimonialsWrapper() {
-    const [reviews, setReviews] = useState<Review[]>([]);
+export function CircularTestimonialsWrapper({ initialReviews }: { initialReviews?: Review[] }) {
+    const [reviews, setReviews] = useState<Review[]>(initialReviews || []);
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
         setMounted(true);
+        if (initialReviews) return; // Skip fetch if passed via props
         // Fetch reviews from API
         async function fetchReviews() {
             try {
@@ -32,7 +33,7 @@ export function CircularTestimonialsWrapper() {
             }
         }
         fetchReviews();
-    }, []);
+    }, [initialReviews]);
 
     if (!mounted) return null;
 

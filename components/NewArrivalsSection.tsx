@@ -6,11 +6,12 @@ import { ProductCard } from "@/components/shop/ProductCard";
 import { Product } from "@/types";
 import Link from "next/link";
 
-export function NewArrivalsSection() {
-    const [products, setProducts] = useState<Product[]>([]);
-    const [loading, setLoading] = useState(true);
+export function NewArrivalsSection({ initialProducts }: { initialProducts?: Product[] }) {
+    const [products, setProducts] = useState<Product[]>(initialProducts || []);
+    const [loading, setLoading] = useState(!initialProducts);
 
     useEffect(() => {
+        if (initialProducts) return; // Skip fetch if passed via props
         // Fetch new arrivals
         fetch('/api/products?limit=20&sort=created_at&order=desc')
             .then(res => res.json())
@@ -19,7 +20,7 @@ export function NewArrivalsSection() {
             })
             .catch(console.error)
             .finally(() => setLoading(false));
-    }, []);
+    }, [initialProducts]);
 
     return (
         <section className="pt-40 pb-20 md:py-24 bg-[#faf9f6]">
