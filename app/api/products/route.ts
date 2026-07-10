@@ -39,6 +39,7 @@ export async function GET(request: NextRequest) {
                 sizes:product_sizes(id, size, stock_count),
                 mom_baby_combos(id, mom_price, baby_base_price),
                 family_combos(id, mother_price, father_price, baby_base_price),
+                couple_combos(id, women_price, men_price),
                 baby_size_prices(id, size, price)
             `, { count: 'exact' });
 
@@ -119,8 +120,13 @@ export async function POST(request: NextRequest) {
             colors = [],
             is_mom_baby = false,
             is_family_combo = false,
+            is_couple_combo = false,
+            allow_baby_only = false,
+            extra_length_price = 0,
+            feeding_zip_price = 0,
             mom_baby_combos = [],
             family_combos = [],
+            couple_combos = [],
             baby_size_prices = []
         } = body;
 
@@ -158,7 +164,11 @@ export async function POST(request: NextRequest) {
                 is_best_seller,
                 colors,
                 is_mom_baby,
-                is_family_combo
+                is_family_combo,
+                is_couple_combo,
+                allow_baby_only,
+                extra_length_price,
+                feeding_zip_price
             })
             .select()
             .single();
@@ -200,6 +210,12 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        if (couple_combos.length > 0) {
+            await supabaseAdmin.from('couple_combos').insert(
+                couple_combos.map((c: any) => ({ product_id: product.id, women_price: c.women_price, men_price: c.men_price }))
+            );
+        }
+
         if (baby_size_prices.length > 0) {
             await supabaseAdmin.from('baby_size_prices').insert(
                 baby_size_prices.map((p: any) => ({ product_id: product.id, size: p.size, price: p.price }))
@@ -216,6 +232,7 @@ export async function POST(request: NextRequest) {
                 sizes:product_sizes(*),
                 mom_baby_combos(*),
                 family_combos(*),
+                couple_combos(*),
                 baby_size_prices(*)
             `)
             .eq('id', product.id)

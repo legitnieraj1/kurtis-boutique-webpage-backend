@@ -39,6 +39,16 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
     const [fatherPrice, setFatherPrice] = useState(initialData?.family_combos?.[0]?.father_price || "");
     const [babyBasePriceFC, setBabyBasePriceFC] = useState(initialData?.family_combos?.[0]?.baby_base_price || "");
 
+    const [isCoupleCombo, setIsCoupleCombo] = useState(initialData?.is_couple_combo || false);
+    const [womenPrice, setWomenPrice] = useState(initialData?.couple_combos?.[0]?.women_price || "");
+    const [menPrice, setMenPrice] = useState(initialData?.couple_combos?.[0]?.men_price || "");
+
+    const [allowBabyOnly, setAllowBabyOnly] = useState(initialData?.allow_baby_only || false);
+
+    // Customisation add-on charges (0 = option hidden on product page)
+    const [extraLengthPrice, setExtraLengthPrice] = useState(initialData?.extra_length_price || "");
+    const [feedingZipPrice, setFeedingZipPrice] = useState(initialData?.feeding_zip_price || "");
+
     // Baby Size Prices
     const [babySizePrices, setBabySizePrices] = useState<{size: string, price: string}[]>(
         initialData?.baby_size_prices?.map((p: any) => ({ size: p.size, price: p.price.toString() })) || []
@@ -204,8 +214,13 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
                 colors,
                 is_mom_baby: isMomBaby,
                 is_family_combo: isFamilyCombo,
+                is_couple_combo: isCoupleCombo,
+                allow_baby_only: allowBabyOnly,
+                extra_length_price: extraLengthPrice ? parseFloat(extraLengthPrice + '') : 0,
+                feeding_zip_price: feedingZipPrice ? parseFloat(feedingZipPrice + '') : 0,
                 mom_baby_combos: isMomBaby && momPrice && babyBasePriceMB ? [{ mom_price: parseFloat(momPrice + ''), baby_base_price: parseFloat(babyBasePriceMB + '') }] : [],
                 family_combos: isFamilyCombo && motherPrice && fatherPrice && babyBasePriceFC ? [{ mother_price: parseFloat(motherPrice + ''), father_price: parseFloat(fatherPrice + ''), baby_base_price: parseFloat(babyBasePriceFC + '') }] : [],
+                couple_combos: isCoupleCombo && womenPrice && menPrice ? [{ women_price: parseFloat(womenPrice + ''), men_price: parseFloat(menPrice + '') }] : [],
                 baby_size_prices: babySizePrices.filter(p => p.size && p.price).map(p => ({ size: p.size, price: parseFloat(p.price) })),
             };
 
@@ -540,6 +555,55 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
                                 </div>
                             </div>
                         )}
+                    </div>
+
+                    {/* Couples Combo */}
+                    <div className="p-4 border rounded-md space-y-4 bg-muted/20">
+                        <div className="flex items-center gap-2">
+                            <input type="checkbox" id="coupleCombo" checked={isCoupleCombo} onChange={e => setIsCoupleCombo(e.target.checked)} className="w-4 h-4" />
+                            <label htmlFor="coupleCombo" className="font-medium">Couples Combo Available (Women + Men)</label>
+                        </div>
+                        {isCoupleCombo && (
+                            <div className="grid grid-cols-2 gap-4 pl-6">
+                                <div className="space-y-2">
+                                    <label className="text-sm">Women&apos;s Price (₹)</label>
+                                    <input type="number" required placeholder="e.g. 1999" className="w-full px-3 py-2 border rounded-md" value={womenPrice} onChange={e => setWomenPrice(e.target.value)} />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm">Men&apos;s Shirt Price (₹)</label>
+                                    <input type="number" required placeholder="e.g. 1299" className="w-full px-3 py-2 border rounded-md" value={menPrice} onChange={e => setMenPrice(e.target.value)} />
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Baby Only */}
+                    <div className="p-4 border rounded-md space-y-4 bg-muted/20">
+                        <div className="flex items-center gap-2">
+                            <input type="checkbox" id="allowBabyOnly" checked={allowBabyOnly} onChange={e => setAllowBabyOnly(e.target.checked)} className="w-4 h-4" />
+                            <label htmlFor="allowBabyOnly" className="font-medium">Allow Baby-Only Purchase</label>
+                        </div>
+                        {allowBabyOnly && (
+                            <p className="text-sm text-muted-foreground pl-6">
+                                Customers can buy just the baby dress. Priced from the Baby Size Pricing list below — add sizes and prices there.
+                            </p>
+                        )}
+                    </div>
+
+                    {/* Customisation Add-on Charges */}
+                    <div className="p-4 border rounded-md space-y-4 bg-muted/20">
+                        <label className="font-medium">Customisation Add-on Charges</label>
+                        <p className="text-sm text-muted-foreground">Extra charges shown at size selection. Leave 0 to hide the option.</p>
+                        <div className="grid grid-cols-2 gap-4 pl-6">
+                            <div className="space-y-2">
+                                <label className="text-sm">Extra Length (₹)</label>
+                                <input type="number" min="0" placeholder="e.g. 100" className="w-full px-3 py-2 border rounded-md" value={extraLengthPrice} onChange={e => setExtraLengthPrice(e.target.value)} />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm">Feeding Zip (₹)</label>
+                                <input type="number" min="0" placeholder="e.g. 150" className="w-full px-3 py-2 border rounded-md" value={feedingZipPrice} onChange={e => setFeedingZipPrice(e.target.value)} />
+                            </div>
+                        </div>
                     </div>
 
                     {/* Dynamic Baby Sizing */}

@@ -26,10 +26,7 @@ export default function ContactPage() {
                                     <div className="flex items-start gap-4">
                                         <MapPin className="w-5 h-5 text-primary mt-1 flex-shrink-0" />
                                         <p className="text-muted-foreground">
-                                            41/1 muthukaruppapillai lane <br />
-                                            South veli street <br />
-                                            Madurai-625001 <br />
-                                            India
+                                            India — shipping nationwide
                                         </p>
                                     </div>
                                     <div className="flex items-center gap-4">

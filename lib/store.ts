@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { User, Order } from '@/types';
 import { getCartItemPrice } from './cartService';
-import { CartItem } from './cartService';
+import { CartItem, CartItemAddons } from './cartService';
 
 export type DBCartItem = CartItem;
 
@@ -84,7 +84,8 @@ interface StoreState {
         comboType?: string,
         quantity?: number,
         babySize?: string | null,
-        productData?: CartItem['product']
+        productData?: CartItem['product'],
+        addons?: CartItemAddons | null
     ) => Promise<boolean>;
     removeFromCart: (cartItemId: string) => Promise<boolean>;
     updateCartQuantity: (cartItemId: string, quantity: number) => Promise<boolean>;
@@ -162,7 +163,7 @@ export const useStore = create<StoreState>()((set, get) => ({
         set({ cart: items, cartLoading: false });
     },
 
-    addToCart: async (productId, size, color = null, comboType = 'single', quantity = 1, babySize = null, productData) => {
+    addToCart: async (productId, size, color = null, comboType = 'single', quantity = 1, babySize = null, productData, addons = null) => {
         const current = get().cart;
 
         const existingIndex = current.findIndex(item =>
@@ -170,7 +171,8 @@ export const useStore = create<StoreState>()((set, get) => ({
             item.size === size &&
             (item.color || null) === (color || null) &&
             (item.combo_type || 'single') === (comboType || 'single') &&
-            (item.baby_size || null) === (babySize || null)
+            (item.baby_size || null) === (babySize || null) &&
+            JSON.stringify(item.addons || null) === JSON.stringify(addons || null)
         );
 
         let newCart: DBCartItem[];
@@ -189,6 +191,7 @@ export const useStore = create<StoreState>()((set, get) => ({
                 color: color || null,
                 combo_type: comboType || 'single',
                 baby_size: babySize || null,
+                addons: addons || null,
                 product: productData,
             };
             newCart = [...current, newItem];

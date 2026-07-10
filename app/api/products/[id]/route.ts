@@ -22,6 +22,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
                 reviews:reviews(id, rating, comment, user_id, created_at),
                 mom_baby_combos(id, mom_price, baby_base_price),
                 family_combos(id, mother_price, father_price, baby_base_price),
+                couple_combos(id, women_price, men_price),
                 baby_size_prices(id, size, price)
             `);
 
@@ -74,8 +75,13 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
             colors,
             is_mom_baby,
             is_family_combo,
+            is_couple_combo,
+            allow_baby_only,
+            extra_length_price,
+            feeding_zip_price,
             mom_baby_combos,
             family_combos,
+            couple_combos,
             baby_size_prices
         } = body;
 
@@ -98,6 +104,10 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         if (colors !== undefined) updateData.colors = colors;
         if (is_mom_baby !== undefined) updateData.is_mom_baby = is_mom_baby;
         if (is_family_combo !== undefined) updateData.is_family_combo = is_family_combo;
+        if (is_couple_combo !== undefined) updateData.is_couple_combo = is_couple_combo;
+        if (allow_baby_only !== undefined) updateData.allow_baby_only = allow_baby_only;
+        if (extra_length_price !== undefined) updateData.extra_length_price = extra_length_price;
+        if (feeding_zip_price !== undefined) updateData.feeding_zip_price = feeding_zip_price;
 
         const { error: updateError } = await supabase
             .from('products')
@@ -144,6 +154,15 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
             }
         }
 
+        if (couple_combos !== undefined) {
+            await supabase.from('couple_combos').delete().eq('product_id', id);
+            if (couple_combos.length > 0) {
+                await supabase.from('couple_combos').insert(
+                    couple_combos.map((c: any) => ({ product_id: id, women_price: c.women_price, men_price: c.men_price }))
+                );
+            }
+        }
+
         if (baby_size_prices !== undefined) {
             await supabase.from('baby_size_prices').delete().eq('product_id', id);
             if (baby_size_prices.length > 0) {
@@ -163,6 +182,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         sizes:product_sizes(*),
         mom_baby_combos(*),
         family_combos(*),
+                couple_combos(*),
         baby_size_prices(*)
       `)
             .eq('id', id)

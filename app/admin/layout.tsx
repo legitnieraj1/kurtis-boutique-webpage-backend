@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, Package, LogOut, Images, ShoppingBag, MessageSquareQuote, Menu, X } from "lucide-react";
+import { LayoutDashboard, Package, LogOut, Images, ShoppingBag, MessageSquareQuote, Menu, X, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useStore } from "@/lib/store";
 import { NotificationBell } from "@/components/admin/NotificationBell";
@@ -121,6 +121,7 @@ export default function AdminLayout({
         { href: "/admin/banners", label: "Banners", icon: Images },
         { href: "/admin/reviews", label: "Reviews", icon: MessageSquareQuote },
         { href: "/admin/customisation-queries", label: "Customisation", icon: MessageSquareQuote },
+        { href: "/admin/settings", label: "Settings", icon: Settings },
     ];
 
     return (

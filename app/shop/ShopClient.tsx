@@ -150,8 +150,7 @@ export function ShopClient({ initialProducts, initialCategories }: { initialProd
                             <p className="text-muted-foreground leading-relaxed mb-4 text-sm">
                                 Our collection includes <strong>Anarkali kurtas</strong>, <strong>A-line kurtis</strong>, <strong>straight kurtas for women</strong>,{" "}
                                 <strong>co-ord sets</strong>, <strong>maternity kurtis</strong>, <strong>matching mom baby outfits</strong>,
-                                and <strong>family combo ethnic wear</strong>. Every piece is crafted with care at our manufacturing facility in Madurai
-                                and dispatched from Bangalore with love.
+                                and <strong>family combo ethnic wear</strong>. Every piece is crafted with care and dispatched with love.
                             </p>
                             <p className="text-muted-foreground leading-relaxed text-sm">
                                 Enjoy free delivery, Cash on Delivery (COD), and secure payments via UPI, credit cards, and debit cards.

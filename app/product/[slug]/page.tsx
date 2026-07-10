@@ -99,6 +99,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             sizes:product_sizes(id, size, stock_count),
             mom_baby_combos(*),
             family_combos(*),
+                couple_combos(*),
             baby_size_prices(*)
         `)
         .eq('slug', slug)

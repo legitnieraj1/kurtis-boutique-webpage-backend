@@ -5,15 +5,14 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-    title: "About Kurtis Boutique - Bangalore Based Ethnic Wear Brand India",
+    title: "About Kurtis Boutique - Premium Ethnic Wear Brand India",
     description:
-        "Learn about Kurtis Boutique — a premium online ethnic wear brand based in Bangalore with manufacturing in Madurai. Over 30,000 Instagram followers. Shop designer kurtis, kurti sets, cotton kurtis, and boutique clothing shipped across India.",
+        "Learn about Kurtis Boutique — a premium online ethnic wear brand. Over 30,000 Instagram followers. Shop designer kurtis, kurti sets, cotton kurtis, and boutique clothing shipped across India.",
     keywords: [
         "about kurtis boutique",
         "kurtis boutique india",
         "kurtis boutique bangalore",
         "Indian ethnic wear brand",
-        "Bangalore boutique",
         "women fashion India",
         "handcrafted kurtis",
         "kurtis boutique instagram",
@@ -21,9 +20,9 @@ export const metadata: Metadata = {
     ],
     alternates: { canonical: "/about-us" },
     openGraph: {
-        title: "About Kurtis Boutique - Bangalore Based Ethnic Wear Brand India",
+        title: "About Kurtis Boutique - Premium Ethnic Wear Brand India",
         description:
-            "Discover the story behind Kurtis Boutique — blending traditional Indian craftsmanship with contemporary fashion. Based in Bangalore, manufacturing in Madurai, 30K+ Instagram followers.",
+            "Discover the story behind Kurtis Boutique — blending traditional Indian craftsmanship with contemporary fashion. 30K+ Instagram followers.",
         url: "https://kurtisboutique.in/about-us",
         siteName: "Kurtis Boutique",
         locale: "en_IN",
@@ -33,13 +32,13 @@ export const metadata: Metadata = {
                 url: "/craftsmanship.jpg",
                 width: 800,
                 height: 600,
-                alt: "Kurtis Boutique - Indian Ethnic Wear Craftsmanship - Bangalore Based Brand",
+                alt: "Kurtis Boutique - Indian Ethnic Wear Craftsmanship",
             },
         ],
     },
     twitter: {
         card: "summary_large_image",
-        title: "About Kurtis Boutique - Bangalore Based Ethnic Wear Brand India",
+        title: "About Kurtis Boutique - Premium Ethnic Wear Brand India",
         description:
             "Discover the story behind Kurtis Boutique — trusted online ethnic wear brand with 30K+ Instagram followers.",
         images: ["/craftsmanship.jpg"],
@@ -59,11 +58,11 @@ export default function AboutPage() {
 
                 <div className="container mx-auto px-4 py-16 md:py-24 max-w-4xl space-y-16">
                     <section className="text-center space-y-6">
-                        <h2 className="text-3xl font-serif">A Legacy of Elegance — From Bangalore to All of India</h2>
+                        <h2 className="text-3xl font-serif">A Legacy of Elegance — Serving All of India</h2>
                         <div className="w-24 h-1 bg-primary mx-auto"></div>
                         <p className="text-lg text-muted-foreground leading-relaxed">
                             Kurtis Boutique began with a simple belief: fashion should be an extension of one&apos;s heritage, seamlessly woven into the modern lifestyle.
-                            Established in <strong>Bangalore</strong>, with our manufacturing warehouse in <strong>Madurai</strong>, we set out to redefine Indian ethnic wear
+                            We set out to redefine Indian ethnic wear
                             by blending traditional craftsmanship with contemporary silhouettes. Today, with over <strong>30,000 followers on Instagram</strong>,
                             we are one of India&apos;s most trusted <strong>online ethnic wear boutiques</strong>.
                         </p>
@@ -73,13 +72,13 @@ export default function AboutPage() {
                         <div className="aspect-square rounded-lg relative overflow-hidden shadow-lg">
                             <img
                                 src="/craftsmanship.jpg"
-                                alt="Indian ethnic wear craftsmanship at Kurtis Boutique - Designer kurtis made in Madurai India"
+                                alt="Indian ethnic wear craftsmanship at Kurtis Boutique - Designer kurtis India"
                                 className="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
                                 loading="lazy"
                             />
                         </div>
                         <div className="space-y-6">
-                            <h3 className="text-2xl font-serif">Crafted with Care in Madurai, Shipped Across India</h3>
+                            <h3 className="text-2xl font-serif">Crafted with Care, Shipped Across India</h3>
                             <p className="text-muted-foreground">
                                 Every piece at Kurtis Boutique is a labor of love. We partner with skilled artisans from across India
                                 to source the finest fabrics — be it lustrous silks, breezy cottons, or rich linens. Our commitment to quality ensures

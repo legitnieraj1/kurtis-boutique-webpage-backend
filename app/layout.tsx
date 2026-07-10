@@ -23,7 +23,7 @@ export const metadata: Metadata = {
   },
 
   description:
-    "Shop designer kurtis, kurti sets and ethnic wear online at Kurtis Boutique. Trusted boutique brand with 30K+ Instagram followers. Based in Bangalore, manufacturing in Madurai. Shipping across India. COD available.",
+    "Shop designer kurtis, kurti sets and ethnic wear online at Kurtis Boutique. Trusted boutique brand with 30K+ Instagram followers. Shipping across India. COD available.",
 
   keywords: [
     "kurtis boutique",
@@ -138,7 +138,6 @@ function SchemaMarkup() {
       "Kurtis Boutique India",
       "Boutique Kurtis",
       "kurtis.boutique",
-      "Kurtis Boutique Bangalore",
     ],
     url: "https://kurtisboutique.in",
     logo: {
@@ -149,23 +148,13 @@ function SchemaMarkup() {
     },
     image: "https://kurtisboutique.in/kurtis-logo-large.png",
     description:
-      "Kurtis Boutique is an online ethnic wear brand with over 30,000 followers on Instagram. Based in Bangalore with manufacturing in Madurai, the brand ships premium boutique clothing across India. Shop designer kurtis, kurti sets, festive wear, mom-baby combos, and family combo ethnic wear.",
-    foundingLocation: {
-      "@type": "Place",
-      name: "Bangalore, Karnataka, India",
-    },
+      "Kurtis Boutique is an online ethnic wear brand with over 30,000 followers on Instagram. The brand ships premium boutique clothing across India. Shop designer kurtis, kurti sets, festive wear, mom-baby combos, and family combo ethnic wear.",
     contactPoint: {
       "@type": "ContactPoint",
       telephone: "+91-9787635982",
       contactType: "customer service",
       areaServed: "IN",
       availableLanguage: ["English", "Hindi", "Tamil", "Kannada"],
-    },
-    address: {
-      "@type": "PostalAddress",
-      addressLocality: "Bangalore",
-      addressRegion: "Karnataka",
-      addressCountry: "IN",
     },
     sameAs: [
       "https://www.instagram.com/kurtis.boutique/",
@@ -202,7 +191,7 @@ function SchemaMarkup() {
     url: "https://kurtisboutique.in",
     image: "https://kurtisboutique.in/kurtis-logo-large.png",
     description:
-      "Kurtis Boutique is an online ethnic wear boutique offering designer kurtis, kurti sets, cotton kurtis, festive kurti collections, matching mom baby outfits, and family combo ethnic wear. Based in Bangalore with manufacturing in Madurai, shipping across India.",
+      "Kurtis Boutique is an online ethnic wear boutique offering designer kurtis, kurti sets, cotton kurtis, festive kurti collections, matching mom baby outfits, and family combo ethnic wear. Shipping across India.",
     telephone: "+91-9787635982",
     currenciesAccepted: "INR",
     paymentAccepted: "Credit Card, Debit Card, UPI, Cash on Delivery, Net Banking, Razorpay",
@@ -214,15 +203,7 @@ function SchemaMarkup() {
     },
     address: {
       "@type": "PostalAddress",
-      addressLocality: "Bangalore",
-      addressRegion: "Karnataka",
-      postalCode: "560038",
       addressCountry: "IN",
-    },
-    geo: {
-      "@type": "GeoCoordinates",
-      latitude: "12.9716",
-      longitude: "77.5946",
     },
     brand: {
       "@type": "Brand",
@@ -289,48 +270,6 @@ function SchemaMarkup() {
     },
   };
 
-  const localBusinessSchema = {
-    "@context": "https://schema.org",
-    "@type": "LocalBusiness",
-    "@id": "https://kurtisboutique.in/#localbusiness",
-    name: "Kurtis Boutique",
-    image: "https://kurtisboutique.in/kurtis-logo-large.png",
-    url: "https://kurtisboutique.in",
-    telephone: "+91-9787635982",
-    description:
-      "Kurtis Boutique is a premium ethnic wear boutique based in Bangalore, India. With manufacturing in Madurai and over 30,000+ Instagram followers, we offer designer kurtis, kurti sets, and ethnic wear online across India.",
-    address: {
-      "@type": "PostalAddress",
-      streetAddress: "41/1 muthukaruppapillai lane, South veli street",
-      addressLocality: "Madurai",
-      addressRegion: "Tamil Nadu",
-      postalCode: "625001",
-      addressCountry: "IN",
-    },
-    geo: {
-      "@type": "GeoCoordinates",
-      latitude: "12.9716",
-      longitude: "77.5946",
-    },
-    openingHoursSpecification: [
-      {
-        "@type": "OpeningHoursSpecification",
-        dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
-        opens: "10:30",
-        closes: "20:30",
-      },
-      {
-        "@type": "OpeningHoursSpecification",
-        dayOfWeek: "Sunday",
-        opens: "11:00",
-        closes: "19:00",
-      },
-    ],
-    sameAs: [
-      "https://www.instagram.com/kurtis.boutique/",
-    ],
-  };
-
   const faqSchema = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
@@ -340,7 +279,7 @@ function SchemaMarkup() {
         name: "What is Kurtis Boutique?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Kurtis Boutique is an online ethnic wear brand based in Bangalore, India with manufacturing in Madurai. We offer designer kurtis, kurti sets, cotton kurtis, festive kurti collections, matching mom baby outfits, and family combo ethnic wear. We ship across India with COD available.",
+          text: "Kurtis Boutique is an online ethnic wear brand in India. We offer designer kurtis, kurti sets, cotton kurtis, festive kurti collections, matching mom baby outfits, and family combo ethnic wear. We ship across India with COD available.",
         },
       },
       {
@@ -356,7 +295,7 @@ function SchemaMarkup() {
         name: "Where is Kurtis Boutique located?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Kurtis Boutique is based in Bangalore, Karnataka, India. Our manufacturing warehouse is located in Madurai, Tamil Nadu. You can shop online at kurtisboutique.in or follow us on Instagram @kurtis.boutique (30,000+ followers).",
+          text: "Kurtis Boutique is an online store shipping across India. You can shop online at kurtisboutique.in or follow us on Instagram @kurtis.boutique (30,000+ followers).",
         },
       },
       {
@@ -412,10 +351,6 @@ function SchemaMarkup() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(clothingStoreSchema) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessSchema) }}
       />
       <script
         type="application/ld+json"

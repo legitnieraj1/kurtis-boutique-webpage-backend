@@ -21,6 +21,7 @@ async function getShopData() {
                 sizes:product_sizes(id, size, stock_count),
                 mom_baby_combos(id, mom_price, baby_base_price),
                 family_combos(id, mother_price, father_price, baby_base_price),
+                couple_combos(id, women_price, men_price),
                 baby_size_prices(id, size, price)
             `)
             .eq("is_active", true)

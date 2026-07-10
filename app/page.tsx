@@ -43,6 +43,7 @@ async function getHomeData() {
         sizes:product_sizes(id, size, stock_count),
         mom_baby_combos(id, mom_price, baby_base_price),
         family_combos(id, mother_price, father_price, baby_base_price),
+                couple_combos(id, women_price, men_price),
         baby_size_prices(id, size, price)
       `)
       .eq("is_active", true)
@@ -230,7 +231,7 @@ export default async function Home() {
               <div className="prose prose-stone max-w-none text-center">
                 <p className="text-muted-foreground leading-relaxed">
                   <strong>Kurtis Boutique</strong> is an online ethnic wear brand with over <strong>30,000 followers on Instagram</strong>.
-                  Based in <strong>Bangalore</strong> with manufacturing in <strong>Madurai</strong>, the brand ships premium
+                  The brand ships premium
                   boutique clothing across <strong>India</strong>. Shop from our extensive collection of{" "}
                   <Link href="/shop" className="text-primary hover:underline">designer kurtis online</Link>,{" "}
                   <Link href="/shop" className="text-primary hover:underline">cotton kurtis</Link>,{" "}
@@ -251,7 +252,7 @@ export default async function Home() {
                 <Link href="/shop" className="px-4 py-2 bg-primary/5 hover:bg-primary/10 rounded-full text-sm font-medium text-primary transition-colors" title="Festive kurti collection online India">Festive Kurtis</Link>
                 <Link href="/shop" className="px-4 py-2 bg-primary/5 hover:bg-primary/10 rounded-full text-sm font-medium text-primary transition-colors" title="Mom baby matching outfits India">Mom &amp; Baby Combos</Link>
                 <Link href="/shop" className="px-4 py-2 bg-primary/5 hover:bg-primary/10 rounded-full text-sm font-medium text-primary transition-colors" title="Family combo ethnic wear India">Family Combos</Link>
-                <Link href="/about-us" className="px-4 py-2 bg-primary/5 hover:bg-primary/10 rounded-full text-sm font-medium text-primary transition-colors" title="About Kurtis Boutique Bangalore India">About Us</Link>
+                <Link href="/about-us" className="px-4 py-2 bg-primary/5 hover:bg-primary/10 rounded-full text-sm font-medium text-primary transition-colors" title="About Kurtis Boutique India">About Us</Link>
                 <Link href="/contact" className="px-4 py-2 bg-primary/5 hover:bg-primary/10 rounded-full text-sm font-medium text-primary transition-colors" title="Contact Kurtis Boutique">Contact</Link>
               </div>
             </div>

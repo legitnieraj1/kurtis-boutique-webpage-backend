@@ -1,6 +1,13 @@
 
 import { createSupabaseClient } from "@/lib/supabase/client";
 
+export interface CartItemAddons {
+    extra_length?: boolean;
+    feeding_zip?: boolean;
+    /** Extra babies beyond the first (mom_baby combo). Each priced by its size. */
+    babies?: { size: string; gender: string }[];
+}
+
 export interface CartItem {
     id: string;
     product_id: string;
@@ -13,41 +20,71 @@ export interface CartItem {
         images?: { image_url: string }[];
         is_mom_baby?: boolean;
         is_family_combo?: boolean;
+        is_couple_combo?: boolean;
+        allow_baby_only?: boolean;
+        extra_length_price?: number;
+        feeding_zip_price?: number;
         mom_baby_combos?: { mom_price: number; baby_base_price: number }[];
         family_combos?: { mother_price: number; father_price: number; baby_base_price: number }[];
+        couple_combos?: { women_price: number; men_price: number }[];
         baby_size_prices?: { size: string; price: number }[];
     };
     color?: string | null;
     combo_type?: string | null;
     baby_size?: string | null;
+    addons?: CartItemAddons | null;
+}
+
+function babySizePrice(product: NonNullable<CartItem['product']>, size: string | null | undefined, fallback: number): number {
+    if (size && product.baby_size_prices?.length) {
+        const match = product.baby_size_prices.find(p => p.size === size);
+        if (match?.price) return match.price;
+    }
+    return fallback;
+}
+
+/** Flat charges for customisation add-ons (extra length, feeding zip). */
+function addonCharges(item: CartItem): number {
+    const product = item.product;
+    if (!product || !item.addons) return 0;
+    let extra = 0;
+    if (item.addons.extra_length && product.extra_length_price) extra += product.extra_length_price;
+    if (item.addons.feeding_zip && product.feeding_zip_price) extra += product.feeding_zip_price;
+    return extra;
 }
 
 /**
- * Calculate the effective unit price for a cart item, considering combo type and baby size pricing.
+ * Calculate the effective unit price for a cart item, considering combo type,
+ * baby size pricing, extra babies, and customisation add-ons.
  */
 export function getCartItemPrice(item: CartItem): number {
     const product = item.product;
     if (!product) return 0;
 
+    let base: number;
+
     if (item.combo_type === 'mom_baby' && product.mom_baby_combos?.[0]) {
         const combo = product.mom_baby_combos[0];
-        if (item.baby_size && product.baby_size_prices?.length) {
-            const babySizePrice = product.baby_size_prices.find(p => p.size === item.baby_size);
-            return combo.mom_price + (babySizePrice?.price || combo.baby_base_price);
+        base = combo.mom_price + babySizePrice(product, item.baby_size, combo.baby_base_price);
+        // Additional babies beyond the first, each priced by its size
+        for (const baby of item.addons?.babies || []) {
+            base += babySizePrice(product, baby.size, combo.baby_base_price);
         }
-        return combo.mom_price + combo.baby_base_price;
-    }
-
-    if (item.combo_type === 'family' && product.family_combos?.[0]) {
+    } else if (item.combo_type === 'family' && product.family_combos?.[0]) {
         const fCombo = product.family_combos[0];
-        if (item.baby_size && product.baby_size_prices?.length) {
-            const babySizePrice = product.baby_size_prices.find(p => p.size === item.baby_size);
-            return (fCombo.mother_price || 0) + (fCombo.father_price || 0) + (babySizePrice?.price || fCombo.baby_base_price || 0);
-        }
-        return (fCombo.mother_price || 0) + (fCombo.father_price || 0) + (fCombo.baby_base_price || 0);
+        base = (fCombo.mother_price || 0) + (fCombo.father_price || 0)
+            + babySizePrice(product, item.baby_size, fCombo.baby_base_price || 0);
+    } else if (item.combo_type === 'couple' && product.couple_combos?.[0]) {
+        const cCombo = product.couple_combos[0];
+        base = (cCombo.women_price || 0) + (cCombo.men_price || 0);
+    } else if (item.combo_type === 'baby_only') {
+        // Baby dress alone — priced purely by baby size
+        base = babySizePrice(product, item.baby_size || item.size, product.discount_price || product.price || 0);
+    } else {
+        base = product.discount_price || product.price || 0;
     }
 
-    return product.discount_price || product.price || 0;
+    return base + addonCharges(item);
 }
 
 export const CartService = {

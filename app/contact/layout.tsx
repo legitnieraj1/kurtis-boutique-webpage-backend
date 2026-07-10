@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-    title: "Contact Kurtis Boutique - Get in Touch | Bangalore India",
+    title: "Contact Kurtis Boutique - Get in Touch | India",
     description:
-        "Contact Kurtis Boutique for inquiries about designer kurtis, kurti sets, and ethnic wear orders. Based in Bangalore, India. WhatsApp: +91 9787635982. Follow us on Instagram @kurtis.boutique (30K+ followers).",
+        "Contact Kurtis Boutique for inquiries about designer kurtis, kurti sets, and ethnic wear orders. WhatsApp: +91 9787635982. Follow us on Instagram @kurtis.boutique (30K+ followers).",
     keywords: [
         "contact kurtis boutique",
         "kurtis boutique bangalore",
@@ -15,9 +15,9 @@ export const metadata: Metadata = {
     ],
     alternates: { canonical: "/contact" },
     openGraph: {
-        title: "Contact Kurtis Boutique - Bangalore India",
+        title: "Contact Kurtis Boutique - India",
         description:
-            "Get in touch with Kurtis Boutique for designer kurtis and ethnic wear inquiries. Based in Bangalore, shipping across India.",
+            "Get in touch with Kurtis Boutique for designer kurtis and ethnic wear inquiries. Shipping across India.",
         url: "https://kurtisboutique.in/contact",
         siteName: "Kurtis Boutique",
         locale: "en_IN",
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     },
     twitter: {
         card: "summary",
-        title: "Contact Kurtis Boutique - Bangalore India",
+        title: "Contact Kurtis Boutique - India",
         description:
             "Contact Kurtis Boutique for designer kurtis and ethnic wear orders. WhatsApp: +91 9787635982.",
     },

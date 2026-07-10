@@ -26,7 +26,7 @@ export function Footer() {
                         <h3 className="font-serif text-3xl font-extrabold tracking-tight text-foreground">Kurtis Boutique</h3>
                         <p className="text-foreground/90 font-medium text-sm max-w-md leading-relaxed">
                             Kurtis Boutique is an online ethnic wear brand with over 30,000 followers on Instagram.
-                            Based in Bangalore with manufacturing in Madurai, the brand ships premium boutique clothing across India.
+                            The brand ships premium boutique clothing across India.
                             Shop designer kurtis, kurti sets, cotton kurtis, festive kurti collections, matching mom baby outfits, and family combo ethnic wear.
                         </p>
 
@@ -89,7 +89,7 @@ export function Footer() {
                         <h4 className="font-bold text-lg text-foreground uppercase tracking-wide">Customer Care</h4>
                         <nav aria-label="Customer care links">
                             <ul className="space-y-3 text-sm text-foreground/80 font-medium">
-                                <li><Link href="/about-us" className="hover:text-primary transition-colors hover:font-bold block" title="About Kurtis Boutique - Bangalore based ethnic wear brand">About Us</Link></li>
+                                <li><Link href="/about-us" className="hover:text-primary transition-colors hover:font-bold block" title="About Kurtis Boutique - Premium ethnic wear brand">About Us</Link></li>
                                 <li><Link href="/contact" className="hover:text-primary transition-colors hover:font-bold block" title="Contact Kurtis Boutique - Get in touch">Contact Us</Link></li>
                                 <li><Link href="/orders" className="hover:text-primary transition-colors hover:font-bold block">Track Your Order</Link></li>
                                 <li><Link href="/exchange-and-shipping" className="hover:text-primary transition-colors hover:font-bold block" title="Exchange and shipping policy - Kurtis Boutique India">Exchange &amp; Shipping</Link></li>
@@ -104,7 +104,7 @@ export function Footer() {
                 <div className="mt-12 pt-8 border-t border-foreground/10">
                     <p className="text-xs text-muted-foreground/60 text-center max-w-3xl mx-auto leading-relaxed mb-6">
                         Kurtis Boutique — Buy designer kurtis online, cotton kurtis, kurti sets for women, festive kurti collection,
-                        matching mom baby outfits, family combo ethnic wear. Based in Bangalore, manufacturing in Madurai.
+                        matching mom baby outfits, family combo ethnic wear. Shipping across India.
                         Trusted boutique brand with 30K+ Instagram followers. Shipping across India. COD available.
                     </p>
                     <p className="text-center text-sm font-medium text-foreground/60">
