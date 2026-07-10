@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { createSupabaseAdmin } from '@/lib/supabase/server';
-import { ShiprocketService } from '@/lib/shiprocket';
 
 /** UUID v4 check */
 function isValidUUID(v: string) {
@@ -217,52 +216,7 @@ export async function POST(request: NextRequest) {
         if (stockErr) console.error('[Webhook] Stock decrement error:', stockErr.message);
     }
 
-    // ── 12. Push to Shiprocket ───────────────────────────────────────────
-    try {
-        const shiprocketOrder = await ShiprocketService.createOrder({
-            order_id: orderNumber,
-            order_date: new Date().toISOString().slice(0, 10) + ' ' + new Date().toTimeString().slice(0, 8),
-            pickup_location: 'warehouse',
-            billing_customer_name: (shippingAddress?.name || 'Customer').split(' ')[0],
-            billing_last_name: (shippingAddress?.name || '').split(' ').slice(1).join(' ') || '',
-            billing_address: shippingAddress?.address || '',
-            billing_address_2: '',
-            billing_city: shippingAddress?.city || '',
-            billing_pincode: shippingAddress?.pincode || '',
-            billing_state: shippingAddress?.state || '',
-            billing_country: 'India',
-            billing_email: customerEmail || 'customer@kurtisboutique.in',
-            billing_phone: phone10 || '9999999999',
-            shipping_is_billing: true,
-            order_items: orderItemsData.map(item => ({
-                name: (item.product_name + (item.size && item.size !== 'N/A' ? ` - ${item.size}` : '')).slice(0, 255),
-                sku: item.product_id || orderNumber,
-                units: item.quantity,
-                selling_price: item.unit_price,
-                discount: 0,
-                tax: 0,
-                hsn: 0,
-            })),
-            payment_method: 'Prepaid',
-            sub_total: subtotal,
-            length: 10,
-            breadth: 10,
-            height: 10,
-            weight: 0.5,
-        });
-
-        if (shiprocketOrder?.order_id) {
-            await adminDb.from('orders').update({
-                shiprocket_order_id: shiprocketOrder.order_id,
-                shipment_id: shiprocketOrder.shipment_id ? String(shiprocketOrder.shipment_id) : null,
-                awb_id: shiprocketOrder.awb_code || null,
-            }).eq('id', order.id);
-        }
-    } catch (srErr) {
-        console.error('[Webhook/Shiprocket] ⚠️ Non-fatal:', srErr);
-    }
-
-    // ── 13. Admin push notification ──────────────────────────────────────
+    // ── 12. Admin push notification ──────────────────────────────────────
     try {
         const { sendAdminOrderNotification } = await import('@/lib/webpush');
         const names = orderItemsData.map(i => `${i.product_name} x${i.quantity}`).join(', ');
@@ -271,7 +225,7 @@ export async function POST(request: NextRequest) {
         console.error('[Webhook/WebPush] ⚠️:', pushErr);
     }
 
-    // ── 14. Mark session as used ─────────────────────────────────────────
+    // ── 13. Mark session as used ─────────────────────────────────────────
     await adminDb.from('checkout_sessions').update({ used: true }).eq('razorpay_order_id', razorpayOrderId);
 
     console.log(`[Webhook] ✅ Order created: ${orderNumber} (${order.id}) for payment ${razorpayPaymentId}`);

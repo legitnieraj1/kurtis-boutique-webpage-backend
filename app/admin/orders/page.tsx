@@ -49,7 +49,6 @@ interface Order {
     tracking: {
         awb: string | null;
         courier: string | null;
-        shiprocketOrderId?: number | string;
     };
 }
 
@@ -65,7 +64,7 @@ const statusStyles: Record<string, string> = {
 };
 
 function buildWhatsAppMessage(order: Order): string {
-    const trackingUrl = `https://shiprocket.co/tracking/order/${order.orderNumber}?company_id=9186815`;
+    const trackingUrl = `https://kurtisboutique.in/orders`;
 
     const statusLabel: Record<string, string> = {
         pending: "Pending",

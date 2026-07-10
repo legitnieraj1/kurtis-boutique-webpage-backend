@@ -175,7 +175,7 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
     /**
      * Called by CustomisationForm when the customer fills their requirements and clicks "Buy Customised".
      * Validates size is selected (in the main product section above), embeds the full customisation note
-     * into the product name so it appears in the order description in both admin panel and Shiprocket.
+     * into the product name so it appears in the order description in the admin panel.
      */
     const handleBuyCustomised = async (
         note: string,
@@ -191,7 +191,7 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
         const finalSize = buildFinalSize();
 
         // Embed the customisation note inside the product name snapshot.
-        // This flows through to order_items.product_name → admin panel → Shiprocket item name.
+        // This flows through to order_items.product_name → admin panel.
         const customProductData = {
             ...buildProductData(),
             name: `${product.name} ✂ CUSTOM — ${note}`,

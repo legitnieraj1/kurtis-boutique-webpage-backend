@@ -46,15 +46,15 @@ function OrderSuccessContent() {
         try {
             const supabase = getSupabaseClient();
             const { data, error } = await supabase
-                .from('shiprocket_orders')
-                .select('*')
-                .eq('shiprocket_order_id', orderId)
+                .from('orders')
+                .select('order_number, total, status')
+                .eq('id', orderId)
                 .single();
 
             if (data && !error) {
                 setOrderDetails({
-                    orderId: data.shiprocket_order_id,
-                    total: data.total_amount,
+                    orderId: data.order_number || orderId,
+                    total: data.total,
                     status: data.status
                 });
             } else {

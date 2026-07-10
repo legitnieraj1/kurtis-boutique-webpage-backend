@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { RazorpayService } from '@/lib/razorpay';
-import { ShiprocketService } from '@/lib/shiprocket';
+import { calculateShipping, DEFAULT_SHIPPING_OUTSIDE } from '@/lib/shipping';
 import { createSupabaseServerClient, createSupabaseAdmin } from '@/lib/supabase/server';
 
 interface CartItemPayload {
@@ -45,35 +45,11 @@ export async function POST(request: NextRequest) {
         // Calculate total from submitted cart
         let totalAmount = cartItems.reduce((sum, item) => sum + item.unit_price * item.quantity, 0);
 
-        // Calculate shipping
-        let shippingCost = 0;
+        // Flat shipping by destination pincode (TN vs outside), rates editable in admin
         const deliveryPincode = shippingAddress?.pincode;
-
-        if (deliveryPincode) {
-            try {
-                const pickupPostcode = process.env.SHIPROCKET_PICKUP_POSTCODE
-                    ? parseInt(process.env.SHIPROCKET_PICKUP_POSTCODE) : 110001;
-
-                const serviceResponse: any = await ShiprocketService.checkServiceability({
-                    pickup_postcode: pickupPostcode,
-                    delivery_postcode: parseInt(deliveryPincode),
-                    weight: 0.5,
-                    cod: 0
-                });
-
-                if (serviceResponse.status === 200 && serviceResponse.data?.available_courier_companies?.length > 0) {
-                    const couriers = serviceResponse.data.available_courier_companies;
-                    couriers.sort((a: any, b: any) => a.rate - b.rate);
-                    shippingCost = couriers[0].rate;
-                } else {
-                    shippingCost = totalAmount >= 999 ? 0 : 99;
-                }
-            } catch {
-                shippingCost = totalAmount >= 999 ? 0 : 99;
-            }
-        } else {
-            shippingCost = 99;
-        }
+        const shippingCost = deliveryPincode
+            ? await calculateShipping(deliveryPincode)
+            : DEFAULT_SHIPPING_OUTSIDE;
 
         totalAmount += shippingCost;
 

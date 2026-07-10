@@ -51,7 +51,7 @@ export function CustomisationForm({ productId, productName, onBuyCustomised }: C
 
         setIsSubmitting(true);
 
-        // Build a readable note — this becomes the product name in the order (admin + Shiprocket)
+        // Build a readable note — this becomes the product name in the order (admin panel)
         const parts: string[] = [];
         if (selectedTypes.length > 0) parts.push(selectedTypes.join(", "));
         if (message.trim()) parts.push(`"${message.trim()}"`);

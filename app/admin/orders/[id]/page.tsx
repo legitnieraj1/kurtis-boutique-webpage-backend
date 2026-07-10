@@ -277,18 +277,16 @@ export default function AdminOrderDetailsPage() {
                             <p>{order.shipping_pincode}</p>
                             <p className="mt-2 text-foreground font-medium">{order.shipping_phone}</p>
                         </address>
-                        {order.status === 'confirmed' && (
-                            <div className="mt-4 pt-4 border-t">
-                                <Button
-                                    className="w-full gap-2"
-                                    variant="outline"
-                                    onClick={() => window.open('https://app.shiprocket.in/seller/orders/new?sku=&order_ids=&order_status=&channel_id=&payment_method=&pickup_address_id=&delivery_country=&quantity=&is_order_verified=&ship_weight=&previously_cancelled=&from=', '_blank')}
-                                >
-                                    <Truck className="w-4 h-4" />
-                                    Create Shipment
-                                </Button>
-                            </div>
-                        )}
+                        <div className="mt-4 pt-4 border-t">
+                            <Button
+                                className="w-full gap-2"
+                                variant="outline"
+                                onClick={() => window.open(`/admin/orders/${order.id}/invoice`, '_blank')}
+                            >
+                                <Printer className="w-4 h-4" />
+                                Print Invoice
+                            </Button>
+                        </div>
                     </div>
                 </div>
             </div>

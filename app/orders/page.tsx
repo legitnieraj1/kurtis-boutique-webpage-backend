@@ -148,9 +148,6 @@ export default function OrdersPage() {
                     ) : (
                         <div className="space-y-6">
                             {orders.map((order, index) => {
-                                const isConfirmed = order.status !== 'pending' && order.status !== 'cancelled';
-                                const trackingUrl = `https://shiprocket.co/tracking/order/${order.orderNumber}?company_id=9186815`;
-
                                 return (
                                     <Link href={`/orders/${order.id}`} key={order.id} className="block">
                                         <motion.div
@@ -186,21 +183,9 @@ export default function OrdersPage() {
 
                                                 <div className="flex flex-col sm:flex-row gap-3">
                                                     <Button
-                                                        onClick={(e) => {
-                                                            if (isConfirmed) {
-                                                                e.preventDefault(); // Prevent navigation when clicking track
-                                                                window.open(trackingUrl, '_blank');
-                                                            }
-                                                        }}
-                                                        className={cn(
-                                                            "w-full sm:w-auto gap-2 rounded-xl shadow-lg transition-all",
-                                                            isConfirmed
-                                                                ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-primary/20 cursor-pointer"
-                                                                : "bg-stone-200 text-stone-400 cursor-not-allowed shadow-none"
-                                                        )}
-                                                        disabled={!isConfirmed}
+                                                        className="w-full sm:w-auto gap-2 rounded-xl shadow-lg transition-all bg-primary text-primary-foreground hover:bg-primary/90 shadow-primary/20"
                                                     >
-                                                        Track Now <PackageSearch className="w-4 h-4" />
+                                                        View Order <PackageSearch className="w-4 h-4" />
                                                     </Button>
                                                 </div>
                                             </div>

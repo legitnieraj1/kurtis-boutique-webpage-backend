@@ -87,11 +87,11 @@ export default function CheckoutPage() {
             if (formData.pincode.length === 6) {
                 setIsCheckingShipping(true);
                 try {
-                    const res = await fetch(`/api/shiprocket/check-serviceability?delivery_postcode=${formData.pincode}&cod=0`);
+                    const res = await fetch(`/api/settings/shipping?pincode=${formData.pincode}`);
                     const data = await res.json();
-                    setShippingCost(data.success ? data.shipping_cost : 99);
+                    setShippingCost(typeof data.shipping_cost === 'number' ? data.shipping_cost : 150);
                 } catch {
-                    setShippingCost(99);
+                    setShippingCost(150);
                 } finally {
                     setIsCheckingShipping(false);
                 }

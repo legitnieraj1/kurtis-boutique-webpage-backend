@@ -91,7 +91,7 @@ export function Footer() {
                             <ul className="space-y-3 text-sm text-foreground/80 font-medium">
                                 <li><Link href="/about-us" className="hover:text-primary transition-colors hover:font-bold block" title="About Kurtis Boutique - Bangalore based ethnic wear brand">About Us</Link></li>
                                 <li><Link href="/contact" className="hover:text-primary transition-colors hover:font-bold block" title="Contact Kurtis Boutique - Get in touch">Contact Us</Link></li>
-                                <li><a href="https://shiprocket.co/tracking" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors hover:font-bold block">Track Your Order</a></li>
+                                <li><Link href="/orders" className="hover:text-primary transition-colors hover:font-bold block">Track Your Order</Link></li>
                                 <li><Link href="/exchange-and-shipping" className="hover:text-primary transition-colors hover:font-bold block" title="Exchange and shipping policy - Kurtis Boutique India">Exchange &amp; Shipping</Link></li>
                                 <li><Link href="/payment-security" className="hover:text-primary transition-colors hover:font-bold block" title="Secure payment options at Kurtis Boutique">Payment Security</Link></li>
                                 <li><Link href="/privacy-policy" className="hover:text-primary transition-colors hover:font-bold block" title="Privacy policy - Kurtis Boutique India">Privacy Policy</Link></li>

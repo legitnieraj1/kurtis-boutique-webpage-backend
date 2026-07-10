@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseAdmin, createSupabaseServerClient } from '@/lib/supabase/server';
 import { RazorpayService } from '@/lib/razorpay';
-import { ShiprocketService } from '@/lib/shiprocket';
+import { calculateShipping, DEFAULT_SHIPPING_OUTSIDE } from '@/lib/shipping';
 
 interface CartItemPayload {
     product_id?: string | null;
@@ -22,7 +22,7 @@ function generateOrderNumber(): string {
     return `KB${date}-${rand}`;
 }
 
-/** Sanitize phone to exactly 10 Indian digits (Shiprocket requirement) */
+/** Sanitize phone to exactly 10 Indian digits */
 function sanitizePhone(raw: string): string {
     const digits = (raw || '').replace(/\D/g, '');
     if (digits.startsWith('91') && digits.length === 12) return digits.slice(2);
@@ -147,23 +147,8 @@ export async function POST(request: NextRequest) {
         // Fall back to calculation only if client didn't send it.
         let shippingCost: number = typeof clientShippingCost === 'number' ? clientShippingCost : -1;
         if (shippingCost === -1) {
-            shippingCost = subtotal >= 999 ? 0 : 99;
             const pincode = parsedShipping?.pincode;
-            if (pincode) {
-                try {
-                    const pickup = process.env.SHIPROCKET_PICKUP_POSTCODE
-                        ? parseInt(process.env.SHIPROCKET_PICKUP_POSTCODE) : 110001;
-                    const sr: any = await ShiprocketService.checkServiceability({
-                        pickup_postcode: pickup,
-                        delivery_postcode: parseInt(pincode),
-                        weight: 0.5, cod: 0,
-                    });
-                    if (sr.status === 200 && sr.data?.available_courier_companies?.length > 0) {
-                        const sorted = [...sr.data.available_courier_companies].sort((a: any, b: any) => a.rate - b.rate);
-                        shippingCost = sorted[0].rate;
-                    }
-                } catch { /* keep default */ }
-            }
+            shippingCost = pincode ? await calculateShipping(pincode) : DEFAULT_SHIPPING_OUTSIDE;
         }
 
         const total = subtotal + shippingCost;
@@ -294,52 +279,7 @@ export async function POST(request: NextRequest) {
             if (stockErr) console.error('[Razorpay] Stock decrement error:', stockErr.message);
         }
 
-        // ── 12. Push to Shiprocket ──────────────────────────────────────
-        try {
-            const shiprocketOrder = await ShiprocketService.createOrder({
-                order_id: orderNumber,
-                order_date: new Date().toISOString().slice(0, 10) + ' ' + new Date().toTimeString().slice(0, 8),
-                pickup_location: 'warehouse',
-                billing_customer_name: (parsedShipping?.name || 'Customer').split(' ')[0],
-                billing_last_name: (parsedShipping?.name || '').split(' ').slice(1).join(' ') || '',
-                billing_address: parsedShipping?.address || '',
-                billing_address_2: '',
-                billing_city: parsedShipping?.city || '',
-                billing_pincode: parsedShipping?.pincode || '',
-                billing_state: parsedShipping?.state || '',
-                billing_country: 'India',
-                billing_email: customerEmail || 'customer@kurtisboutique.in',
-                billing_phone: phone10 || '9999999999',
-                shipping_is_billing: true,
-                order_items: orderItemsData.map(item => ({
-                    name: (item.product_name + (item.size && item.size !== 'N/A' ? ` - ${item.size}` : '')).slice(0, 255),
-                    sku: item.product_id || orderNumber,
-                    units: item.quantity,
-                    selling_price: item.unit_price,
-                    discount: 0,
-                    tax: 0,
-                    hsn: 0,
-                })),
-                payment_method: 'Prepaid',
-                sub_total: subtotal,
-                length: 10,
-                breadth: 10,
-                height: 10,
-                weight: 0.5,
-            });
-
-            if (shiprocketOrder?.order_id) {
-                await adminDb.from('orders').update({
-                    shiprocket_order_id: shiprocketOrder.order_id,   // column added in migration
-                    shipment_id: shiprocketOrder.shipment_id ? String(shiprocketOrder.shipment_id) : null,
-                    awb_id: shiprocketOrder.awb_code || null,          // DB column is awb_id not awb_code
-                }).eq('id', order.id);
-            }
-        } catch (srErr) {
-            console.error('[Shiprocket] ⚠️ Non-fatal error (order still created):', srErr);
-        }
-
-        // ── 13. Admin push notification ─────────────────────────────────
+        // ── 12. Admin push notification ─────────────────────────────────
         try {
             const { sendAdminOrderNotification } = await import('@/lib/webpush');
             const names = orderItemsData.map(i => `${i.product_name} x${i.quantity}`).join(', ');
@@ -348,7 +288,7 @@ export async function POST(request: NextRequest) {
             console.error('[WebPush] ⚠️ Error:', pushErr);
         }
 
-        // ── 14. Success ─────────────────────────────────────────────────
+        // ── 13. Success ─────────────────────────────────────────────────
         return NextResponse.json({
             success: true,
             orderId: order.id,

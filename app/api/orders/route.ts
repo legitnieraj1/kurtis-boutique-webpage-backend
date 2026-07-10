@@ -74,7 +74,6 @@ export async function GET() {
                 shipmentId: order.shipment_id,
                 courier: order.courier_name,
                 trackingUrl: order.tracking_url,
-                shiprocketOrderId: order.shiprocket_order_id, // Added for invoice download
             },
         })) || [];
 
