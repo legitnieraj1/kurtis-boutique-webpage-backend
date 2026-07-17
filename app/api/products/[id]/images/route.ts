@@ -15,6 +15,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         const formData = await request.formData();
         const file = formData.get('file') as File;
         const displayOrder = parseInt(formData.get('display_order') as string || '0');
+        // Optional colour tag — gallery filters to the selected colour on the product page
+        const color = (formData.get('color') as string) || null;
 
         if (!file) {
             return NextResponse.json({ error: 'No file provided' }, { status: 400 });
@@ -44,7 +46,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
             .insert({
                 product_id: id,
                 image_url: urlData.publicUrl,
-                display_order: displayOrder
+                display_order: displayOrder,
+                color
             })
             .select()
             .single();
@@ -72,16 +75,19 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         const supabase = createSupabaseAdmin();
         const { images } = await request.json();
 
-        // images should be array of { id, display_order }
+        // images should be array of { id, display_order, color? }
         if (!Array.isArray(images)) {
             return NextResponse.json({ error: 'Invalid images array' }, { status: 400 });
         }
 
-        // Update order for each image
+        // Update order (and colour tag, when provided) for each image
         for (const img of images) {
+            const patch: Record<string, unknown> = { display_order: img.display_order };
+            if (img.color !== undefined) patch.color = img.color || null;
+
             await supabase
                 .from('product_images')
-                .update({ display_order: img.display_order })
+                .update(patch)
                 .eq('id', img.id)
                 .eq('product_id', id);
         }

@@ -17,7 +17,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             .select(`
                 *,
                 category:categories(id, name, slug),
-                images:product_images(id, image_url, display_order),
+                images:product_images(id, image_url, display_order, color),
                 sizes:product_sizes(id, size, stock_count),
                 reviews:reviews(id, rating, comment, user_id, created_at),
                 mom_baby_combos(id, mom_price, baby_base_price),

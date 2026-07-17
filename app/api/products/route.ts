@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
             .select(`
                 *,
                 category:categories(id, name, slug),
-                images:product_images(id, image_url, display_order),
+                images:product_images(id, image_url, display_order, color),
                 sizes:product_sizes(id, size, stock_count),
                 mom_baby_combos(id, mom_price, baby_base_price),
                 family_combos(id, mother_price, father_price, baby_base_price),

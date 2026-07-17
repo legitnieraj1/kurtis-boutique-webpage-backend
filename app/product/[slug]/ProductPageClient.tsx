@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -22,7 +22,7 @@ interface Product {
     price: number;
     discount_price?: number;
     stock_remaining: number;
-    images: { id: string; image_url: string; display_order: number }[];
+    images: { id: string; image_url: string; display_order: number; color?: string | null }[];
     sizes: { id: string; size: string; stock_count: number }[];
     category: { id: string; name: string; slug: string } | null;
     reviews: { id: string; rating: number; comment: string; user_id: string; created_at: string }[];
@@ -278,7 +278,26 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
         }
     };
 
-    const displayImages = product.images?.map(img => img.image_url) || [];
+    // Gallery follows the selected colour: show that colour's images plus any
+    // untagged ones. Falls back to every image if the colour has none tagged.
+    const displayImages = useMemo(() => {
+        const all = product.images || [];
+        if (!selectedColor) return all.map(img => img.image_url);
+
+        const hasTaggedForColor = all.some(img => img.color === selectedColor);
+        if (!hasTaggedForColor) return all.map(img => img.image_url);
+
+        return all
+            .filter(img => img.color === selectedColor || !img.color)
+            .map(img => img.image_url);
+    }, [product.images, selectedColor]);
+
+    // Keep the main image inside the current colour's gallery
+    useEffect(() => {
+        if (displayImages.length > 0 && !displayImages.includes(activeImage)) {
+            setActiveImage(displayImages[0]);
+        }
+    }, [displayImages, activeImage]);
 
     return (
         <div className="min-h-screen bg-background/60 backdrop-blur-sm">

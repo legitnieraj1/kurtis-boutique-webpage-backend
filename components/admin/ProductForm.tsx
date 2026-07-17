@@ -21,7 +21,9 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
 
     // Images: existing URLs + new Files
     const [existingImages, setExistingImages] = useState<any[]>(initialData?.images || []);
-    const [newImages, setNewImages] = useState<File[]>([]);
+    // Each new image carries an optional colour tag, so the product page can
+    // filter the gallery to the colour the customer selects.
+    const [newImages, setNewImages] = useState<{ file: File; color: string }[]>([]);
 
     // Sizes & Colors
     const [sizes, setSizes] = useState<string[]>(initialData?.sizes?.map((s: any) => s.size) || []);
@@ -186,7 +188,8 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
-            setNewImages([...newImages, ...Array.from(e.target.files)]);
+            const added = Array.from(e.target.files).map(file => ({ file, color: "" }));
+            setNewImages([...newImages, ...added]);
         }
     };
 
@@ -239,20 +242,27 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
 
             const productId = data.product?.id;
 
-            // 2. Upload New Images
-            if (newImages.length > 0) {
-                const formData = new FormData();
-                newImages.forEach(file => {
-                    formData.append('file', file); // API expects single file currently?
-                });
+            // 2. Upload New Images (one request per file — the images API takes a single file)
+            for (const { file, color } of newImages) {
+                const fd = new FormData();
+                fd.append('file', file);
+                if (color) fd.append('color', color);
+                await fetch(`/api/products/${productId}/images`, { method: 'POST', body: fd });
+            }
 
-                // My API currently accepts one file per request for simplicity in `app/api/products/[id]/images`.
-                // Implementing loop for multiple uploads
-                for (const file of newImages) {
-                    const fd = new FormData();
-                    fd.append('file', file);
-                    await fetch(`/api/products/${productId}/images`, { method: 'POST', body: fd });
-                }
+            // 3. Save colour tags on existing images
+            if (existingImages.length > 0) {
+                await fetch(`/api/products/${productId}/images`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        images: existingImages.map((img: any, idx: number) => ({
+                            id: img.id,
+                            display_order: img.display_order ?? idx,
+                            color: img.color || null,
+                        })),
+                    }),
+                });
             }
 
             toast.success("Product saved successfully");
@@ -675,42 +685,85 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
                 {/* Images */}
                 <div>
                     <label className="text-sm font-medium mb-2 block">Images</label>
+                    {colors.length > 0 && (
+                        <p className="text-sm text-muted-foreground mb-3">
+                            Tag an image with a colour to show it only when that colour is selected. Leave as &quot;All colours&quot; to always show it.
+                        </p>
+                    )}
                     <div className="flex flex-wrap gap-4">
                         {existingImages.map((img: any, i) => (
-                            <div key={img.id || i} className="relative w-24 h-32 border rounded overflow-hidden group">
-                                <img src={img.image_url} className="w-full h-full object-cover" />
-                                <button
-                                    type="button"
-                                    onClick={async () => {
-                                        if (!initialData?.id || !img.id) return;
-                                        if (!confirm("Delete this image?")) return;
-                                        try {
-                                            const res = await fetch(`/api/products/${initialData.id}/images?imageId=${img.id}`, { method: 'DELETE' });
-                                            if (!res.ok) throw new Error("Failed to delete");
-                                            setExistingImages(existingImages.filter((_: any, idx: number) => idx !== i));
-                                            toast.success("Image deleted");
-                                        } catch (error) {
-                                            toast.error("Failed to delete image");
-                                        }
-                                    }}
-                                    className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
-                                    title="Delete image"
-                                >
-                                    <X className="w-3 h-3" />
-                                </button>
+                            <div key={img.id || i} className="w-24 space-y-1">
+                                <div className="relative w-24 h-32 border rounded overflow-hidden group">
+                                    <img src={img.image_url} className="w-full h-full object-cover" />
+                                    <button
+                                        type="button"
+                                        onClick={async () => {
+                                            if (!initialData?.id || !img.id) return;
+                                            if (!confirm("Delete this image?")) return;
+                                            try {
+                                                const res = await fetch(`/api/products/${initialData.id}/images?imageId=${img.id}`, { method: 'DELETE' });
+                                                if (!res.ok) throw new Error("Failed to delete");
+                                                setExistingImages(existingImages.filter((_: any, idx: number) => idx !== i));
+                                                toast.success("Image deleted");
+                                            } catch (error) {
+                                                toast.error("Failed to delete image");
+                                            }
+                                        }}
+                                        className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+                                        title="Delete image"
+                                    >
+                                        <X className="w-3 h-3" />
+                                    </button>
+                                </div>
+                                {colors.length > 0 && (
+                                    <select
+                                        className="w-24 text-xs px-1 py-1 border rounded-md bg-background"
+                                        value={img.color || ""}
+                                        onChange={e => setExistingImages(existingImages.map((im: any, idx: number) =>
+                                            idx === i ? { ...im, color: e.target.value } : im
+                                        ))}
+                                        aria-label="Image colour"
+                                    >
+                                        <option value="">All colours</option>
+                                        {colors.map(colorStr => (
+                                            <option key={colorStr} value={colorStr}>
+                                                {colorStr.includes('|') ? colorStr.split('|')[0] : colorStr}
+                                            </option>
+                                        ))}
+                                    </select>
+                                )}
                             </div>
                         ))}
-                        {newImages.map((file, i) => (
-                            <div key={`new-${i}`} className="relative w-24 h-32 border rounded overflow-hidden bg-gray-100 flex items-center justify-center group">
-                                <img src={URL.createObjectURL(file)} className="w-full h-full object-cover" />
-                                <button
-                                    type="button"
-                                    onClick={() => setNewImages(newImages.filter((_, idx) => idx !== i))}
-                                    className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
-                                    title="Remove image"
-                                >
-                                    <X className="w-3 h-3" />
-                                </button>
+                        {newImages.map((item, i) => (
+                            <div key={`new-${i}`} className="w-24 space-y-1">
+                                <div className="relative w-24 h-32 border rounded overflow-hidden bg-gray-100 flex items-center justify-center group">
+                                    <img src={URL.createObjectURL(item.file)} className="w-full h-full object-cover" />
+                                    <button
+                                        type="button"
+                                        onClick={() => setNewImages(newImages.filter((_, idx) => idx !== i))}
+                                        className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+                                        title="Remove image"
+                                    >
+                                        <X className="w-3 h-3" />
+                                    </button>
+                                </div>
+                                {colors.length > 0 && (
+                                    <select
+                                        className="w-24 text-xs px-1 py-1 border rounded-md bg-background"
+                                        value={item.color}
+                                        onChange={e => setNewImages(newImages.map((im, idx) =>
+                                            idx === i ? { ...im, color: e.target.value } : im
+                                        ))}
+                                        aria-label="Image colour"
+                                    >
+                                        <option value="">All colours</option>
+                                        {colors.map(colorStr => (
+                                            <option key={colorStr} value={colorStr}>
+                                                {colorStr.includes('|') ? colorStr.split('|')[0] : colorStr}
+                                            </option>
+                                        ))}
+                                    </select>
+                                )}
                             </div>
                         ))}
                         <label className="w-24 h-32 border-2 border-dashed rounded flex flex-col items-center justify-center cursor-pointer hover:bg-muted">
