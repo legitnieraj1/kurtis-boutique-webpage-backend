@@ -26,8 +26,8 @@ export function Footer() {
                         <h3 className="font-serif text-3xl font-extrabold tracking-tight text-foreground">Kurtis Boutique</h3>
                         <p className="text-foreground/90 font-medium text-sm max-w-md leading-relaxed">
                             Kurtis Boutique is an online ethnic wear brand with over 30,000 followers on Instagram.
+                            Specialised in mom &amp; baby combos, family combos, couple combos, casual wear, maternity/feeding wear, and baby dresses.
                             The brand ships premium boutique clothing across India.
-                            Shop designer kurtis, kurti sets, cotton kurtis, festive kurti collections, matching mom baby outfits, and family combo ethnic wear.
                         </p>
 
                         {/* Instagram Authority Link */}

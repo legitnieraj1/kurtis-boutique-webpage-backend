@@ -31,8 +31,7 @@ interface Product {
     is_family_combo?: boolean;
     is_couple_combo?: boolean;
     allow_baby_only?: boolean;
-    extra_length_price?: number;
-    feeding_zip_price?: number;
+    addons?: { id: string; name: string; price: number }[];
     mom_baby_combos?: { id: string; product_id: string; mom_price: number; baby_base_price: number }[];
     family_combos?: { id: string; product_id: string; mother_price: number; father_price: number; baby_base_price: number }[];
     couple_combos?: { id: string; product_id: string; women_price: number; men_price: number }[];
@@ -59,8 +58,7 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
     // Additional babies beyond the first (mom & baby combo only)
     const [extraBabies, setExtraBabies] = useState<{ size: string; gender: string }[]>([]);
     // Customisation add-ons (charged extra, prices set per product in admin)
-    const [extraLength, setExtraLength] = useState(false);
-    const [feedingZip, setFeedingZip] = useState(false);
+    const [selectedAddonIds, setSelectedAddonIds] = useState<string[]>([]);
     const [activeImage, setActiveImage] = useState<string>(product.images?.[0]?.image_url || "");
     const [showSticky, setShowSticky] = useState(false);
     const [descOpen, setDescOpen] = useState(false);
@@ -122,10 +120,10 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
 
     // Customisation add-on charges (not applicable to baby-only orders)
     const addonsAllowed = comboType !== 'baby_only';
-    if (addonsAllowed) {
-        if (extraLength && product.extra_length_price) finalPrice += product.extra_length_price;
-        if (feedingZip && product.feeding_zip_price) finalPrice += product.feeding_zip_price;
-    }
+    const selectedAddons = addonsAllowed
+        ? (product.addons || []).filter(a => selectedAddonIds.includes(a.id))
+        : [];
+    finalPrice += selectedAddons.reduce((sum, a) => sum + (a.price || 0), 0);
 
     const categoryName = product.category?.name || "Uncategorized";
 
@@ -139,8 +137,7 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
         is_family_combo: product.is_family_combo,
         is_couple_combo: product.is_couple_combo,
         allow_baby_only: product.allow_baby_only,
-        extra_length_price: product.extra_length_price || 0,
-        feeding_zip_price: product.feeding_zip_price || 0,
+        addons: product.addons?.map(a => ({ id: a.id, name: a.name, price: a.price })),
         mom_baby_combos: product.mom_baby_combos?.map(c => ({ mom_price: c.mom_price, baby_base_price: c.baby_base_price })),
         family_combos: product.family_combos?.map(c => ({ mother_price: c.mother_price, father_price: c.father_price, baby_base_price: c.baby_base_price })),
         couple_combos: product.couple_combos?.map(c => ({ women_price: c.women_price, men_price: c.men_price })),
@@ -150,8 +147,7 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
     const addonSuffix = () => {
         if (comboType === 'baby_only') return '';
         const parts: string[] = [];
-        if (extraLength && product.extra_length_price) parts.push('Extra Length');
-        if (feedingZip && product.feeding_zip_price) parts.push('Feeding Zip');
+        selectedAddons.forEach(a => parts.push(a.name));
         return parts.length ? ` + ${parts.join(' + ')}` : '';
     };
 
@@ -214,9 +210,8 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
     };
 
     const buildAddons = () => {
-        const addons: { extra_length?: boolean; feeding_zip?: boolean; babies?: { size: string; gender: string }[] } = {};
-        if (addonsAllowed && extraLength && product.extra_length_price) addons.extra_length = true;
-        if (addonsAllowed && feedingZip && product.feeding_zip_price) addons.feeding_zip = true;
+        const addons: { selected?: { name: string; price: number }[]; babies?: { size: string; gender: string }[] } = {};
+        if (selectedAddons.length > 0) addons.selected = selectedAddons.map(a => ({ name: a.name, price: a.price }));
         if (comboType === 'mom_baby' && extraBabies.length > 0) addons.babies = extraBabies;
         return Object.keys(addons).length > 0 ? addons : null;
     };
@@ -549,28 +544,29 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
                         )}
 
                         {/* CUSTOMISATION ADD-ONS */}
-                        {addonsAllowed && ((product.extra_length_price || 0) > 0 || (product.feeding_zip_price || 0) > 0) && (
+                        {addonsAllowed && product.addons && product.addons.length > 0 && (
                             <div className="space-y-2">
                                 <span className="font-medium text-sm block">Customisation Add-ons</span>
                                 <div className="flex flex-col gap-2">
-                                    {(product.extra_length_price || 0) > 0 && (
-                                        <label className={cn("flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-all", extraLength ? "border-primary ring-1 ring-primary bg-primary/5" : "hover:border-primary/50")}>
-                                            <div className="flex items-center gap-3">
-                                                <input type="checkbox" checked={extraLength} onChange={e => setExtraLength(e.target.checked)} className="w-4 h-4 accent-primary" />
-                                                <span className="font-medium text-sm">Extra Length</span>
-                                            </div>
-                                            <span className="text-sm text-muted-foreground">+{formatPrice(product.extra_length_price!)}</span>
-                                        </label>
-                                    )}
-                                    {(product.feeding_zip_price || 0) > 0 && (
-                                        <label className={cn("flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-all", feedingZip ? "border-primary ring-1 ring-primary bg-primary/5" : "hover:border-primary/50")}>
-                                            <div className="flex items-center gap-3">
-                                                <input type="checkbox" checked={feedingZip} onChange={e => setFeedingZip(e.target.checked)} className="w-4 h-4 accent-primary" />
-                                                <span className="font-medium text-sm">Feeding Zip</span>
-                                            </div>
-                                            <span className="text-sm text-muted-foreground">+{formatPrice(product.feeding_zip_price!)}</span>
-                                        </label>
-                                    )}
+                                    {product.addons.map(addon => {
+                                        const isSelected = selectedAddonIds.includes(addon.id);
+                                        return (
+                                            <label key={addon.id} className={cn("flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-all", isSelected ? "border-primary ring-1 ring-primary bg-primary/5" : "hover:border-primary/50")}>
+                                                <div className="flex items-center gap-3">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={isSelected}
+                                                        onChange={e => setSelectedAddonIds(e.target.checked
+                                                            ? [...selectedAddonIds, addon.id]
+                                                            : selectedAddonIds.filter(id => id !== addon.id))}
+                                                        className="w-4 h-4 accent-primary"
+                                                    />
+                                                    <span className="font-medium text-sm">{addon.name}</span>
+                                                </div>
+                                                <span className="text-sm text-muted-foreground">+{formatPrice(addon.price)}</span>
+                                            </label>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         )}

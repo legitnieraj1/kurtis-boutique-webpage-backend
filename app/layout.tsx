@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/components/providers/AuthProvider";
+import { FloatingWhatsApp } from "@/components/layout/FloatingWhatsApp";
 import "./globals.css";
 
 const inter = Inter({
@@ -23,7 +24,7 @@ export const metadata: Metadata = {
   },
 
   description:
-    "Shop designer kurtis, kurti sets and ethnic wear online at Kurtis Boutique. Trusted boutique brand with 30K+ Instagram followers. Shipping across India. COD available.",
+    "Shop designer kurtis, kurti sets and ethnic wear online at Kurtis Boutique. Specialised in mom & baby combos, family combos, couple combos, casual wear, maternity/feeding wear, and baby dresses. Trusted boutique brand with 30K+ Instagram followers. Shipping across India. COD available.",
 
   keywords: [
     "kurtis boutique",
@@ -36,13 +37,16 @@ export const metadata: Metadata = {
     "kurti boutique online store",
     "kurtis boutique instagram",
     "kurtis boutique india",
-    "kurtis boutique bangalore",
     "kurtis.boutique",
     "cotton kurtis online",
     "designer kurti sets",
     "festive kurti collection",
     "matching mom baby outfits",
     "family combo ethnic wear",
+    "couple combo outfits",
+    "maternity kurtis online",
+    "feeding wear kurtis",
+    "baby dresses online india",
     "women ethnic wear online",
     "Anarkali kurtas",
     "co-ord sets women",
@@ -148,7 +152,7 @@ function SchemaMarkup() {
     },
     image: "https://kurtisboutique.in/kurtis-logo-large.png",
     description:
-      "Kurtis Boutique is an online ethnic wear brand with over 30,000 followers on Instagram. The brand ships premium boutique clothing across India. Shop designer kurtis, kurti sets, festive wear, mom-baby combos, and family combo ethnic wear.",
+      "Kurtis Boutique is an online ethnic wear brand with over 30,000 followers on Instagram. Specialised in mom & baby combos, family combos, couple combos, casual wear, maternity/feeding wear, and baby dresses. The brand ships premium boutique clothing across India.",
     contactPoint: {
       "@type": "ContactPoint",
       telephone: "+91-9787635982",
@@ -191,7 +195,7 @@ function SchemaMarkup() {
     url: "https://kurtisboutique.in",
     image: "https://kurtisboutique.in/kurtis-logo-large.png",
     description:
-      "Kurtis Boutique is an online ethnic wear boutique offering designer kurtis, kurti sets, cotton kurtis, festive kurti collections, matching mom baby outfits, and family combo ethnic wear. Shipping across India.",
+      "Kurtis Boutique is an online ethnic wear boutique offering designer kurtis, kurti sets, cotton kurtis, festive kurti collections, matching mom baby outfits, family combo ethnic wear, and couple combos. Specialised in maternity/feeding wear and baby dresses. Shipping across India.",
     telephone: "+91-9787635982",
     currenciesAccepted: "INR",
     paymentAccepted: "Credit Card, Debit Card, UPI, Cash on Delivery, Net Banking, Razorpay",
@@ -402,6 +406,7 @@ export default function RootLayout({
           </div>
         </AuthProvider>
         <PWAInstallPrompt />
+        <FloatingWhatsApp />
         <Toaster
           position="bottom-right"
           toastOptions={{

@@ -2,8 +2,8 @@
 import { createSupabaseClient } from "@/lib/supabase/client";
 
 export interface CartItemAddons {
-    extra_length?: boolean;
-    feeding_zip?: boolean;
+    /** Selected customisation add-ons (name + price), from the product's dynamic add-on list. */
+    selected?: { name: string; price: number }[];
     /** Extra babies beyond the first (mom_baby combo). Each priced by its size. */
     babies?: { size: string; gender: string }[];
 }
@@ -22,8 +22,7 @@ export interface CartItem {
         is_family_combo?: boolean;
         is_couple_combo?: boolean;
         allow_baby_only?: boolean;
-        extra_length_price?: number;
-        feeding_zip_price?: number;
+        addons?: { id: string; name: string; price: number }[];
         mom_baby_combos?: { mom_price: number; baby_base_price: number }[];
         family_combos?: { mother_price: number; father_price: number; baby_base_price: number }[];
         couple_combos?: { women_price: number; men_price: number }[];
@@ -43,14 +42,10 @@ function babySizePrice(product: NonNullable<CartItem['product']>, size: string |
     return fallback;
 }
 
-/** Flat charges for customisation add-ons (extra length, feeding zip). */
+/** Flat charges for selected customisation add-ons. */
 function addonCharges(item: CartItem): number {
-    const product = item.product;
-    if (!product || !item.addons) return 0;
-    let extra = 0;
-    if (item.addons.extra_length && product.extra_length_price) extra += product.extra_length_price;
-    if (item.addons.feeding_zip && product.feeding_zip_price) extra += product.feeding_zip_price;
-    return extra;
+    if (!item.addons?.selected?.length) return 0;
+    return item.addons.selected.reduce((sum, a) => sum + (a.price || 0), 0);
 }
 
 /**
@@ -172,13 +167,13 @@ export const CartService = {
             .eq('user_id', user.id)
             .eq('product_id', productId)
             .eq('size', size);
-            
+
         if (color) {
             query = query.eq('color', color);
         } else {
             query = query.is('color', null);
         }
-        
+
         if (comboType) {
             query = query.eq('combo_type', comboType);
         }

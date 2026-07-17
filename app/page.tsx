@@ -44,6 +44,7 @@ async function getHomeData() {
         mom_baby_combos(id, mom_price, baby_base_price),
         family_combos(id, mother_price, father_price, baby_base_price),
                 couple_combos(id, women_price, men_price),
+                addons:product_addons(id, name, price),
         baby_size_prices(id, size, price)
       `)
       .eq("is_active", true)
@@ -232,13 +233,17 @@ export default async function Home() {
                 <p className="text-muted-foreground leading-relaxed">
                   <strong>Kurtis Boutique</strong> is an online ethnic wear brand with over <strong>30,000 followers on Instagram</strong>.
                   The brand ships premium
-                  boutique clothing across <strong>India</strong>. Shop from our extensive collection of{" "}
+                  boutique clothing across <strong>India</strong>, specialising in{" "}
+                  <Link href="/shop" className="text-primary hover:underline">mom &amp; baby combos</Link>,{" "}
+                  <Link href="/shop" className="text-primary hover:underline">family combos</Link>,{" "}
+                  <Link href="/shop" className="text-primary hover:underline">couple combos</Link>,{" "}
+                  <Link href="/shop" className="text-primary hover:underline">casual wear</Link>,{" "}
+                  <Link href="/shop" className="text-primary hover:underline">maternity &amp; feeding wear</Link>, and{" "}
+                  <Link href="/shop" className="text-primary hover:underline">baby dresses</Link>.
+                  Shop from our extensive collection of{" "}
                   <Link href="/shop" className="text-primary hover:underline">designer kurtis online</Link>,{" "}
-                  <Link href="/shop" className="text-primary hover:underline">cotton kurtis</Link>,{" "}
-                  <Link href="/shop" className="text-primary hover:underline">kurti sets for women</Link>,{" "}
-                  <Link href="/shop" className="text-primary hover:underline">festive kurti collections</Link>,{" "}
-                  <Link href="/shop" className="text-primary hover:underline">matching mom baby outfits</Link>, and{" "}
-                  <Link href="/shop" className="text-primary hover:underline">family combo ethnic wear</Link>.
+                  <Link href="/shop" className="text-primary hover:underline">cotton kurtis</Link>, and{" "}
+                  <Link href="/shop" className="text-primary hover:underline">kurti sets for women</Link>.
                   Whether you&apos;re looking to <strong>buy kurtis online in India</strong> for daily wear, office, or festive occasions,
                   Kurtis Boutique is your trusted <strong>ethnic wear boutique online</strong> destination.
                 </p>

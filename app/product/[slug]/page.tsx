@@ -100,6 +100,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             mom_baby_combos(*),
             family_combos(*),
                 couple_combos(*),
+                addons:product_addons(*),
             baby_size_prices(*)
         `)
         .eq('slug', slug)

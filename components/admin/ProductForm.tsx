@@ -45,9 +45,10 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
 
     const [allowBabyOnly, setAllowBabyOnly] = useState(initialData?.allow_baby_only || false);
 
-    // Customisation add-on charges (0 = option hidden on product page)
-    const [extraLengthPrice, setExtraLengthPrice] = useState(initialData?.extra_length_price || "");
-    const [feedingZipPrice, setFeedingZipPrice] = useState(initialData?.feeding_zip_price || "");
+    // Customisation add-ons: any number of named charges (e.g. Extra Length, Feeding Zip)
+    const [addons, setAddons] = useState<{ name: string; price: string }[]>(
+        initialData?.addons?.map((a: any) => ({ name: a.name, price: a.price.toString() })) || []
+    );
 
     // Baby Size Prices
     const [babySizePrices, setBabySizePrices] = useState<{size: string, price: string}[]>(
@@ -216,8 +217,7 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
                 is_family_combo: isFamilyCombo,
                 is_couple_combo: isCoupleCombo,
                 allow_baby_only: allowBabyOnly,
-                extra_length_price: extraLengthPrice ? parseFloat(extraLengthPrice + '') : 0,
-                feeding_zip_price: feedingZipPrice ? parseFloat(feedingZipPrice + '') : 0,
+                addons: addons.filter(a => a.name && a.price).map(a => ({ name: a.name, price: parseFloat(a.price) })),
                 mom_baby_combos: isMomBaby && momPrice && babyBasePriceMB ? [{ mom_price: parseFloat(momPrice + ''), baby_base_price: parseFloat(babyBasePriceMB + '') }] : [],
                 family_combos: isFamilyCombo && motherPrice && fatherPrice && babyBasePriceFC ? [{ mother_price: parseFloat(motherPrice + ''), father_price: parseFloat(fatherPrice + ''), baby_base_price: parseFloat(babyBasePriceFC + '') }] : [],
                 couple_combos: isCoupleCombo && womenPrice && menPrice ? [{ women_price: parseFloat(womenPrice + ''), men_price: parseFloat(menPrice + '') }] : [],
@@ -294,6 +294,20 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
 
     const removeBabySizePrice = (index: number) => {
         setBabySizePrices(babySizePrices.filter((_, i) => i !== index));
+    };
+
+    const addAddon = () => {
+        setAddons([...addons, { name: "", price: "" }]);
+    };
+
+    const updateAddon = (index: number, field: 'name' | 'price', value: string) => {
+        const next = [...addons];
+        next[index][field] = value;
+        setAddons(next);
+    };
+
+    const removeAddon = (index: number) => {
+        setAddons(addons.filter((_, i) => i !== index));
     };
 
     return (
@@ -592,18 +606,35 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
 
                     {/* Customisation Add-on Charges */}
                     <div className="p-4 border rounded-md space-y-4 bg-muted/20">
-                        <label className="font-medium">Customisation Add-on Charges</label>
-                        <p className="text-sm text-muted-foreground">Extra charges shown at size selection. Leave 0 to hide the option.</p>
-                        <div className="grid grid-cols-2 gap-4 pl-6">
-                            <div className="space-y-2">
-                                <label className="text-sm">Extra Length (₹)</label>
-                                <input type="number" min="0" placeholder="e.g. 100" className="w-full px-3 py-2 border rounded-md" value={extraLengthPrice} onChange={e => setExtraLengthPrice(e.target.value)} />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-sm">Feeding Zip (₹)</label>
-                                <input type="number" min="0" placeholder="e.g. 150" className="w-full px-3 py-2 border rounded-md" value={feedingZipPrice} onChange={e => setFeedingZipPrice(e.target.value)} />
-                            </div>
+                        <div className="flex items-center justify-between">
+                            <label className="font-medium">Customisation Add-on Charges</label>
+                            <Button type="button" variant="outline" size="sm" onClick={addAddon}>
+                                <Plus className="w-4 h-4 mr-2" /> Add Charge
+                            </Button>
                         </div>
+                        <p className="text-sm text-muted-foreground">Extra charges shown at size selection (e.g. Extra Length, Feeding Zip). Add or remove as many as needed.</p>
+                        {addons.map((addon, index) => (
+                            <div key={index} className="flex gap-4 items-center pl-6">
+                                <input
+                                    type="text"
+                                    placeholder="Name (e.g. Extra Length)"
+                                    className="flex-1 px-3 py-2 border rounded-md"
+                                    value={addon.name}
+                                    onChange={e => updateAddon(index, 'name', e.target.value)}
+                                />
+                                <input
+                                    type="number"
+                                    min="0"
+                                    placeholder="Price (₹)"
+                                    className="flex-1 px-3 py-2 border rounded-md"
+                                    value={addon.price}
+                                    onChange={e => updateAddon(index, 'price', e.target.value)}
+                                />
+                                <Button type="button" variant="ghost" size="icon" onClick={() => removeAddon(index)}>
+                                    <Trash className="w-4 h-4 text-red-500" />
+                                </Button>
+                            </div>
+                        ))}
                     </div>
 
                     {/* Dynamic Baby Sizing */}
