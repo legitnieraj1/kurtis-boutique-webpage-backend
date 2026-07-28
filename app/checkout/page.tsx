@@ -4,9 +4,10 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useStore } from '@/lib/store';
 import { Button } from '@/components/ui/button';
-import { Loader2, ShieldCheck, CreditCard } from 'lucide-react';
+import { Loader2, ShieldCheck, CreditCard, Lock } from 'lucide-react';
 import Image from 'next/image';
-import { formatPrice } from '@/lib/utils';
+import Link from 'next/link';
+import { formatPrice, cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import Script from 'next/script';
 import { getCartItemPrice } from '@/lib/cartService';
@@ -38,6 +39,13 @@ interface RazorpayResponse {
     razorpay_order_id: string;
     razorpay_signature: string;
 }
+
+const COMBO_LABELS: Record<string, string> = {
+    mom_baby: 'Mom & Baby Combo',
+    family: 'Family Combo',
+    couple: 'Couples Combo',
+    baby_only: 'Baby Only',
+};
 
 interface RazorpayInstance {
     open: () => void;
@@ -273,7 +281,9 @@ export default function CheckoutPage() {
 
     const subtotal = getCartTotal();
 
-    const inputClass = "mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm p-2 border";
+    // 16px base prevents iOS zooming the viewport when a field is focused
+    const inputClass = "mt-1.5 block w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-base sm:text-sm text-foreground placeholder:text-muted-foreground/70 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15";
+    const labelClass = "block text-xs uppercase tracking-[0.1em] text-muted-foreground font-medium";
 
     return (
         <>
@@ -282,98 +292,129 @@ export default function CheckoutPage() {
                 src="https://checkout.razorpay.com/v1/checkout.js"
                 onLoad={() => setRazorpayLoaded(true)}
             />
-            <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-                <div className="max-w-7xl mx-auto">
-                    <h1 className="text-3xl font-serif font-bold text-gray-900 mb-2 text-center">Checkout</h1>
-                    <p className="text-center text-sm text-gray-500 mb-8">No account needed — just fill in your details below</p>
+            <div className="min-h-screen bg-background pb-28 lg:pb-12">
+                {/* Brand header — checkout is where trust matters most, and the page
+                    previously carried no identity at all. */}
+                <header className="border-b border-border bg-surface">
+                    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+                        <Link href="/" aria-label="Kurtis Boutique home">
+                            <img src="/kurtis-logo-large.png" alt="Kurtis Boutique" className="h-14 w-auto object-contain" />
+                        </Link>
+                        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <Lock className="w-3.5 h-3.5 text-success" />
+                            Secure Checkout
+                        </span>
+                    </div>
+                </header>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
+                    {/* Progress — orients the buyer and signals how little is left */}
+                    <ol className="flex items-center justify-center gap-3 sm:gap-5 mb-8 text-xs">
+                        {["Details", "Review", "Pay"].map((label, i) => (
+                            <li key={label} className="flex items-center gap-3 sm:gap-5">
+                                <span className="flex items-center gap-2">
+                                    <span className={cn(
+                                        "w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-semibold",
+                                        i === 0 ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"
+                                    )}>
+                                        {i + 1}
+                                    </span>
+                                    <span className={cn("tracking-wide", i === 0 ? "text-foreground font-medium" : "text-muted-foreground")}>
+                                        {label}
+                                    </span>
+                                </span>
+                                {i < 2 && <span className="w-6 sm:w-10 h-px bg-border" />}
+                            </li>
+                        ))}
+                    </ol>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-[1.3fr_1fr] gap-8 lg:gap-12">
                         {/* Left Column */}
                         <div className="space-y-6">
                             {/* Shipping Address */}
-                            <div className="bg-white rounded-lg shadow p-6">
-                                <h2 className="text-xl font-medium mb-6">Shipping Details</h2>
+                            <div className="bg-surface rounded-xl border border-border shadow-[var(--shadow-soft)] p-6">
+                                <h2 className="text-lg font-serif text-foreground mb-5">Shipping Details</h2>
                                 <form ref={formRef} id="checkout-form" onSubmit={handleCheckout} className="space-y-4">
                                     <div>
-                                        <label htmlFor="name" className="block text-sm font-medium text-gray-700">Full Name</label>
+                                        <label htmlFor="name" className={labelClass}>Full Name</label>
                                         <input type="text" id="name" name="name" required value={formData.name} onChange={handleInputChange} className={inputClass} placeholder="Enter your full name" />
                                     </div>
 
                                     <div>
-                                        <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email Address</label>
+                                        <label htmlFor="email" className={labelClass}>Email Address</label>
                                         <input type="email" id="email" name="email" required value={formData.email} onChange={handleInputChange} className={inputClass} placeholder="your@email.com" />
                                     </div>
 
                                     <div>
-                                        <label htmlFor="phone" className="block text-sm font-medium text-gray-700">Mobile Number</label>
+                                        <label htmlFor="phone" className={labelClass}>Mobile Number</label>
                                         <input type="tel" id="phone" name="phone" required value={formData.phone} onChange={handleInputChange} className={inputClass} placeholder="10-digit mobile number" maxLength={10} />
                                     </div>
 
                                     <div>
-                                        <label htmlFor="address" className="block text-sm font-medium text-gray-700">Address (House No, Building, Street)</label>
+                                        <label htmlFor="address" className={labelClass}>Address (House No, Building, Street)</label>
                                         <input type="text" id="address" name="address" required value={formData.address} onChange={handleInputChange} className={inputClass} placeholder="Full address" />
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
-                                            <label htmlFor="city" className="block text-sm font-medium text-gray-700">City</label>
+                                            <label htmlFor="city" className={labelClass}>City</label>
                                             <input type="text" id="city" name="city" required value={formData.city} onChange={handleInputChange} className={inputClass} placeholder="City" />
                                         </div>
                                         <div>
-                                            <label htmlFor="state" className="block text-sm font-medium text-gray-700">State</label>
+                                            <label htmlFor="state" className={labelClass}>State</label>
                                             <input type="text" id="state" name="state" required value={formData.state} onChange={handleInputChange} className={inputClass} placeholder="State" />
                                         </div>
                                     </div>
 
                                     <div>
-                                        <label htmlFor="pincode" className="block text-sm font-medium text-gray-700">Pincode</label>
+                                        <label htmlFor="pincode" className={labelClass}>Pincode</label>
                                         <input type="text" id="pincode" name="pincode" required value={formData.pincode} onChange={handleInputChange} className={inputClass} placeholder="6-digit pincode" maxLength={6} />
                                     </div>
                                 </form>
                             </div>
 
                             {/* Billing Address Toggle */}
-                            <div className="bg-white rounded-lg shadow p-6">
+                            <div className="bg-surface rounded-xl border border-border shadow-[var(--shadow-soft)] p-6">
                                 <div className="flex items-center mb-4">
                                     <input
                                         id="same-as-shipping"
                                         type="checkbox"
                                         checked={sameAsShipping}
                                         onChange={(e) => setSameAsShipping(e.target.checked)}
-                                        className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                                        className="h-4 w-4 accent-primary rounded border-border"
                                     />
-                                    <label htmlFor="same-as-shipping" className="ml-2 block text-sm text-gray-900">
+                                    <label htmlFor="same-as-shipping" className="ml-2 block text-sm text-foreground">
                                         Billing address same as shipping
                                     </label>
                                 </div>
 
                                 {!sameAsShipping && (
-                                    <div className="space-y-4 pt-4 border-t border-gray-100 animate-in slide-in-from-top-2 fade-in duration-300">
+                                    <div className="space-y-4 pt-4 border-t border-border animate-in slide-in-from-top-2 fade-in duration-300">
                                         <h2 className="text-xl font-medium mb-4">Billing Address</h2>
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700">Full Name</label>
+                                            <label className={labelClass}>Full Name</label>
                                             <input type="text" name="name" required={!sameAsShipping} value={billingData.name} onChange={handleBillingChange} className={inputClass} placeholder="Billing name" />
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700">Phone Number</label>
+                                            <label className={labelClass}>Phone Number</label>
                                             <input type="tel" name="phone" required={!sameAsShipping} value={billingData.phone} onChange={handleBillingChange} className={inputClass} placeholder="Billing phone" />
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700">Address</label>
+                                            <label className={labelClass}>Address</label>
                                             <input type="text" name="address" required={!sameAsShipping} value={billingData.address} onChange={handleBillingChange} className={inputClass} placeholder="Billing address" />
                                         </div>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-700">City</label>
+                                                <label className={labelClass}>City</label>
                                                 <input type="text" name="city" required={!sameAsShipping} value={billingData.city} onChange={handleBillingChange} className={inputClass} />
                                             </div>
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-700">State</label>
+                                                <label className={labelClass}>State</label>
                                                 <input type="text" name="state" required={!sameAsShipping} value={billingData.state} onChange={handleBillingChange} className={inputClass} />
                                             </div>
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700">Pincode</label>
+                                            <label className={labelClass}>Pincode</label>
                                             <input type="text" name="pincode" required={!sameAsShipping} value={billingData.pincode} onChange={handleBillingChange} className={inputClass} placeholder="Billing pincode" />
                                         </div>
                                     </div>
@@ -381,11 +422,11 @@ export default function CheckoutPage() {
                             </div>
 
                             {/* Payment Method */}
-                            <div className="bg-white rounded-lg shadow p-6">
+                            <div className="bg-surface rounded-xl border border-border shadow-[var(--shadow-soft)] p-6">
                                 <h2 className="text-xl font-medium mb-4">Payment Method</h2>
                                 <div className="flex items-center justify-between p-4 border border-primary bg-primary/5 ring-1 ring-primary rounded-lg">
                                     <div className="flex items-center gap-3">
-                                        <div className="h-5 w-5 rounded-full border border-gray-300 flex items-center justify-center">
+                                        <div className="h-5 w-5 rounded-full border border-border flex items-center justify-center">
                                             <div className="h-2.5 w-2.5 rounded-full bg-primary" />
                                         </div>
                                         <span className="font-medium">Online Payment (Cards, UPI, Netbanking)</span>
@@ -395,17 +436,18 @@ export default function CheckoutPage() {
                             </div>
                         </div>
 
-                        {/* Right Column: Order Summary */}
+                        {/* Right Column: Order Summary — sticky so the total and Pay
+                            button stay in view while the form is filled in. */}
                         <div className="space-y-6">
-                            <div className="bg-white rounded-lg shadow p-6 sticky top-24">
-                                <h2 className="text-xl font-medium mb-6">Order Summary</h2>
+                            <div className="bg-surface rounded-xl border border-border shadow-[var(--shadow-soft)] p-6 lg:sticky lg:top-8">
+                                <h2 className="text-lg font-serif text-foreground mb-5">Order Summary</h2>
 
                                 {cart.length === 0 ? (
                                     <p className="text-muted-foreground text-center py-8">Your cart is empty. <a href="/shop" className="text-primary underline">Shop now</a></p>
                                 ) : (
                                     <div className="space-y-4 mb-6 max-h-96 overflow-y-auto pr-2">
                                         {cart.map((item) => (
-                                            <div key={item.id} className="flex gap-4 py-4 border-b last:border-0 border-gray-100">
+                                            <div key={item.id} className="flex gap-3.5 py-4 border-b last:border-0 border-border">
                                                 <div className="relative w-16 h-20 flex-shrink-0 bg-gray-100 rounded-md overflow-hidden">
                                                     {item.product?.images?.[0]?.image_url ? (
                                                         <Image src={item.product.images[0].image_url} alt={item.product.name || ''} fill className="object-cover" />
@@ -414,25 +456,20 @@ export default function CheckoutPage() {
                                                     )}
                                                 </div>
                                                 <div className="flex-1">
-                                                    <h3 className="font-medium text-gray-900 line-clamp-1">{item.product?.name}</h3>
+                                                    <h3 className="font-serif text-sm text-foreground line-clamp-1">{item.product?.name}</h3>
                                                     <div className="flex justify-between mt-1">
-                                                        <p className="text-sm text-gray-500">
+                                                        <p className="text-xs text-muted-foreground">
                                                             Size: {item.size}
                                                             {item.color && ` | Color: ${item.color.includes('|') ? item.color.split('|')[0] : item.color}`}
                                                         </p>
-                                                        <p className="text-sm font-medium">Qty: {item.quantity}</p>
+                                                        <p className="text-xs text-muted-foreground">Qty: {item.quantity}</p>
                                                     </div>
-                                                    {item.combo_type && item.combo_type !== 'single' && (
-                                                        <p className="text-xs text-primary mt-1">
-                                                            {item.combo_type === 'mom_baby' ? 'Mom & Baby Combo' : 'Family Combo'}
-                                                        </p>
+                                                    {item.combo_type && item.combo_type !== 'single' && COMBO_LABELS[item.combo_type] && (
+                                                        <span className="inline-block text-[11px] font-medium text-primary bg-secondary px-2 py-0.5 rounded-full mt-1.5">
+                                                            {COMBO_LABELS[item.combo_type]}
+                                                        </span>
                                                     )}
-                                                    {item.baby_size && (
-                                                        <p className="text-xs text-orange-700 bg-orange-50 px-2 py-0.5 rounded inline-block mt-1">
-                                                            Baby Size: {item.baby_size}
-                                                        </p>
-                                                    )}
-                                                    <p className="text-sm font-semibold mt-1">
+                                                    <p className="text-sm font-semibold mt-1.5 tabular-nums text-foreground">
                                                         {formatPrice(getCartItemPrice(item) * item.quantity)}
                                                     </p>
                                                 </div>
@@ -441,51 +478,61 @@ export default function CheckoutPage() {
                                     </div>
                                 )}
 
-                                <div className="space-y-3 pt-4 border-t border-gray-200">
-                                    <div className="flex justify-between text-base font-medium text-gray-900">
-                                        <p>Subtotal</p>
-                                        <p>{formatPrice(subtotal)}</p>
+                                <div className="space-y-2.5 pt-4 border-t border-border">
+                                    <div className="flex justify-between text-sm">
+                                        <p className="text-muted-foreground">Subtotal</p>
+                                        <p className="tabular-nums text-foreground">{formatPrice(subtotal)}</p>
                                     </div>
-                                    <div className="flex justify-between text-sm text-gray-500">
-                                        <p>Shipping</p>
-                                        <p>
+                                    <div className="flex justify-between text-sm">
+                                        <p className="text-muted-foreground">Shipping</p>
+                                        <div className="text-right">
                                             {isCheckingShipping ? (
-                                                <span className="flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Calc...</span>
+                                                <span className="flex items-center gap-1.5 text-muted-foreground">
+                                                    <Loader2 className="w-3 h-3 animate-spin" /> Calculating
+                                                </span>
                                             ) : shippingCost !== null ? (
-                                                shippingCost === 0 ? 'FREE' : formatPrice(shippingCost)
+                                                <span className={cn("tabular-nums", shippingCost === 0 ? "text-success font-medium" : "text-foreground")}>
+                                                    {shippingCost === 0 ? 'FREE' : formatPrice(shippingCost)}
+                                                </span>
                                             ) : (
-                                                'Enter Pincode'
+                                                <span className="text-muted-foreground text-xs">Enter pincode to calculate</span>
                                             )}
-                                        </p>
+                                        </div>
                                     </div>
-                                    <div className="flex justify-between text-lg font-bold text-gray-900 pt-2">
-                                        <p>Total</p>
-                                        <p>{formatPrice(subtotal + (shippingCost || 0))}</p>
+                                    <div className="flex justify-between items-baseline pt-3 mt-1 border-t border-border">
+                                        <p className="font-medium text-foreground">Total</p>
+                                        <p className="text-2xl font-semibold tabular-nums text-foreground">
+                                            {formatPrice(subtotal + (shippingCost || 0))}
+                                        </p>
                                     </div>
                                 </div>
 
+                                {/* Naming the amount on the button removes the last
+                                    moment of doubt about what will be charged. */}
                                 <Button
                                     type="button"
                                     onClick={() => formRef.current?.requestSubmit()}
                                     disabled={isInitiating || cart.length === 0 || !razorpayLoaded}
-                                    className="w-full mt-6 h-12 bg-primary hover:bg-primary/90 text-white font-bold text-lg rounded-md shadow-lg transition-all"
+                                    className="w-full mt-6 h-14 rounded-full bg-primary hover:bg-primary-hover text-primary-foreground font-semibold text-[15px] tracking-[0.06em] uppercase shadow-[var(--shadow-lift)] transition-all duration-300 active:scale-[0.99]"
                                 >
                                     {isInitiating ? (
-                                        <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Processing...</>
+                                        <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Processing…</>
                                     ) : !razorpayLoaded ? (
-                                        <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading...</>
-                                    ) : "Pay Now"}
+                                        <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading…</>
+                                    ) : (
+                                        <>Pay {formatPrice(subtotal + (shippingCost || 0))}</>
+                                    )}
                                 </Button>
 
                                 <div className="mt-4 space-y-2">
-                                    <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
-                                        <ShieldCheck className="h-4 w-4 text-green-600" />
-                                        <span>Secured by Razorpay</span>
-                                    </div>
-                                    <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
-                                        <CreditCard className="h-4 w-4 text-primary" />
-                                        <span>Cards, UPI, Wallets &amp; More</span>
-                                    </div>
+                                    <p className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                                        <ShieldCheck className="h-3.5 w-3.5 text-success" />
+                                        256-bit secure payment via Razorpay
+                                    </p>
+                                    <p className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                                        <CreditCard className="h-3.5 w-3.5 text-accent-brand" />
+                                        UPI · Cards · Wallets · Net Banking
+                                    </p>
                                 </div>
                             </div>
                         </div>
