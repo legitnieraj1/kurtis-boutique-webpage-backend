@@ -8,6 +8,12 @@ const nextConfig: NextConfig = {
   // Consistent trailing slash behavior for SEO
   trailingSlash: false,
 
+  // Pin turbopack root to this project directory to avoid confusion with
+  // the lockfile at the parent /Users/nieraj/ directory
+  turbopack: {
+    root: __dirname,
+  },
+
   images: {
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 31536000, // Cache optimized images for 1 year
