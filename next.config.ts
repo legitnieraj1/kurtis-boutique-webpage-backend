@@ -21,6 +21,12 @@ const nextConfig: NextConfig = {
     // Next.js 16 only serves qualities listed here (default [75]); anything else
     // is rejected with a 400. These are the values used across the app.
     qualities: [70, 75, 80],
+    // Dev-only: some local/sandboxed environments resolve Supabase's storage
+    // domain to an address Next's image optimizer treats as private and
+    // refuses to fetch server-side, even though the browser reaches it fine.
+    // Skipping the optimizer here lets the browser fetch images directly.
+    // Production always goes through the optimizer — this never applies there.
+    unoptimized: process.env.NODE_ENV !== "production",
     remotePatterns: [
       {
         protocol: 'https',
