@@ -506,7 +506,7 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
                             <div id="baby-size-selector" className="mb-6 space-y-4">
                                 <div>
                                     <div className="flex justify-between items-center mb-2">
-                                        <span className="font-medium text-sm">{comboType === 'mom_baby' && extraBabies.length > 0 ? 'Select Baby 1 Size' : 'Select Baby Size'}</span>
+                                        <span className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground font-medium">{comboType === 'mom_baby' && extraBabies.length > 0 ? 'Baby 1 Size' : 'Baby Size'}</span>
                                     </div>
                                     <div className="flex flex-col gap-2">
                                         {product.baby_size_prices.map(bp => (
@@ -519,7 +519,7 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
                                 </div>
                                 <div id="baby-gender-selector">
                                     <div className="flex justify-between items-center mb-2">
-                                        <span className="font-medium text-sm">{comboType === 'mom_baby' && extraBabies.length > 0 ? 'Select Baby 1 Gender' : 'Select Baby Gender'}</span>
+                                        <span className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground font-medium">{comboType === 'mom_baby' && extraBabies.length > 0 ? 'Baby 1 Gender' : 'Baby Gender'}</span>
                                     </div>
                                     <div className="flex gap-3">
                                         {['Boy', 'Girl'].map(gender => (
@@ -621,7 +621,7 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
                             <div id="family-sizes-selector" className="space-y-4">
                                 <div>
                                     <div className="flex justify-between items-center mb-2">
-                                        <span className="font-medium text-sm">{comboType === 'couple' ? "Select Men's Size" : 'Select Father Size'}</span>
+                                        <span className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground font-medium">{comboType === 'couple' ? "Men's Size" : 'Father Size'}</span>
                                         <Link href="/size-chart" className="text-xs underline text-muted-foreground hover:text-primary transition-colors">Size Chart</Link>
                                     </div>
                                     <div className="flex gap-3 flex-wrap">
@@ -634,7 +634,7 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
                                 </div>
                                 <div>
                                     <div className="flex justify-between items-center mb-2">
-                                        <span className="font-medium text-sm">{comboType === 'couple' ? "Select Women's Size" : 'Select Mother Size'}</span>
+                                        <span className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground font-medium">{comboType === 'couple' ? "Women's Size" : 'Mother Size'}</span>
                                     </div>
                                     <div className="flex gap-3 flex-wrap">
                                         {product.sizes?.map(sizeObj => (
@@ -648,7 +648,7 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
                         ) : (
                             <div id="size-selector">
                                 <div className="flex justify-between items-center mb-2">
-                                    <span className="font-medium text-sm">{comboType === 'mom_baby' ? 'Select Mom Size' : 'Select Size'}</span>
+                                    <span className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground font-medium">{comboType === 'mom_baby' ? "Mom's Size" : 'Size'}</span>
                                     <Link href="/size-chart" className="text-xs underline text-muted-foreground hover:text-primary transition-colors">Size Chart</Link>
                                 </div>
                                 <div className="flex gap-3 flex-wrap">
@@ -664,7 +664,7 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
                         {/* CUSTOMISATION ADD-ONS */}
                         {addonsAllowed && product.addons && product.addons.length > 0 && (
                             <div className="space-y-2">
-                                <span className="font-medium text-sm block">Customisation Add-ons</span>
+                                <span className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground font-medium block">Customisation Add-ons</span>
                                 <div className="flex flex-col gap-2">
                                     {product.addons.map(addon => {
                                         const isSelected = selectedAddonIds.includes(addon.id);

@@ -18,6 +18,9 @@ const nextConfig: NextConfig = {
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 31536000, // Cache optimized images for 1 year
     deviceSizes: [375, 640, 750, 828, 1080, 1200, 1920],
+    // Next.js 16 only serves qualities listed here (default [75]); anything else
+    // is rejected with a 400. These are the values used across the app.
+    qualities: [70, 75, 80],
     remotePatterns: [
       {
         protocol: 'https',
