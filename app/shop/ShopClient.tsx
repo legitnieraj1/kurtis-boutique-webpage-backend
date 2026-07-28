@@ -108,7 +108,7 @@ export function ShopClient({ initialProducts, initialCategories }: { initialProd
                 </aside>
 
                 {/* Main Content */}
-                <main className="flex-1 p-4 sm:p-6 lg:p-8 bg-background/60 backdrop-blur-sm">
+                <main className="flex-1 p-4 sm:p-6 lg:p-8">
                     <div className="flex justify-end mb-6 gap-2">
                         <Button variant="outline" className="md:hidden" onClick={() => setShowFilters(!showFilters)}>
                             <SlidersHorizontal className="w-4 h-4 mr-2" /> Filters

@@ -7,7 +7,7 @@ import { Mail, MapPin, Phone } from "lucide-react";
 
 export default function ContactPage() {
     return (
-        <div className="min-h-screen bg-background/60 backdrop-blur-sm">
+        <div className="min-h-screen">
             <Navbar />
 
             <main className="container mx-auto px-4 py-12 md:py-20">

@@ -54,7 +54,7 @@ export default function WishlistPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-background/60 backdrop-blur-sm">
+            <div className="min-h-screen">
                 <Navbar />
                 <main className="container mx-auto px-4 py-8">
                     <h1 className="text-3xl font-serif mb-8">My Wishlist</h1>
@@ -67,7 +67,7 @@ export default function WishlistPage() {
     }
 
     return (
-        <div className="min-h-screen bg-background/60 backdrop-blur-sm text-foreground">
+        <div className="min-h-screen text-foreground">
             <Navbar />
 
             <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-16">

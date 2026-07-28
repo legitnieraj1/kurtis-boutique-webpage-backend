@@ -25,6 +25,13 @@
 
   --color-border: var(--border);
 
+  /* Brand tokens — mauve accent from the logo, plus surface/success */
+  --color-primary-hover: var(--primary-hover);
+  --color-accent-brand: var(--accent-brand);
+  --color-accent-brand-soft: var(--accent-brand-soft);
+  --color-surface: var(--surface);
+  --color-success: var(--success);
+
   --animate-first: moveVertical 30s ease infinite;
   --animate-second: moveInCircle 20s reverse infinite;
   --animate-third: moveInCircle 40s linear infinite;
@@ -100,37 +107,51 @@
 }
 
 :root {
-  /* Ivory/Cream Background */
-  /* Soft Charcoal Text */
+  /* ── Brand palette, drawn from the Kurtis Boutique logo ──
+     Deep wine script + mauve-orchid wordmark, on a warm cream ground. */
 
-  /* Deep Wine / Rose */
-  --primary: oklch(0.5 0.2 8);
-  --primary-foreground: oklch(0.985 0 0);
+  /* Deep Wine — logo script. Primary actions, active states. */
+  --primary: oklch(0.36 0.13 340);
+  --primary-hover: oklch(0.42 0.14 340);
+  --primary-foreground: oklch(0.99 0.004 90);
 
-  /* Rose Mauve */
-  --secondary: oklch(0.97 0.05 5);
-  --secondary-foreground: oklch(0.205 0 0);
+  /* Mauve Orchid — logo wordmark/leaves. Accent only: badges, rules, highlights. */
+  --accent-brand: oklch(0.62 0.13 340);
+  --accent-brand-soft: oklch(0.94 0.03 340);
 
-  /* Muted Text */
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
+  /* Blush — tints and hover washes */
+  --secondary: oklch(0.96 0.018 340);
+  --secondary-foreground: oklch(0.28 0.02 40);
 
-  /* Soft Blush Accent */
-  --accent: oklch(0.97 0.05 5);
-  --accent-foreground: oklch(0.205 0 0);
+  /* Muted Text — warm taupe, not cold grey */
+  --muted: oklch(0.96 0.008 70);
+  --muted-foreground: oklch(0.58 0.015 60);
 
-  /* Borders */
-  --border: oklch(0.922 0 0);
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --accent: oklch(0.96 0.018 340);
+  --accent-foreground: oklch(0.28 0.02 40);
+
+  /* Sage — in-stock, free shipping, success states */
+  --success: oklch(0.52 0.07 155);
+
+  /* Warm sand hairlines */
+  --border: oklch(0.91 0.008 70);
+  --radius: 0.5rem;
+
+  /* Warm cream ground, warm charcoal text */
+  --background: oklch(0.975 0.008 85);
+  --foreground: oklch(0.25 0.012 45);
+  --surface: oklch(1 0 0);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.25 0.012 45);
+
+  /* Soft elevation — boutique, not dashboard */
+  --shadow-soft: 0 2px 16px -4px oklch(0.25 0.012 45 / 0.08);
+  --shadow-lift: 0 8px 32px -8px oklch(0.25 0.012 45 / 0.14);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
   --destructive: oklch(0.577 0.245 27.325);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.5 0.2 8);
+  --input: oklch(0.91 0.008 70);
+  --ring: oklch(0.36 0.13 340);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);

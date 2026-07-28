@@ -300,7 +300,7 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
     }, [displayImages, activeImage]);
 
     return (
-        <div className="min-h-screen bg-background/60 backdrop-blur-sm">
+        <div className="min-h-screen">
             <Navbar />
 
             <main className="container mx-auto px-4 py-8 md:py-12 pb-24 md:pb-12">

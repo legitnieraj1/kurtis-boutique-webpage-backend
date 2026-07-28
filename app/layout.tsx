@@ -127,7 +127,6 @@ export const metadata: Metadata = {
   category: "ecommerce",
 };
 
-import { BackgroundGradientAnimation } from "@/components/ui/background-gradient-animation";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 
 // JSON-LD Schema Markup for SEO
@@ -386,20 +385,8 @@ export default function RootLayout({
         className={`${inter.variable} ${playfair.variable} antialiased text-foreground relative min-h-screen`}
       >
         <SchemaMarkup />
-        <div className="fixed inset-0 -z-10 bg-background pointer-events-none">
-          <BackgroundGradientAnimation
-            containerClassName="h-full w-full pointer-events-none"
-            className="absolute inset-0"
-            interactive={true}
-            firstColor="128, 24, 72"
-            secondColor="176, 84, 128"
-            thirdColor="212, 140, 168"
-            fourthColor="180, 120, 150"
-            fifthColor="150, 60, 100"
-            pointerColor="176, 84, 128"
-            size="80%"
-          />
-        </div>
+        {/* Flat warm-cream ground. The animated gradient that used to sit here
+            washed every page in pink and undercut the premium feel. */}
         <AuthProvider>
           <div className="relative z-0 w-full overflow-x-hidden">
             {children}

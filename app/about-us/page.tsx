@@ -47,7 +47,7 @@ export const metadata: Metadata = {
 
 export default function AboutPage() {
     return (
-        <div className="min-h-screen bg-background/60 backdrop-blur-sm">
+        <div className="min-h-screen">
             <Navbar />
 
             <main>
