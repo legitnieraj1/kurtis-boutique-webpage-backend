@@ -17,8 +17,6 @@ interface CartSheetProps {
     onClose: () => void;
 }
 
-const FREE_SHIPPING_THRESHOLD = 999;
-
 const COMBO_LABELS: Record<string, string> = {
     mom_baby: 'Mom & Baby Combo',
     family: 'Family Combo',
@@ -69,8 +67,6 @@ export function CartSheet({ isOpen, onClose }: CartSheetProps) {
     };
 
     const subtotal = getCartTotal();
-    const remainingForFreeShipping = Math.max(0, FREE_SHIPPING_THRESHOLD - subtotal);
-    const shippingProgress = Math.min(100, (subtotal / FREE_SHIPPING_THRESHOLD) * 100);
 
     return createPortal(
         <AnimatePresence>
@@ -110,28 +106,6 @@ export function CartSheet({ isOpen, onClose }: CartSheetProps) {
                                 <X className="h-5 w-5" />
                             </Button>
                         </div>
-
-                        {/* Free-shipping progress — turns the existing threshold into an
-                            active nudge instead of a footnote under the total. */}
-                        {cart.length > 0 && (
-                            <div className="px-6 py-3.5 bg-secondary/50 border-b border-border flex-shrink-0">
-                                {remainingForFreeShipping > 0 ? (
-                                    <p className="text-xs text-foreground/80">
-                                        Add <span className="font-semibold text-primary">{formatPrice(remainingForFreeShipping)}</span> more for free shipping
-                                    </p>
-                                ) : (
-                                    <p className="text-xs font-medium text-success">You&apos;ve unlocked free shipping</p>
-                                )}
-                                <div className="mt-2 h-1 rounded-full bg-border overflow-hidden">
-                                    <motion.div
-                                        className="h-full rounded-full bg-accent-brand"
-                                        initial={false}
-                                        animate={{ width: `${shippingProgress}%` }}
-                                        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-                                    />
-                                </div>
-                            </div>
-                        )}
 
                         {/* Cart Items */}
                         <div className="flex-1 overflow-y-auto p-6 space-y-6">

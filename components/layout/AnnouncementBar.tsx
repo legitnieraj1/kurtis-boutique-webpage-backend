@@ -2,7 +2,7 @@
 // Respects prefers-reduced-motion (falls back to a centered static line in globals.css).
 
 const ITEMS = [
-  "Free shipping above ₹999",
+  "Cash on Delivery Available",
   "New Narayanpet Collection Live",
   "Pan India Delivery",
   "Easy 7-Day Exchange",
