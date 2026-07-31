@@ -6,7 +6,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Payment Security - 100% Secure Payments",
   description:
-    "Shop with confidence at Kurtis Boutique. We use industry-standard encryption and secure payment gateways. UPI, credit cards, debit cards & COD accepted.",
+    "Shop with confidence at Kurtis Boutique. We use industry-standard encryption and secure payment gateways. UPI, credit cards & debit cards accepted.",
   alternates: { canonical: "/payment-security" },
 };
 

@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Shop Designer Kurtis & Ethnic Wear Online India | Kurtis Boutique",
   description:
-    "Browse and buy designer kurtis, kurti sets, cotton kurtis, festive kurti collections, co-ords, maternity wear, mom baby combo outfits, and family combo ethnic wear at Kurtis Boutique. Trusted online boutique with 30K+ Instagram followers. Free delivery & COD across India.",
+    "Browse and buy designer kurtis, kurti sets, cotton kurtis, festive kurti collections, co-ords, maternity wear, mom baby combo outfits, and family combo ethnic wear at Kurtis Boutique. Trusted online boutique with 30K+ Instagram followers. Shipping across India.",
   keywords: [
     "shop kurtis online",
     "buy kurtis online india",
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Shop Designer Kurtis & Ethnic Wear Online | Kurtis Boutique India",
     description:
-      "Explore our collection of designer kurtis, kurti sets, cotton kurtis, festive wear, mom baby combos & family combo ethnic wear. Trusted boutique brand. Free delivery & COD available across India.",
+      "Explore our collection of designer kurtis, kurti sets, cotton kurtis, festive wear, mom baby combos & family combo ethnic wear. Trusted boutique brand. Shipping across India.",
     url: "https://kurtisboutique.in/shop",
     siteName: "Kurtis Boutique",
     locale: "en_IN",
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Shop Designer Kurtis & Ethnic Wear Online | Kurtis Boutique India",
     description:
-      "Browse designer kurtis, kurti sets, cotton kurtis, festive collections & more at Kurtis Boutique. Free delivery & COD across India.",
+      "Browse designer kurtis, kurti sets, cotton kurtis, festive collections & more at Kurtis Boutique. Shipping across India.",
     images: ["/kurtis-logo-large.png"],
   },
 };

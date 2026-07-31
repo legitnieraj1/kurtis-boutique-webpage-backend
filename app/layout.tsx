@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   },
 
   description:
-    "Shop designer kurtis, kurti sets and ethnic wear online at Kurtis Boutique. Specialised in mom & baby combos, family combos, couple combos, casual wear, maternity/feeding wear, and baby dresses. Trusted boutique brand with 30K+ Instagram followers. Shipping across India. COD available.",
+    "Shop designer kurtis, kurti sets and ethnic wear online at Kurtis Boutique. Specialised in mom & baby combos, family combos, couple combos, casual wear, maternity/feeding wear, and baby dresses. Trusted boutique brand with 30K+ Instagram followers. Shipping across India.",
 
   keywords: [
     "kurtis boutique",
@@ -197,7 +197,7 @@ function SchemaMarkup() {
       "Kurtis Boutique is an online ethnic wear boutique offering designer kurtis, kurti sets, cotton kurtis, festive kurti collections, matching mom baby outfits, family combo ethnic wear, and couple combos. Specialised in maternity/feeding wear and baby dresses. Shipping across India.",
     telephone: "+91-9787635982",
     currenciesAccepted: "INR",
-    paymentAccepted: "Credit Card, Debit Card, UPI, Cash on Delivery, Net Banking, Razorpay",
+    paymentAccepted: "Credit Card, Debit Card, UPI, Net Banking, Razorpay",
     priceRange: "₹499 - ₹4999",
     areaServed: {
       "@type": "Country",
@@ -282,7 +282,7 @@ function SchemaMarkup() {
         name: "What is Kurtis Boutique?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Kurtis Boutique is an online ethnic wear brand in India. We offer designer kurtis, kurti sets, cotton kurtis, festive kurti collections, matching mom baby outfits, and family combo ethnic wear. We ship across India with COD available.",
+          text: "Kurtis Boutique is an online ethnic wear brand in India. We offer designer kurtis, kurti sets, cotton kurtis, festive kurti collections, matching mom baby outfits, and family combo ethnic wear. We ship across India.",
         },
       },
       {
@@ -290,7 +290,7 @@ function SchemaMarkup() {
         name: "Does Kurtis Boutique ship across India?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Yes, Kurtis Boutique ships to all pincodes across India. We offer nationwide shipping through trusted logistics partners. Cash on Delivery (COD) is also available on eligible orders.",
+          text: "Yes, Kurtis Boutique ships to all pincodes across India. We offer nationwide shipping through trusted logistics partners.",
         },
       },
       {
@@ -322,7 +322,7 @@ function SchemaMarkup() {
         name: "What payment methods does Kurtis Boutique accept?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Kurtis Boutique accepts Credit Cards, Debit Cards, UPI (GPay, PhonePe, Paytm), Net Banking, and Cash on Delivery (COD). All payments are processed securely through Razorpay.",
+          text: "Kurtis Boutique accepts Credit Cards, Debit Cards, UPI (GPay, PhonePe, Paytm), and Net Banking. All payments are processed securely through Razorpay.",
         },
       },
     ],

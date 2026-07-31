@@ -153,7 +153,7 @@ export function ShopClient({ initialProducts, initialCategories }: { initialProd
                                 and <strong>family combo ethnic wear</strong>. Every piece is crafted with care and dispatched with love.
                             </p>
                             <p className="text-muted-foreground leading-relaxed text-sm">
-                                Enjoy free delivery, Cash on Delivery (COD), and secure payments via UPI, credit cards, and debit cards.
+                                Enjoy secure payments via UPI, credit cards, and debit cards, with shipping across India.
                                 Follow us on <a href="https://www.instagram.com/kurtis.boutique/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Instagram @kurtis.boutique</a> for
                                 new arrivals, styling tips, and exclusive offers.
                             </p>

@@ -43,8 +43,8 @@ export async function generateMetadata({
     // SEO optimized title: "Product Name | Kurtis Boutique India"
     const title = `${product.name} | Kurtis Boutique India`;
     const description = product.description
-        ? `Buy ${product.name} from Kurtis Boutique. ${product.description.slice(0, 120)}... Premium ${categoryName.toLowerCase()} shipped across India. ₹${displayPrice}. COD available.`
-        : `Buy ${product.name} online at Kurtis Boutique India. Premium ${categoryName.toLowerCase()} from trusted boutique brand with 30K+ Instagram followers. ₹${displayPrice}. Free delivery & COD across India.`;
+        ? `Buy ${product.name} from Kurtis Boutique. ${product.description.slice(0, 120)}... Premium ${categoryName.toLowerCase()} shipped across India. ₹${displayPrice}.`
+        : `Buy ${product.name} online at Kurtis Boutique India. Premium ${categoryName.toLowerCase()} from trusted boutique brand with 30K+ Instagram followers. ₹${displayPrice}. Shipped across India.`;
 
     // SEO optimized image alt text
     const imageAlt = `${product.name} - ${categoryName} from Kurtis Boutique online store India`;

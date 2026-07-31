@@ -5,12 +5,10 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
     title: "Exchange & Shipping Policy",
     description:
-        "Learn about Kurtis Boutique delivery timelines, exchange policy, and COD availability across India.",
+        "Learn about Kurtis Boutique delivery timelines and exchange policy across India.",
     keywords: [
         "kurtis boutique shipping",
-        "free delivery India",
         "exchange policy",
-        "COD kurtis India",
         "return policy ethnic wear",
     ],
     alternates: { canonical: "/exchange-and-shipping" },
