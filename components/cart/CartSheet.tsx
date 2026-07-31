@@ -241,8 +241,10 @@ export function CartSheet({ isOpen, onClose }: CartSheetProps) {
                                     asChild
                                 >
                                     <Link href="/checkout" onClick={onClose}>
-                                        Proceed to Checkout
-                                        <ArrowRight className="w-4 h-4" />
+                                        <span className="inline-flex items-center gap-2 whitespace-nowrap">
+                                            Proceed to Checkout
+                                            <ArrowRight className="w-4 h-4 shrink-0" />
+                                        </span>
                                     </Link>
                                 </Button>
 
