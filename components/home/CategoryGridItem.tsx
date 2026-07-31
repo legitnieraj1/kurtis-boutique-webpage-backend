@@ -34,7 +34,7 @@ export function CategoryGridItem({ category }: CategoryGridItemProps) {
     return (
         <Link
             href={`/shop?category=${category.id}`}
-            className="group relative aspect-[4/5] overflow-hidden rounded-lg bg-secondary/50"
+            className="group relative aspect-[3/4] overflow-hidden rounded-lg bg-secondary/50"
         >
             <div className="absolute inset-0 transition-transform duration-700 group-hover:scale-105 bg-stone-300">
                 {allImages.length > 0 ? (
@@ -57,8 +57,8 @@ export function CategoryGridItem({ category }: CategoryGridItemProps) {
                 )}
             </div>
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-60 group-hover:opacity-70 transition-opacity" />
-            <div className="absolute bottom-4 left-4 text-white">
-                <h3 className="font-medium text-lg leading-tight">{category.name}</h3>
+            <div className="absolute bottom-4 left-4 right-4 text-white">
+                <h3 className="font-serif text-xl leading-tight drop-shadow-sm">{category.name}</h3>
             </div>
         </Link>
     );

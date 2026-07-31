@@ -3,6 +3,8 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
 import { TrustStrip } from "@/components/home/TrustStrip";
+import { BrandStory } from "@/components/home/BrandStory";
+import { InstagramGrid } from "@/components/home/InstagramGrid";
 import { CategoryBubbles } from "@/components/home/CategoryBubbles";
 import { CategoryGridItem } from "@/components/home/CategoryGridItem";
 import { HeroBannerCarousel } from "@/components/ui/HeroBannerCarousel";
@@ -78,6 +80,13 @@ async function getHomeData() {
 export default async function Home() {
   const { banners, categories, products, reviews } = await getHomeData();
 
+  // Placeholder Instagram tiles sourced from recent product photos.
+  // Swap for real UGC / an Instagram feed when the client supplies one.
+  const instagramImages = products
+    .map((p) => p.images?.[0]?.image_url)
+    .filter((url): url is string => Boolean(url))
+    .slice(0, 6);
+
   return (
     <div className="min-h-screen font-sans selection:bg-primary/20">
       <AnnouncementBar />
@@ -142,8 +151,11 @@ export default async function Home() {
         {/* CATEGORY GRID - SEO Optimized with keyword-rich headings */}
         <section className="pt-12 md:pt-20 pb-20 container mx-auto px-4 md:px-8 hidden md:block" aria-label="Shop kurtis by category">
           <div className="flex justify-between items-end mb-12">
-            <h2 className="text-3xl font-serif">Shop Designer Kurtis by Category</h2>
-            <Link href="/shop" className="text-primary hover:underline underline-offset-4 hidden sm:block" title="Browse all designer kurtis and ethnic wear online at Kurtis Boutique India">View All Collections</Link>
+            <div className="space-y-2">
+              <p className="text-[11px] uppercase tracking-[0.25em] text-accent-gold font-medium">Shop by Category</p>
+              <h2 className="text-3xl md:text-4xl font-serif">Find your occasion</h2>
+            </div>
+            <Link href="/shop" className="text-primary hover:underline underline-offset-4 hidden sm:block" title="Browse all designer kurtis and ethnic wear online at Kurtis Boutique India">View All Collections →</Link>
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
@@ -156,14 +168,20 @@ export default async function Home() {
         {/* NEW ARRIVALS */}
         <NewArrivalsSection initialProducts={products} />
 
+        {/* BRAND STORY */}
+        <BrandStory />
+
         {/* INSTAGRAM AUTHORITY SECTION - SEO Signal */}
         <section className="py-16 bg-surface-soft" aria-label="Follow Kurtis Boutique on Instagram">
           <div className="container mx-auto px-4 text-center">
             <p className="text-[11px] uppercase tracking-[0.25em] text-accent-gold font-medium mb-3">As Seen On Instagram</p>
             <h2 className="text-2xl md:text-3xl font-serif mb-4">@kurtisboutique</h2>
-            <p className="text-muted-foreground mb-6 max-w-2xl mx-auto">
+            <p className="text-muted-foreground mb-8 max-w-2xl mx-auto">
               Join our community of 30,000+ followers on Instagram. Get first access to new designer kurti collections, styling tips, and exclusive offers from India&apos;s trusted online ethnic wear boutique.
             </p>
+
+            <InstagramGrid images={instagramImages} />
+
             <a
               href="https://www.instagram.com/kurtis.boutique/"
               target="_blank"
