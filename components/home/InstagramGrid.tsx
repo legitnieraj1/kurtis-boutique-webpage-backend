@@ -21,16 +21,16 @@ export function InstagramGrid({ tiles }: { tiles: InstaTile[] }) {
         <Link
           key={i}
           href={tile.href}
-          className="group relative aspect-square overflow-hidden rounded-md bg-secondary/40"
+          className="group relative aspect-[4/5] overflow-hidden rounded-md bg-secondary/40"
           title="Shop this look"
         >
           <Image
             src={tile.src}
             alt="Kurtis Boutique look, as seen on Instagram"
             fill
-            sizes="(max-width: 768px) 33vw, 220px"
+            sizes="(max-width: 768px) 33vw, 260px"
             quality={72}
-            className="object-cover transition-transform duration-500 group-hover:scale-105"
+            className="object-cover object-center transition-transform duration-500 group-hover:scale-105"
           />
           {tile.isReel && (
             <span className="absolute top-2 right-2 z-10 flex items-center justify-center h-6 w-6 rounded-full bg-black/45 text-white">
