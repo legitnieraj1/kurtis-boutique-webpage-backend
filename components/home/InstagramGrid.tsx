@@ -1,38 +1,46 @@
 // "As seen on Instagram" 3x2 grid. Server component.
-// NOTE: images are currently sourced from recent product photos as a
-// placeholder. Swap `images` for real UGC / an Instagram feed when available.
+// Tiles show real Instagram post/reel imagery; clicking a tile opens the
+// matching product page (not Instagram) so the look is shoppable.
 import Image from "next/image";
-import { Instagram } from "lucide-react";
+import Link from "next/link";
+import { Play } from "lucide-react";
 
-const IG_URL = "https://www.instagram.com/kurtis.boutique/";
+export type InstaTile = {
+  src: string;
+  href: string;   // internal product page
+  isReel?: boolean;
+};
 
-export function InstagramGrid({ images }: { images: string[] }) {
-  const tiles = images.slice(0, 6);
-  if (tiles.length === 0) return null;
+export function InstagramGrid({ tiles }: { tiles: InstaTile[] }) {
+  const shown = tiles.slice(0, 6);
+  if (shown.length === 0) return null;
 
   return (
     <div className="grid grid-cols-3 gap-1.5 md:gap-2 max-w-3xl mx-auto mb-10">
-      {tiles.map((src, i) => (
-        <a
+      {shown.map((tile, i) => (
+        <Link
           key={i}
-          href={IG_URL}
-          target="_blank"
-          rel="noopener noreferrer"
+          href={tile.href}
           className="group relative aspect-square overflow-hidden rounded-md bg-secondary/40"
-          title="Shop this look on Instagram"
+          title="Shop this look"
         >
           <Image
-            src={src}
-            alt="Kurtis Boutique on Instagram"
+            src={tile.src}
+            alt="Kurtis Boutique look, as seen on Instagram"
             fill
             sizes="(max-width: 768px) 33vw, 220px"
-            quality={70}
+            quality={72}
             className="object-cover transition-transform duration-500 group-hover:scale-105"
           />
+          {tile.isReel && (
+            <span className="absolute top-2 right-2 z-10 flex items-center justify-center h-6 w-6 rounded-full bg-black/45 text-white">
+              <Play className="h-3.5 w-3.5 fill-current" />
+            </span>
+          )}
           <div className="absolute inset-0 flex items-center justify-center gap-1.5 bg-black/45 text-white text-xs font-medium opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-            <Instagram className="h-4 w-4" /> Shop this look
+            Shop this look →
           </div>
-        </a>
+        </Link>
       ))}
     </div>
   );

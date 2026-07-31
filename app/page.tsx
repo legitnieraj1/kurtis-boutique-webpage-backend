@@ -80,12 +80,24 @@ async function getHomeData() {
 export default async function Home() {
   const { banners, categories, products, reviews } = await getHomeData();
 
-  // Placeholder Instagram tiles sourced from recent product photos.
-  // Swap for real UGC / an Instagram feed when the client supplies one.
-  const instagramImages = products
-    .map((p) => p.images?.[0]?.image_url)
-    .filter((url): url is string => Boolean(url))
-    .slice(0, 6);
+  // "As seen on Instagram" — real post/reel imagery, each shoppable straight
+  // to its product page. Images live in /public/insta (saved from the posts).
+  const curatedInsta = [
+    { src: "/insta/yellow-kurti-set.jpg", href: "/product/yellow-kurti-set-1775217112280" },
+    { src: "/insta/shrug-style-kurti.jpg", href: "/product/shrug-style-kurti-1775216972144" },
+    { src: "/insta/red-elephant-print-maxi.jpg", href: "/product/red-elephant-print-maxi-1779648208518", isReel: true },
+  ];
+  const curatedSlugs = new Set([
+    "yellow-kurti-set-1775217112280",
+    "shrug-style-kurti-1775216972144",
+    "red-elephant-print-maxi-1779648208518",
+  ]);
+  // Fill the remaining tiles with recent product photos (also shoppable).
+  const fillInsta = products
+    .filter((p) => !curatedSlugs.has(p.slug) && p.images?.[0]?.image_url)
+    .slice(0, 3)
+    .map((p) => ({ src: p.images[0].image_url, href: `/product/${p.slug}` }));
+  const instagramTiles = [...curatedInsta, ...fillInsta];
 
   return (
     <div className="min-h-screen font-sans selection:bg-primary/20">
@@ -180,7 +192,7 @@ export default async function Home() {
               Join our community of 30,000+ followers on Instagram. Get first access to new designer kurti collections, styling tips, and exclusive offers from India&apos;s trusted online ethnic wear boutique.
             </p>
 
-            <InstagramGrid images={instagramImages} />
+            <InstagramGrid tiles={instagramTiles} />
 
             <a
               href="https://www.instagram.com/kurtis.boutique/"
