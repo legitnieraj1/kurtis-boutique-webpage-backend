@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
+import { TrustStrip } from "@/components/home/TrustStrip";
 import { CategoryBubbles } from "@/components/home/CategoryBubbles";
 import { CategoryGridItem } from "@/components/home/CategoryGridItem";
 import { HeroBannerCarousel } from "@/components/ui/HeroBannerCarousel";
@@ -78,6 +80,7 @@ export default async function Home() {
 
   return (
     <div className="min-h-screen font-sans selection:bg-primary/20">
+      <AnnouncementBar />
       <Navbar />
 
       <main>
@@ -87,65 +90,54 @@ export default async function Home() {
         {/* Category Bubbles - Pass categories */}
         <CategoryBubbles categories={categories} />
 
-        <section className="w-full" aria-label="Featured designer kurtis and ethnic wear collections">
-          <div className="w-full aspect-[16/9] sm:aspect-[21/9] md:aspect-auto md:h-[450px] lg:h-[600px]">
+        {/* HERO — full-bleed editorial. Banner carousel sits as the backdrop,
+            fixed maroon gradient + serif copy layered on top (CTAs clickable,
+            rest pass-through so the carousel arrows/dots still work). */}
+        <section
+          className="relative w-full h-[70vh] min-h-[480px] md:h-[85vh] md:min-h-[600px] overflow-hidden"
+          aria-label="Featured designer kurtis and ethnic wear collections"
+        >
+          <div className="absolute inset-0">
             <HeroBannerCarousel initialBanners={banners} />
           </div>
-        </section>
 
-        {/* HIGHLIGHT BANNER / FILTER BAR */}
-        <section className="w-full bg-gradient-to-r from-[#9e5470] via-[#7d3b54] to-[#5a283b] text-white py-6 md:py-8 shadow-md relative z-20 border-b-[6px] border-[#ecd6dd]" aria-label="Kurtis Boutique product categories">
-          <div className="container mx-auto px-4 flex flex-col items-center justify-center text-center">
+          {/* Darkening gradient — left-to-right on desktop, bottom-up on mobile */}
+          <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-black/65 via-black/20 to-transparent md:bg-gradient-to-r md:from-black/60 md:via-black/25 md:to-transparent" />
 
-            <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-serif tracking-widest font-medium mb-3 md:mb-5 drop-shadow-md">
-              Your Go-To Boutique Kurtis Online Store
-            </h2>
-
-            <div className="flex flex-wrap items-center justify-center gap-x-2 md:gap-x-4 gap-y-2 text-xs sm:text-sm md:text-base lg:text-lg font-sans font-light tracking-wide text-rose-50">
-              <Link href="/shop" className="whitespace-nowrap px-2 hover:text-white transition-colors">Designer Kurtis Online</Link>
-              <span className="hidden md:block text-[#e2a8ba] font-bold">|</span>
-              <Link href="/shop" className="whitespace-nowrap px-2 hover:text-white transition-colors">Cotton Kurti Sets</Link>
-              <span className="hidden md:block text-[#e2a8ba] font-bold">|</span>
-              <Link href="/shop" className="whitespace-nowrap px-2 hover:text-white transition-colors">Mom &amp; Baby Combo Outfits</Link>
-              <span className="hidden md:block text-[#e2a8ba] font-bold">|</span>
-              <Link href="/shop" className="whitespace-nowrap px-2 hover:text-white transition-colors">Family Combo Ethnic Wear</Link>
-              <span className="hidden md:block text-[#e2a8ba] font-bold">|</span>
-              <Link href="/shop" className="whitespace-nowrap px-2 hover:text-white transition-colors">Festive Kurti Collection</Link>
+          {/* Copy block */}
+          <div className="pointer-events-none absolute inset-0 z-20 flex items-end md:items-center">
+            <div className="container mx-auto px-6 md:px-8 pb-14 md:pb-0">
+              <div className="max-w-xl text-center md:text-left mx-auto md:mx-0 space-y-5">
+                <p className="text-[13px] md:text-[14px] uppercase tracking-[0.25em] text-accent-gold font-medium">
+                  New Collection · 2025
+                </p>
+                <h2 className="font-serif text-white text-4xl md:text-6xl leading-[1.05]">
+                  Dressed Together,<br />Memories Forever.
+                </h2>
+                <p className="text-white/80 text-base md:text-lg max-w-md mx-auto md:mx-0">
+                  Premium ethnic sets for you, your little one &amp; your whole family.
+                </p>
+                <div className="pointer-events-auto flex flex-wrap items-center justify-center md:justify-start gap-3 pt-1">
+                  <Link
+                    href="/shop"
+                    className="inline-flex items-center rounded-full bg-primary text-primary-foreground px-7 py-3 text-sm font-medium hover:bg-primary-hover transition-colors shadow-lg"
+                  >
+                    Shop Collections
+                  </Link>
+                  <Link
+                    href="/shop"
+                    className="inline-flex items-center rounded-full border border-white/70 text-white px-7 py-3 text-sm font-medium hover:bg-white/10 transition-colors"
+                  >
+                    Mom &amp; Baby Combos →
+                  </Link>
+                </div>
+              </div>
             </div>
-
           </div>
         </section>
 
-        {/* MARQUEE — promotional ticker (keyframes defined in globals.css) */}
-        <div className="w-full overflow-hidden bg-[#f9e8ef] border-y border-pink-200/60 py-2.5">
-          <div
-            className="flex whitespace-nowrap"
-            style={{
-              animation: "marquee 28s linear infinite",
-            }}
-          >
-            {/* Duplicate the items so the scroll loops seamlessly */}
-            {[
-              "🌸 Sale is Live Now!",
-              "✨ Narayanpet Collections Live!",
-              "🛍 New Festive Arrivals!",
-              "🤍 Mom & Baby Combos — Shop Now!",
-              "🎉 Family Combo Sets Just Dropped!",
-              "🌸 Sale is Live Now!",
-              "✨ Narayanpet Collections Live!",
-              "🛍 New Festive Arrivals!",
-              "🤍 Mom & Baby Combos — Shop Now!",
-              "🎉 Family Combo Sets Just Dropped!",
-            ].map((text, i) => (
-              <span
-                key={i}
-                className="inline-block mx-8 text-[13px] font-semibold tracking-wide text-[#7d3b54]"
-              >
-                {text}
-              </span>
-            ))}
-          </div>
-        </div>
+        {/* TRUST STRIP */}
+        <TrustStrip />
 
         {/* CATEGORY GRID - SEO Optimized with keyword-rich headings */}
         <section className="pt-12 md:pt-20 pb-20 container mx-auto px-4 md:px-8 hidden md:block" aria-label="Shop kurtis by category">
@@ -165,9 +157,10 @@ export default async function Home() {
         <NewArrivalsSection initialProducts={products} />
 
         {/* INSTAGRAM AUTHORITY SECTION - SEO Signal */}
-        <section className="py-16 bg-gradient-to-b from-pink-50/60 to-white" aria-label="Follow Kurtis Boutique on Instagram">
+        <section className="py-16 bg-surface-soft" aria-label="Follow Kurtis Boutique on Instagram">
           <div className="container mx-auto px-4 text-center">
-            <h2 className="text-2xl md:text-3xl font-serif mb-4">Follow Kurtis Boutique on Instagram</h2>
+            <p className="text-[11px] uppercase tracking-[0.25em] text-accent-gold font-medium mb-3">As Seen On Instagram</p>
+            <h2 className="text-2xl md:text-3xl font-serif mb-4">@kurtisboutique</h2>
             <p className="text-muted-foreground mb-6 max-w-2xl mx-auto">
               Join our community of 30,000+ followers on Instagram. Get first access to new designer kurti collections, styling tips, and exclusive offers from India&apos;s trusted online ethnic wear boutique.
             </p>
@@ -175,7 +168,7 @@ export default async function Home() {
               href="https://www.instagram.com/kurtis.boutique/"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-3 bg-gradient-to-r from-purple-600 via-pink-500 to-orange-400 text-white px-8 py-4 rounded-full font-semibold text-lg hover:shadow-lg hover:scale-105 transition-all duration-300"
+              className="inline-flex items-center gap-3 border border-accent-gold text-primary px-8 py-3.5 rounded-full font-medium text-base hover:bg-accent-gold/10 transition-colors duration-300"
               title="Follow Kurtis Boutique on Instagram - 30K+ Followers"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="20" x="2" y="2" rx="5" ry="5" /><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" /><line x1="17.5" x2="17.51" y1="6.5" y2="6.5" /></svg>
@@ -191,7 +184,7 @@ export default async function Home() {
         </section>
 
         {/* TRUST SIGNALS & SEO CONTENT BLOCK */}
-        <section className="py-16 bg-gradient-to-b from-white to-rose-50/40" aria-label="About Kurtis Boutique - Trusted online ethnic wear brand India">
+        <section className="py-16 bg-background" aria-label="About Kurtis Boutique - Trusted online ethnic wear brand India">
           <div className="container mx-auto px-4">
             <div className="max-w-4xl mx-auto">
               <h2 className="text-2xl md:text-3xl font-serif text-center mb-8">Why Shop at Kurtis Boutique?</h2>

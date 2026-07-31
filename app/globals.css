@@ -25,11 +25,15 @@
 
   --color-border: var(--border);
 
-  /* Brand tokens — mauve accent from the logo, plus surface/success */
+  /* Brand tokens — maroon + gold from the logo, plus surface/success */
   --color-primary-hover: var(--primary-hover);
   --color-accent-brand: var(--accent-brand);
   --color-accent-brand-soft: var(--accent-brand-soft);
+  --color-accent-gold: var(--accent-gold);
+  --color-accent-gold-soft: var(--accent-gold-soft);
   --color-surface: var(--surface);
+  --color-surface-soft: var(--surface-soft);
+  --color-badge-rose: var(--badge-rose);
   --color-success: var(--success);
 
   --animate-first: moveVertical 30s ease infinite;
@@ -108,27 +112,35 @@
 
 :root {
   /* ── Brand palette, drawn from the Kurtis Boutique logo ──
-     Deep wine script + mauve-orchid wordmark, on a warm cream ground. */
+     Deep maroon + ethnic gold, on a warm ivory ground.
+     Tuned toward Taneira / AZA premium ethnic, away from the old magenta. */
 
-  /* Deep Wine — logo script. Primary actions, active states. */
-  --primary: oklch(0.36 0.13 340);
-  --primary-hover: oklch(0.42 0.14 340);
+  /* Deep Maroon (#6B1E2E) — primary actions, active states. */
+  --primary: oklch(0.34 0.10 22);
+  --primary-hover: oklch(0.40 0.11 22);
   --primary-foreground: oklch(0.99 0.004 90);
 
-  /* Mauve Orchid — logo wordmark/leaves. Accent only: badges, rules, highlights. */
-  --accent-brand: oklch(0.62 0.13 340);
-  --accent-brand-soft: oklch(0.94 0.03 340);
+  /* Mauve accent retained for legacy rules; use gold for new highlights. */
+  --accent-brand: oklch(0.50 0.10 15);
+  --accent-brand-soft: oklch(0.93 0.02 25);
 
-  /* Blush — tints and hover washes */
-  --secondary: oklch(0.96 0.018 340);
-  --secondary-foreground: oklch(0.28 0.02 40);
+  /* Ethnic Gold (#C9A96E) — eyebrows, line icons, luxury accents. */
+  --accent-gold: oklch(0.74 0.07 80);
+  --accent-gold-soft: oklch(0.92 0.03 82);
+
+  /* Muted Rose (#B85C6E) — Sale/tag badge, replaces the old hot red. */
+  --badge-rose: oklch(0.58 0.11 12);
+
+  /* Warm sand tints — hover washes, no more pink */
+  --secondary: oklch(0.95 0.012 60);
+  --secondary-foreground: oklch(0.28 0.015 45);
 
   /* Muted Text — warm taupe, not cold grey */
   --muted: oklch(0.96 0.008 70);
-  --muted-foreground: oklch(0.58 0.015 60);
+  --muted-foreground: oklch(0.53 0.008 60);
 
-  --accent: oklch(0.96 0.018 340);
-  --accent-foreground: oklch(0.28 0.02 40);
+  --accent: oklch(0.95 0.012 60);
+  --accent-foreground: oklch(0.28 0.015 45);
 
   /* Sage — in-stock, free shipping, success states */
   --success: oklch(0.52 0.07 155);
@@ -137,12 +149,13 @@
   --border: oklch(0.91 0.008 70);
   --radius: 0.5rem;
 
-  /* Warm cream ground, warm charcoal text */
-  --background: oklch(0.975 0.008 85);
-  --foreground: oklch(0.25 0.012 45);
+  /* Warm ivory ground (#FAF7F2), warm charcoal text (#1C1C1C) */
+  --background: oklch(0.975 0.006 85);
+  --foreground: oklch(0.22 0.005 45);
   --surface: oklch(1 0 0);
+  --surface-soft: oklch(0.94 0.008 75);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.25 0.012 45);
+  --card-foreground: oklch(0.22 0.005 45);
 
   /* Soft elevation — boutique, not dashboard */
   --shadow-soft: 0 2px 16px -4px oklch(0.25 0.012 45 / 0.08);
@@ -151,7 +164,7 @@
   --popover-foreground: oklch(0.145 0 0);
   --destructive: oklch(0.577 0.245 27.325);
   --input: oklch(0.91 0.008 70);
-  --ring: oklch(0.36 0.13 340);
+  --ring: oklch(0.34 0.10 22);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -292,4 +305,12 @@ h6 {
 @keyframes marquee {
   0% { transform: translateX(0%); }
   100% { transform: translateX(-50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .announcement-track {
+    animation: none !important;
+    justify-content: center;
+    width: 100%;
+  }
 }

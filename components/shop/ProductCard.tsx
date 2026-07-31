@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Heart } from "lucide-react";
+import { Heart, Plus } from "lucide-react";
 import { Product } from "@/types";
 import { formatPrice } from "@/lib/utils";
 import { useStore } from "@/lib/store";
@@ -31,6 +31,7 @@ export function ProductCard({ product, hideWishlist }: ProductCardProps) {
     const inStock = product.stock_remaining > 0 && product.is_active;
     const categoryName = product.category?.name || "Ethnic Wear";
     const mainImage = product.images?.[0]?.image_url || null;
+    const hoverImage = product.images?.[1]?.image_url || null;
 
     // SEO optimized alt text for images
     const imageAlt = `${product.name} - ${categoryName} from Kurtis Boutique online store India`;
@@ -40,14 +41,31 @@ export function ProductCard({ product, hideWishlist }: ProductCardProps) {
             <div className="relative aspect-[3/4] overflow-hidden rounded-lg bg-secondary/10">
                 <Link href={`/product/${product.slug}`} className="block w-full h-full" title={`Buy ${product.name} online at Kurtis Boutique India`}>
                     {mainImage ? (
-                        <Image
-                            src={mainImage}
-                            alt={imageAlt}
-                            fill
-                            sizes="(max-width: 768px) 50vw, (max-width: 1280px) 33vw, 25vw"
-                            quality={75}
-                            className="object-cover transition-transform duration-700 group-hover:scale-105 mobile-gpu"
-                        />
+                        <>
+                            <Image
+                                src={mainImage}
+                                alt={imageAlt}
+                                fill
+                                sizes="(max-width: 768px) 50vw, (max-width: 1280px) 33vw, 25vw"
+                                quality={75}
+                                className={cn(
+                                    "object-cover transition-transform duration-700 group-hover:scale-105 mobile-gpu",
+                                    // When a second image exists, fade the primary out on hover
+                                    hoverImage && "group-hover:opacity-0 transition-opacity"
+                                )}
+                            />
+                            {hoverImage && (
+                                <Image
+                                    src={hoverImage}
+                                    alt=""
+                                    aria-hidden
+                                    fill
+                                    sizes="(max-width: 768px) 50vw, (max-width: 1280px) 33vw, 25vw"
+                                    quality={75}
+                                    className="object-cover opacity-0 transition-opacity duration-700 group-hover:opacity-100 mobile-gpu"
+                                />
+                            )}
+                        </>
                     ) : (
                         <div className="absolute inset-0 bg-stone-200 flex items-center justify-center text-stone-400">
                             <span className="text-xs">No Image</span>
@@ -61,17 +79,34 @@ export function ProductCard({ product, hideWishlist }: ProductCardProps) {
 
                 {/* Badges */}
                 <div className="absolute top-2 left-2 flex flex-col gap-1 z-10 pointer-events-none">
+                    {product.is_new && inStock && (
+                        <span className="bg-primary text-primary-foreground text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wide">
+                            New
+                        </span>
+                    )}
                     {product.discount_price && (
-                        <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-sm uppercase tracking-wide">
+                        <span className="bg-badge-rose text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wide">
                             Sale
                         </span>
                     )}
                     {!inStock && (
-                        <span className="bg-foreground text-background text-[10px] font-bold px-2 py-1 rounded-sm uppercase tracking-wide">
+                        <span className="bg-foreground text-background text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wide">
                             Out of Stock
                         </span>
                     )}
                 </div>
+
+                {/* Quick Add — slides up on hover (desktop). Routes to the product
+                    page where size / combo options are chosen. */}
+                {inStock && (
+                    <Link
+                        href={`/product/${product.slug}`}
+                        className="absolute inset-x-2 bottom-2 z-10 hidden md:flex items-center justify-center gap-1.5 rounded-full bg-white/95 text-foreground text-xs font-medium py-2.5 shadow-md translate-y-[130%] opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 hover:bg-primary hover:text-primary-foreground"
+                        title={`Quick add ${product.name}`}
+                    >
+                        <Plus className="h-3.5 w-3.5" /> Quick Add
+                    </Link>
+                )}
 
                 {/* Wishlist Button */}
                 {!hideWishlist && (

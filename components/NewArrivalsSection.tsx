@@ -23,15 +23,17 @@ export function NewArrivalsSection({ initialProducts }: { initialProducts?: Prod
     }, [initialProducts]);
 
     return (
-        <section className="pt-40 pb-20 md:py-24 bg-[#faf9f6]">
+        <section className="py-16 md:py-24 bg-background">
             <div className="container mx-auto px-4 md:px-8">
 
                 {/* Header */}
-                <div className="text-center mb-16 space-y-4">
+                <div className="text-center mb-14 space-y-3">
+                    <p className="text-[11px] uppercase tracking-[0.25em] text-accent-gold font-medium">
+                        Just Dropped
+                    </p>
                     <h2 className="text-3xl md:text-5xl font-serif text-foreground">
-                        NEW ARRIVALS
+                        New Arrivals
                     </h2>
-                    <div className="w-24 h-[1px] bg-primary/30 mx-auto" />
                     <p className="text-muted-foreground max-w-2xl mx-auto">
                         Discover our latest collection of elegant and contemporary designs.
                     </p>
