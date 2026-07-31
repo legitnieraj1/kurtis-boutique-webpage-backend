@@ -105,7 +105,7 @@ export function Footer() {
                     <p className="text-xs text-white/40 text-center max-w-3xl mx-auto leading-relaxed mb-6">
                         Kurtis Boutique — Buy designer kurtis online, cotton kurtis, kurti sets for women, festive kurti collection,
                         matching mom baby outfits, family combo ethnic wear. Shipping across India.
-                        Trusted boutique brand with 30K+ Instagram followers. COD available.
+                        Trusted boutique brand with 30K+ Instagram followers.
                     </p>
                     <p className="text-center text-sm text-white/60">
                         &copy; {new Date().getFullYear()} Kurtis Boutique · Secured by{" "}

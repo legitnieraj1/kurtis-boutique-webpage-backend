@@ -2,7 +2,7 @@
 // Respects prefers-reduced-motion (falls back to a centered static line in globals.css).
 
 const ITEMS = [
-  "Cash on Delivery Available",
+  "Secure Razorpay Checkout",
   "New Narayanpet Collection Live",
   "Pan India Delivery",
   "Easy 7-Day Exchange",
