@@ -125,9 +125,9 @@ export default function AdminLayout({
     ];
 
     return (
-        <div className="flex min-h-screen bg-muted/20 text-foreground font-sans bg-[#faf9f6]">
+        <div className="flex min-h-screen bg-muted/20 text-foreground font-sans bg-[#faf9f6] print:block print:min-h-0 print:bg-white">
             {/* Mobile Header */}
-            <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-border z-40 flex items-center justify-between px-4">
+            <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-border z-40 flex items-center justify-between px-4 print:hidden">
                 <span className="font-serif text-xl font-bold">KB Admin</span>
                 <div className="flex items-center gap-2">
                     <NotificationBell />
@@ -143,14 +143,14 @@ export default function AdminLayout({
             {/* Overlay */}
             {isSidebarOpen && (
                 <div
-                    className="fixed inset-0 bg-black/50 z-40 md:hidden"
+                    className="fixed inset-0 bg-black/50 z-40 md:hidden print:hidden"
                     onClick={() => setIsSidebarOpen(false)}
                 />
             )}
 
             {/* Sidebar */}
             <aside className={cn(
-                "w-64 border-r border-border bg-white flex flex-col fixed md:sticky top-0 h-screen z-50 transition-transform duration-300 ease-in-out md:translate-x-0",
+                "w-64 border-r border-border bg-white flex flex-col fixed md:sticky top-0 h-screen z-50 transition-transform duration-300 ease-in-out md:translate-x-0 print:hidden",
                 isSidebarOpen ? "translate-x-0" : "-translate-x-full"
             )}>
                 <div className="h-16 flex items-center px-6 border-b border-border">
@@ -194,9 +194,9 @@ export default function AdminLayout({
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 overflow-auto bg-stone-50/50">
+            <main className="flex-1 overflow-auto bg-stone-50/50 print:overflow-visible print:bg-white">
                 {/* Desktop Top Bar */}
-                <div className="hidden md:flex h-16 bg-white border-b border-stone-200 items-center justify-end px-8 sticky top-0 z-30">
+                <div className="hidden md:flex h-16 bg-white border-b border-stone-200 items-center justify-end px-8 sticky top-0 z-30 print:hidden">
                     <NotificationBell />
                 </div>
 
