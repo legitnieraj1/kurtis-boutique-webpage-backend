@@ -80,17 +80,17 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
             return NextResponse.json({ error: 'Invalid images array' }, { status: 400 });
         }
 
-        // Update order (and colour tag, when provided) for each image
-        for (const img of images) {
+        // Update order (and colour tag, when provided) for each image in parallel
+        await Promise.all(images.map((img) => {
             const patch: Record<string, unknown> = { display_order: img.display_order };
             if (img.color !== undefined) patch.color = img.color || null;
 
-            await supabase
+            return supabase
                 .from('product_images')
                 .update(patch)
                 .eq('id', img.id)
                 .eq('product_id', id);
-        }
+        }));
 
         // Fetch updated images
         const { data: updatedImages } = await supabase
