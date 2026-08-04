@@ -41,47 +41,58 @@ export function AuthProvider({ children }: AuthProviderProps) {
         let isMounted = true;
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            async (event: AuthChangeEvent, session: Session | null) => {
+            (event: AuthChangeEvent, session: Session | null) => {
                 if (!isMounted) return;
 
-                if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') && session?.user) {
-                    authSetByEvent.current = true;
-                    // Skip anonymous users from setting full user state (they stay as guests)
-                    const isAnon = session.user.is_anonymous;
-                    if (!isAnon) {
-                        // Look up the real role — a hardcoded 'customer' here silently
-                        // logs admins out of any freshly-loaded tab (new tab, print,
-                        // window.open), since AdminLayout's guard checks role === 'admin'.
-                        let role: 'admin' | 'customer' = 'customer';
-                        try {
-                            const { data: profile } = await supabase
-                                .from('profiles')
-                                .select('role')
-                                .eq('id', session.user.id)
-                                .single();
-                            if (profile?.role === 'admin') role = 'admin';
-                        } catch { /* default to customer */ }
+                // Supabase holds an internal lock while dispatching this event —
+                // any Supabase call made synchronously inside this callback (like
+                // the profiles lookup below) can deadlock against it. Deferring to
+                // the next tick is Supabase's own documented workaround, and it's
+                // what caused the admin login page to hang after the role lookup
+                // was added directly in this callback.
+                setTimeout(async () => {
+                    if (!isMounted) return;
 
-                        setUser({
-                            id: session.user.id,
-                            email: session.user.email || '',
-                            full_name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
-                            role
-                        });
-                        setIsAuthenticated(true);
-                        syncAllData().catch(e => console.warn('Sync error:', e));
-                    } else {
-                        // Anonymous user — just mark loading done
-                        setIsAuthenticated(false);
+                    if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') && session?.user) {
+                        authSetByEvent.current = true;
+                        // Skip anonymous users from setting full user state (they stay as guests)
+                        const isAnon = session.user.is_anonymous;
+                        if (!isAnon) {
+                            // Look up the real role — a hardcoded 'customer' here silently
+                            // logs admins out of any freshly-loaded tab (new tab, print,
+                            // window.open), since AdminLayout's guard checks role === 'admin'.
+                            let role: 'admin' | 'customer' = 'customer';
+                            try {
+                                const { data: profile } = await supabase
+                                    .from('profiles')
+                                    .select('role')
+                                    .eq('id', session.user.id)
+                                    .single();
+                                if (profile?.role === 'admin') role = 'admin';
+                            } catch { /* default to customer */ }
+
+                            if (!isMounted) return;
+                            setUser({
+                                id: session.user.id,
+                                email: session.user.email || '',
+                                full_name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
+                                role
+                            });
+                            setIsAuthenticated(true);
+                            syncAllData().catch(e => console.warn('Sync error:', e));
+                        } else {
+                            // Anonymous user — just mark loading done
+                            setIsAuthenticated(false);
+                            setIsLoading(false);
+                            syncAllData().catch(() => {});
+                        }
                         setIsLoading(false);
-                        syncAllData().catch(() => {});
+                    } else if (event === 'SIGNED_OUT') {
+                        authSetByEvent.current = true;
+                        logout();
+                        setIsLoading(false);
                     }
-                    setIsLoading(false);
-                } else if (event === 'SIGNED_OUT') {
-                    authSetByEvent.current = true;
-                    logout();
-                    setIsLoading(false);
-                }
+                }, 0);
             }
         );
 
