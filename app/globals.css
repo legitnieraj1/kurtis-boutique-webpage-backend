@@ -314,3 +314,21 @@ h6 {
     width: 100%;
   }
 }
+
+/* Print: strip app chrome so invoices come out as clean documents */
+@media print {
+  @page {
+    margin: 14mm;
+  }
+
+  html, body {
+    background: #fff !important;
+    overflow: visible !important;
+    max-width: none !important;
+  }
+
+  /* Toasts, install prompts and other floating UI never belong on paper */
+  [data-sonner-toaster] {
+    display: none !important;
+  }
+}
