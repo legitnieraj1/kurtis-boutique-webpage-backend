@@ -49,11 +49,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
                     // Skip anonymous users from setting full user state (they stay as guests)
                     const isAnon = session.user.is_anonymous;
                     if (!isAnon) {
+                        // Look up the real role — a hardcoded 'customer' here silently
+                        // logs admins out of any freshly-loaded tab (new tab, print,
+                        // window.open), since AdminLayout's guard checks role === 'admin'.
+                        let role: 'admin' | 'customer' = 'customer';
+                        try {
+                            const { data: profile } = await supabase
+                                .from('profiles')
+                                .select('role')
+                                .eq('id', session.user.id)
+                                .single();
+                            if (profile?.role === 'admin') role = 'admin';
+                        } catch { /* default to customer */ }
+
                         setUser({
                             id: session.user.id,
                             email: session.user.email || '',
                             full_name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
-                            role: 'customer'
+                            role
                         });
                         setIsAuthenticated(true);
                         syncAllData().catch(e => console.warn('Sync error:', e));
@@ -81,11 +94,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 if (!isMounted) return;
 
                 if (session?.user && !session.user.is_anonymous) {
+                    let role: 'admin' | 'customer' = 'customer';
+                    try {
+                        const { data: profile } = await supabase
+                            .from('profiles')
+                            .select('role')
+                            .eq('id', session.user.id)
+                            .single();
+                        if (profile?.role === 'admin') role = 'admin';
+                    } catch { /* default to customer */ }
+
                     setUser({
                         id: session.user.id,
                         email: session.user.email || '',
                         full_name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
-                        role: 'customer'
+                        role
                     });
                     setIsAuthenticated(true);
                     syncAllData().catch(e => console.warn('Sync error:', e));
