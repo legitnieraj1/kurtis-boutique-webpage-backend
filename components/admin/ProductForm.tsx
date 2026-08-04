@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Trash, ArrowRight, ArrowLeft, Upload, Plus, X, ChevronsUp, Loader2, ChevronDown, Edit2 } from "lucide-react";
+import { Trash, ArrowRight, ArrowLeft, Upload, Plus, X, ChevronsUp, Loader2, ChevronDown, Edit2, GripVertical } from "lucide-react";
 import { toast } from "sonner";
 import { getSupabaseClient } from "@/lib/supabase/client";
+import { cn } from "@/lib/utils";
 
 interface ProductFormProps {
     initialData?: any;
@@ -19,11 +20,32 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
     const [price, setPrice] = useState(initialData?.price || "");
     const [description, setDescription] = useState(initialData?.description || "");
 
-    // Images: existing URLs + new Files
-    const [existingImages, setExistingImages] = useState<any[]>(initialData?.images || []);
-    // Each new image carries an optional colour tag, so the product page can
-    // filter the gallery to the colour the customer selects.
-    const [newImages, setNewImages] = useState<{ file: File; color: string }[]>([]);
+    // Images — one unified, orderable list mixing already-saved images and
+    // pending new files. `key` is the drag identity; array position IS the
+    // display order, so there's no separate index bookkeeping to drift out
+    // of sync with what's rendered.
+    interface ImageSlot {
+        key: string;
+        kind: "existing" | "new";
+        id?: string;
+        file?: File;
+        url: string;
+        color: string;
+    }
+    const [images, setImages] = useState<ImageSlot[]>(() =>
+        (initialData?.images || [])
+            .slice()
+            .sort((a: any, b: any) => (a.display_order ?? 0) - (b.display_order ?? 0))
+            .map((img: any) => ({
+                key: img.id,
+                kind: "existing" as const,
+                id: img.id,
+                url: img.image_url,
+                color: img.color || "",
+            }))
+    );
+    const [dragKey, setDragKey] = useState<string | null>(null);
+    const [dragOverKey, setDragOverKey] = useState<string | null>(null);
 
     // Sizes & Colors
     const [sizes, setSizes] = useState<string[]>(initialData?.sizes?.map((s: any) => s.size) || []);
@@ -187,10 +209,60 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
     }, [stockTotal, initialData]);
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files) {
-            const added = Array.from(e.target.files).map(file => ({ file, color: "" }));
-            setNewImages([...newImages, ...added]);
+        if (!e.target.files) return;
+        const added: ImageSlot[] = Array.from(e.target.files).map((file, i) => ({
+            key: `new-${Date.now()}-${i}-${file.name}`,
+            kind: "new",
+            file,
+            url: URL.createObjectURL(file),
+            color: "",
+        }));
+        setImages(prev => [...prev, ...added]);
+        e.target.value = ""; // allow re-selecting the same file
+    };
+
+    const updateImageColor = (key: string, color: string) => {
+        setImages(prev => prev.map(img => img.key === key ? { ...img, color } : img));
+    };
+
+    const removeImage = async (slot: ImageSlot) => {
+        if (slot.kind === "existing") {
+            if (!initialData?.id || !slot.id) return;
+            if (!confirm("Delete this image?")) return;
+            try {
+                const res = await fetch(`/api/products/${initialData.id}/images?imageId=${slot.id}`, { method: 'DELETE' });
+                if (!res.ok) throw new Error("Failed to delete");
+                setImages(prev => prev.filter(img => img.key !== slot.key));
+                toast.success("Image deleted");
+            } catch {
+                toast.error("Failed to delete image");
+            }
+        } else {
+            URL.revokeObjectURL(slot.url);
+            setImages(prev => prev.filter(img => img.key !== slot.key));
         }
+    };
+
+    // Native HTML5 drag-and-drop reordering — works fine with the wrapped
+    // thumbnail grid, unlike transform-based drag libraries which assume a
+    // single linear axis.
+    const handleDrop = (targetKey: string) => {
+        if (!dragKey || dragKey === targetKey) {
+            setDragKey(null);
+            setDragOverKey(null);
+            return;
+        }
+        setImages(prev => {
+            const from = prev.findIndex(img => img.key === dragKey);
+            const to = prev.findIndex(img => img.key === targetKey);
+            if (from === -1 || to === -1) return prev;
+            const next = [...prev];
+            const [moved] = next.splice(from, 1);
+            next.splice(to, 0, moved);
+            return next;
+        });
+        setDragKey(null);
+        setDragOverKey(null);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -242,28 +314,39 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
 
             const productId = data.product?.id;
 
-            // 2. Upload New Images (one request per file — the images API takes a single file)
-            for (const { file, color } of newImages) {
-                const fd = new FormData();
-                fd.append('file', file);
-                if (color) fd.append('color', color);
-                await fetch(`/api/products/${productId}/images`, { method: 'POST', body: fd });
-            }
+            // 2 & 3. Upload new images and update existing ones' order/colour in
+            // parallel — the array position is the display_order, so whatever
+            // the admin dragged into place is exactly what gets saved. Sequential
+            // awaits here is what made multi-image saves feel slow.
+            const newUploads = images
+                .map((img, idx) => ({ img, idx }))
+                .filter(({ img }) => img.kind === "new")
+                .map(({ img, idx }) => {
+                    const fd = new FormData();
+                    fd.append('file', img.file!);
+                    fd.append('display_order', String(idx));
+                    if (img.color) fd.append('color', img.color);
+                    return fetch(`/api/products/${productId}/images`, { method: 'POST', body: fd });
+                });
 
-            // 3. Save colour tags on existing images
-            if (existingImages.length > 0) {
-                await fetch(`/api/products/${productId}/images`, {
+            const existingUpdates = images
+                .map((img, idx) => ({ img, idx }))
+                .filter(({ img }) => img.kind === "existing");
+            const reorderCall = existingUpdates.length > 0
+                ? fetch(`/api/products/${productId}/images`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        images: existingImages.map((img: any, idx: number) => ({
+                        images: existingUpdates.map(({ img, idx }) => ({
                             id: img.id,
-                            display_order: img.display_order ?? idx,
+                            display_order: idx,
                             color: img.color || null,
                         })),
                     }),
-                });
-            }
+                })
+                : Promise.resolve(null);
+
+            await Promise.all([...newUploads, reorderCall]);
 
             toast.success("Product saved successfully");
             onSuccess();
@@ -685,30 +768,36 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
                 {/* Images */}
                 <div>
                     <label className="text-sm font-medium mb-2 block">Images</label>
-                    {colors.length > 0 && (
-                        <p className="text-sm text-muted-foreground mb-3">
-                            Tag an image with a colour to show it only when that colour is selected. Leave as &quot;All colours&quot; to always show it.
-                        </p>
-                    )}
+                    <p className="text-sm text-muted-foreground mb-3">
+                        Drag a thumbnail to reorder. The first image is what customers see first.
+                        {colors.length > 0 && " Tag an image with a colour to show it only when that colour is selected — leave it as \"All colours\" to always show it."}
+                    </p>
                     <div className="flex flex-wrap gap-4">
-                        {existingImages.map((img: any, i) => (
-                            <div key={img.id || i} className="w-24 space-y-1">
-                                <div className="relative w-24 h-32 border rounded overflow-hidden group">
-                                    <img src={img.image_url} className="w-full h-full object-cover" />
+                        {images.map((img) => (
+                            <div
+                                key={img.key}
+                                className="w-24 space-y-1"
+                                draggable
+                                onDragStart={() => setDragKey(img.key)}
+                                onDragOver={(e) => { e.preventDefault(); setDragOverKey(img.key); }}
+                                onDragLeave={() => setDragOverKey(prev => prev === img.key ? null : prev)}
+                                onDrop={(e) => { e.preventDefault(); handleDrop(img.key); }}
+                                onDragEnd={() => { setDragKey(null); setDragOverKey(null); }}
+                            >
+                                <div
+                                    className={cn(
+                                        "relative w-24 h-32 border rounded overflow-hidden group cursor-grab active:cursor-grabbing transition-opacity",
+                                        dragKey === img.key && "opacity-40",
+                                        dragOverKey === img.key && dragKey !== img.key && "ring-2 ring-primary"
+                                    )}
+                                >
+                                    <img src={img.url} className="w-full h-full object-cover pointer-events-none" />
+                                    <div className="absolute top-1 left-1 bg-black/50 text-white rounded p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <GripVertical className="w-3 h-3" />
+                                    </div>
                                     <button
                                         type="button"
-                                        onClick={async () => {
-                                            if (!initialData?.id || !img.id) return;
-                                            if (!confirm("Delete this image?")) return;
-                                            try {
-                                                const res = await fetch(`/api/products/${initialData.id}/images?imageId=${img.id}`, { method: 'DELETE' });
-                                                if (!res.ok) throw new Error("Failed to delete");
-                                                setExistingImages(existingImages.filter((_: any, idx: number) => idx !== i));
-                                                toast.success("Image deleted");
-                                            } catch (error) {
-                                                toast.error("Failed to delete image");
-                                            }
-                                        }}
+                                        onClick={() => removeImage(img)}
                                         className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
                                         title="Delete image"
                                     >
@@ -718,42 +807,8 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
                                 {colors.length > 0 && (
                                     <select
                                         className="w-24 text-xs px-1 py-1 border rounded-md bg-background"
-                                        value={img.color || ""}
-                                        onChange={e => setExistingImages(existingImages.map((im: any, idx: number) =>
-                                            idx === i ? { ...im, color: e.target.value } : im
-                                        ))}
-                                        aria-label="Image colour"
-                                    >
-                                        <option value="">All colours</option>
-                                        {colors.map(colorStr => (
-                                            <option key={colorStr} value={colorStr}>
-                                                {colorStr.includes('|') ? colorStr.split('|')[0] : colorStr}
-                                            </option>
-                                        ))}
-                                    </select>
-                                )}
-                            </div>
-                        ))}
-                        {newImages.map((item, i) => (
-                            <div key={`new-${i}`} className="w-24 space-y-1">
-                                <div className="relative w-24 h-32 border rounded overflow-hidden bg-gray-100 flex items-center justify-center group">
-                                    <img src={URL.createObjectURL(item.file)} className="w-full h-full object-cover" />
-                                    <button
-                                        type="button"
-                                        onClick={() => setNewImages(newImages.filter((_, idx) => idx !== i))}
-                                        className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
-                                        title="Remove image"
-                                    >
-                                        <X className="w-3 h-3" />
-                                    </button>
-                                </div>
-                                {colors.length > 0 && (
-                                    <select
-                                        className="w-24 text-xs px-1 py-1 border rounded-md bg-background"
-                                        value={item.color}
-                                        onChange={e => setNewImages(newImages.map((im, idx) =>
-                                            idx === i ? { ...im, color: e.target.value } : im
-                                        ))}
+                                        value={img.color}
+                                        onChange={e => updateImageColor(img.key, e.target.value)}
                                         aria-label="Image colour"
                                     >
                                         <option value="">All colours</option>
