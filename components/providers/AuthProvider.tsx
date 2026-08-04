@@ -23,6 +23,38 @@ interface AuthProviderProps {
     children: ReactNode;
 }
 
+const ROLE_CACHE_KEY = 'kb_role';
+
+/**
+ * The admin panel renders nothing until the role is known, so waiting on a
+ * profiles round-trip leaves a blank screen on every navigation. Caching the
+ * last known role keyed by user id lets a returning admin render immediately
+ * while the real role is revalidated in the background.
+ *
+ * This is a rendering optimisation, not an authorisation check — every admin
+ * API route independently enforces requireAdmin() server-side, so a stale or
+ * tampered cache grants no actual access.
+ */
+function readCachedRole(userId: string): 'admin' | 'customer' | null {
+    if (typeof window === 'undefined') return null;
+    try {
+        const raw = localStorage.getItem(ROLE_CACHE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (parsed?.id !== userId) return null;
+        return parsed.role === 'admin' ? 'admin' : 'customer';
+    } catch {
+        return null;
+    }
+}
+
+function writeCachedRole(userId: string, role: 'admin' | 'customer') {
+    if (typeof window === 'undefined') return;
+    try {
+        localStorage.setItem(ROLE_CACHE_KEY, JSON.stringify({ id: userId, role }));
+    } catch { /* storage unavailable — fall back to fetching each time */ }
+}
+
 export function AuthProvider({ children }: AuthProviderProps) {
     const {
         setUser,
@@ -58,6 +90,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
                         // Skip anonymous users from setting full user state (they stay as guests)
                         const isAnon = session.user.is_anonymous;
                         if (!isAnon) {
+                            const baseUser = {
+                                id: session.user.id,
+                                email: session.user.email || '',
+                                full_name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
+                            };
+
+                            // Render immediately from the cached role, so returning
+                            // admins don't stare at a blank guard while we fetch.
+                            const cached = readCachedRole(session.user.id);
+                            if (cached) {
+                                setUser({ ...baseUser, role: cached });
+                                setIsAuthenticated(true);
+                                setIsLoading(false);
+                            }
+
                             // Look up the real role — a hardcoded 'customer' here silently
                             // logs admins out of any freshly-loaded tab (new tab, print,
                             // window.open), since AdminLayout's guard checks role === 'admin'.
@@ -69,15 +116,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
                                     .eq('id', session.user.id)
                                     .single();
                                 if (profile?.role === 'admin') role = 'admin';
-                            } catch { /* default to customer */ }
+                            } catch {
+                                // Network/RLS failure — keep whatever the cache said
+                                // rather than demoting a signed-in admin mid-session.
+                                if (cached) { setIsLoading(false); return; }
+                            }
 
                             if (!isMounted) return;
-                            setUser({
-                                id: session.user.id,
-                                email: session.user.email || '',
-                                full_name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
-                                role
-                            });
+                            writeCachedRole(session.user.id, role);
+                            setUser({ ...baseUser, role });
                             setIsAuthenticated(true);
                             syncAllData().catch(e => console.warn('Sync error:', e));
                         } else {
@@ -89,6 +136,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
                         setIsLoading(false);
                     } else if (event === 'SIGNED_OUT') {
                         authSetByEvent.current = true;
+                        try { localStorage.removeItem(ROLE_CACHE_KEY); } catch { /* ignore */ }
                         logout();
                         setIsLoading(false);
                     }
@@ -105,6 +153,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 if (!isMounted) return;
 
                 if (session?.user && !session.user.is_anonymous) {
+                    const baseUser = {
+                        id: session.user.id,
+                        email: session.user.email || '',
+                        full_name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
+                    };
+
+                    const cached = readCachedRole(session.user.id);
+                    if (cached) {
+                        setUser({ ...baseUser, role: cached });
+                        setIsAuthenticated(true);
+                        setIsLoading(false);
+                    }
+
                     let role: 'admin' | 'customer' = 'customer';
                     try {
                         const { data: profile } = await supabase
@@ -113,14 +174,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
                             .eq('id', session.user.id)
                             .single();
                         if (profile?.role === 'admin') role = 'admin';
-                    } catch { /* default to customer */ }
+                    } catch {
+                        if (cached) return;
+                    }
 
-                    setUser({
-                        id: session.user.id,
-                        email: session.user.email || '',
-                        full_name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
-                        role
-                    });
+                    writeCachedRole(session.user.id, role);
+                    setUser({ ...baseUser, role });
                     setIsAuthenticated(true);
                     syncAllData().catch(e => console.warn('Sync error:', e));
                 } else if (!session) {

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -16,6 +17,15 @@ export default function AdminLogin() {
         email: "",
         password: ""
     });
+
+    // /admin now lands here, so forward admins who are already signed in
+    // rather than making them log in again.
+    const { user, isLoading: authLoading } = useStore();
+    useEffect(() => {
+        if (!authLoading && user?.role === "admin") {
+            router.replace("/admin/dashboard");
+        }
+    }, [user, authLoading, router]);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
