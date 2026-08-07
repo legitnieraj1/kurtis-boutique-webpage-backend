@@ -98,7 +98,8 @@ interface StoreState {
 
     setOrders: (orders: Order[]) => void;
     syncAllData: () => Promise<void>;
-    logout: () => void;
+    clearSession: () => void;
+    logout: () => Promise<void>;
 }
 
 export const useStore = create<StoreState>()((set, get) => ({
@@ -247,7 +248,11 @@ export const useStore = create<StoreState>()((set, get) => ({
 
     setOrders: (orders) => set({ orders }),
 
-    logout: () => {
+    // Drops everything this tab knows about the user. Does NOT touch the
+    // Supabase session — call this from the SIGNED_OUT handler, where the
+    // session is already gone and calling signOut() again would bounce a
+    // fresh SIGNED_OUT event straight back at us.
+    clearSession: () => {
         set({
             user: null,
             isAuthenticated: false,
@@ -257,5 +262,29 @@ export const useStore = create<StoreState>()((set, get) => ({
             orders: [],
             isCartOpen: false,
         });
+        if (typeof window === 'undefined') return;
+        try {
+            localStorage.removeItem('kb_role');
+        } catch { /* storage unavailable */ }
+    },
+
+    logout: async () => {
+        // Clearing this store alone only forgets the user in React state —
+        // the Supabase auth cookie survives, so the very next visit to
+        // /admin is still an authenticated admin session and walks
+        // straight past the login screen. Ending the Supabase session is
+        // what actually logs someone out.
+        get().clearSession();
+
+        if (typeof window === 'undefined') return;
+
+        try {
+            const { getSupabaseClient } = await import('./supabase/client');
+            // 'global' revokes every refresh token for the account, so an
+            // old tab or another device cannot keep the session alive.
+            await getSupabaseClient().auth.signOut({ scope: 'global' });
+        } catch (e) {
+            console.warn('Sign-out request failed:', e);
+        }
     },
 }));

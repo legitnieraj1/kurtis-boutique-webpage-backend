@@ -181,9 +181,12 @@ export default function AdminLayout({
 
                 <div className="p-4 border-t border-border mt-auto">
                     <button
-                        onClick={() => {
-                            useStore.getState().logout();
-                            router.push("/admin/login");
+                        onClick={async () => {
+                            await useStore.getState().logout();
+                            // replace(), not push(): the admin pages must not
+                            // sit in history for the Back button to restore.
+                            router.replace("/admin/login");
+                            router.refresh();
                         }}
                         className="w-full flex items-center gap-3 px-4 py-3 rounded-md text-sm font-medium text-red-500 hover:bg-red-50 transition-colors"
                     >

@@ -1,4 +1,3 @@
-import { createSupabaseAdmin } from '@/lib/supabase/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
@@ -14,36 +13,16 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Use admin to verify user exists and confirm if needed
-        const supabaseAdmin = createSupabaseAdmin();
-
-        // First, get user by email to check status
-        const { data: usersData, error: listError } = await supabaseAdmin.auth.admin.listUsers();
-
-        if (listError) {
-            console.error('List users error:', listError);
-            return NextResponse.json(
-                { error: 'Authentication service error' },
-                { status: 500 }
-            );
-        }
-
-        const user = usersData?.users?.find(u => u.email === email);
-
-        if (!user) {
-            return NextResponse.json(
-                { error: 'Invalid email or password' },
-                { status: 400 }
-            );
-        }
-
-        // If user exists but email not confirmed, confirm it via admin
-        if (!user.email_confirmed_at) {
-            console.log(`Auto-confirming email for user: ${email}`);
-            await supabaseAdmin.auth.admin.updateUserById(user.id, {
-                email_confirm: true,
-            });
-        }
+        // Sign-in is attempted directly against Supabase below. The previous
+        // implementation first pulled the ENTIRE user list with the service
+        // key and searched it for this email, which
+        //   * leaked account existence — a wrong password and an unknown
+        //     address returned different responses, so the endpoint could
+        //     be used to enumerate which emails have accounts, and
+        //   * downloaded every user row on every single login attempt,
+        //     which is what made signing in slow as the store grew.
+        // Supabase's own signInWithPassword already returns one uniform
+        // "Invalid login credentials" error for both cases.
 
         // Get cookies store for handling auth cookies
         const cookieStore = await cookies();
@@ -107,15 +86,14 @@ export async function POST(request: NextRequest) {
 
         console.log(`Login successful for user: ${email}`);
 
-        // Create response with session data for client-side storage
+        // The session lives in the httpOnly cookies applied below. Echoing
+        // access_token/refresh_token back in the JSON body put them where
+        // any script on the page — including an injected one — could read
+        // them, and a refresh token is a long-lived credential.
         const response = NextResponse.json({
             success: true,
             message: 'Login successful',
             redirect: '/',
-            session: {
-                access_token: data.session.access_token,
-                refresh_token: data.session.refresh_token,
-            }
         });
 
         // Apply all tracked cookies to the response
