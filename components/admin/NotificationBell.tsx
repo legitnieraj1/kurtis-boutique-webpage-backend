@@ -12,9 +12,15 @@ export function NotificationBell() {
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        // Fetch products to check for low stock
-        // Ideally API could have /api/products/alerts or similar
-        fetch('/api/products?limit=100')
+        // This bell renders in the admin header on every page, so it fired
+        // on every single admin navigation — and it used to request the
+        // full product shape (eight joined tables, every column, 100 rows)
+        // purely to count the ones low on stock. view=summary cuts that to
+        // the handful of columns actually read below, and the request is
+        // abortable so leaving the page does not leave it running.
+        const controller = new AbortController();
+
+        fetch('/api/products?view=summary&limit=100', { signal: controller.signal })
             .then(res => res.json())
             .then(data => {
                 if (data.products) {
@@ -24,7 +30,11 @@ export function NotificationBell() {
                     setLowStockItems(low);
                 }
             })
-            .catch(console.error);
+            .catch(err => {
+                if (err?.name !== 'AbortError') console.error(err);
+            });
+
+        return () => controller.abort();
     }, []);
 
     const hasNotifications = lowStockItems.length > 0;

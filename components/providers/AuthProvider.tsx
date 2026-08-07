@@ -61,7 +61,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setIsAuthenticated,
         setIsLoading,
         syncAllData,
-        logout,
+        clearSession,
         isLoading,
         isAuthenticated
     } = useStore();
@@ -136,8 +136,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
                         setIsLoading(false);
                     } else if (event === 'SIGNED_OUT') {
                         authSetByEvent.current = true;
-                        try { localStorage.removeItem(ROLE_CACHE_KEY); } catch { /* ignore */ }
-                        logout();
+                        // clearSession, not logout(): the session is already
+                        // gone by the time this fires, and logout() would call
+                        // signOut() again and re-enter this same branch.
+                        clearSession();
                         setIsLoading(false);
                     }
                 }, 0);

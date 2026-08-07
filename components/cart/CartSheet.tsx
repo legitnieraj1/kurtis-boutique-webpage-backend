@@ -135,6 +135,10 @@ export function CartSheet({ isOpen, onClose }: CartSheetProps) {
                                                         src={imageUrl}
                                                         alt={item.product?.name || 'Product'}
                                                         fill
+                                                        // Fixed-size cart thumbnail. Without `sizes`,
+                                                        // `fill` assumes 100vw and requests a 1920px
+                                                        // render for a ~96px box.
+                                                        sizes="96px"
                                                         className="object-cover"
                                                     />
                                                 ) : (

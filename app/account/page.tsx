@@ -17,8 +17,9 @@ export default function AccountPage() {
     }, [isLoading, isAuthenticated, router]);
 
     const handleLogout = async () => {
-        logout();
-        router.push("/");
+        await logout();
+        router.replace("/");
+        router.refresh();
     };
 
     if (isLoading || !user) {

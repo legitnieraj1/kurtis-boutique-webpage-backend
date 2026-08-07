@@ -44,8 +44,15 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
                 color: img.color || "",
             }))
     );
-    const [dragKey, setDragKey] = useState<string | null>(null);
-    const [dragOverKey, setDragOverKey] = useState<string | null>(null);
+    const [draggingKey, setDraggingKey] = useState<string | null>(null);
+    const slotRefs = useRef(new Map<string, HTMLDivElement>());
+    const dragRef = useRef<{
+        key: string;
+        pointerId: number;
+        started: boolean;
+        startX: number;
+        startY: number;
+    } | null>(null);
 
     // Sizes & Colors
     const [sizes, setSizes] = useState<string[]>(initialData?.sizes?.map((s: any) => s.size) || []);
@@ -243,26 +250,120 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
         }
     };
 
-    // Native HTML5 drag-and-drop reordering — works fine with the wrapped
-    // thumbnail grid, unlike transform-based drag libraries which assume a
-    // single linear axis.
-    const handleDrop = (targetKey: string) => {
-        if (!dragKey || dragKey === targetKey) {
-            setDragKey(null);
-            setDragOverKey(null);
-            return;
-        }
+    // Image reordering, on pointer events.
+    //
+    // This previously used the HTML5 drag-and-drop API (the `draggable`
+    // attribute plus onDragStart/onDragOver/onDrop), which broke in both
+    // places it was used:
+    //
+    //   * Touch devices do not implement HTML5 drag-and-drop at all. No
+    //     dragstart ever fired, so a long press fell through to the
+    //     browser's built-in image gesture — the "copy / save image" menu
+    //     the reorder appeared to be doing instead of moving anything.
+    //   * On desktop, onDragStart never called dataTransfer.setData() or
+    //     set effectAllowed, so the drag defaulted to a *copy* operation:
+    //     copy cursor, and a ghost of the picture dragged along with it.
+    //
+    // Pointer events give mouse, touch and pen one identical code path,
+    // and the arrow buttons below cover keyboard and any case where a
+    // drag is awkward.
+    const DRAG_THRESHOLD_PX = 6;
+
+    const registerSlot = (key: string) => (el: HTMLDivElement | null) => {
+        if (el) slotRefs.current.set(key, el);
+        else slotRefs.current.delete(key);
+    };
+
+    const moveImage = (fromKey: string, toKey: string) => {
         setImages(prev => {
-            const from = prev.findIndex(img => img.key === dragKey);
-            const to = prev.findIndex(img => img.key === targetKey);
-            if (from === -1 || to === -1) return prev;
+            const from = prev.findIndex(img => img.key === fromKey);
+            const to = prev.findIndex(img => img.key === toKey);
+            if (from === -1 || to === -1 || from === to) return prev;
             const next = [...prev];
             const [moved] = next.splice(from, 1);
             next.splice(to, 0, moved);
             return next;
         });
-        setDragKey(null);
-        setDragOverKey(null);
+    };
+
+    // Nudge one position left/right — the accessible fallback, and the
+    // reliable route on a small screen.
+    const shiftImage = (key: string, delta: number) => {
+        setImages(prev => {
+            const from = prev.findIndex(img => img.key === key);
+            if (from === -1) return prev;
+            const to = from + delta;
+            if (to < 0 || to >= prev.length) return prev;
+            const next = [...prev];
+            const [moved] = next.splice(from, 1);
+            next.splice(to, 0, moved);
+            return next;
+        });
+    };
+
+    // Which thumbnail sits under this point? Rects are re-read on every
+    // move because the grid reflows as items swap places.
+    const slotKeyAtPoint = (x: number, y: number) => {
+        for (const [key, el] of Array.from(slotRefs.current.entries())) {
+            const r = el.getBoundingClientRect();
+            if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return key;
+        }
+        return null;
+    };
+
+    const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>, key: string) => {
+        if (e.button !== 0) return;
+        const target = e.target as HTMLElement;
+
+        // Leave the delete button and the colour <select> alone.
+        if (target.closest('button, select')) return;
+
+        // On touch, only the grip handle starts a drag. If the whole
+        // thumbnail did, the grid would swallow every vertical swipe and
+        // the page could no longer be scrolled past the image row.
+        if (e.pointerType !== 'mouse' && !target.closest('[data-drag-handle]')) return;
+
+        dragRef.current = {
+            key,
+            pointerId: e.pointerId,
+            started: false,
+            startX: e.clientX,
+            startY: e.clientY,
+        };
+    };
+
+    const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+        const drag = dragRef.current;
+        if (!drag || drag.pointerId !== e.pointerId) return;
+
+        if (!drag.started) {
+            // Require real travel first, so a plain click or tap on the
+            // thumbnail is still a click and not a zero-distance drag.
+            const dx = e.clientX - drag.startX;
+            const dy = e.clientY - drag.startY;
+            if (Math.sqrt(dx * dx + dy * dy) < DRAG_THRESHOLD_PX) return;
+
+            drag.started = true;
+            setDraggingKey(drag.key);
+            // Capture keeps the move/up events coming to this element even
+            // when the pointer leaves it, which it immediately does.
+            e.currentTarget.setPointerCapture(e.pointerId);
+        }
+
+        e.preventDefault();
+
+        const overKey = slotKeyAtPoint(e.clientX, e.clientY);
+        if (overKey && overKey !== drag.key) moveImage(drag.key, overKey);
+    };
+
+    const handlePointerEnd = (e: React.PointerEvent<HTMLDivElement>) => {
+        const drag = dragRef.current;
+        if (!drag || drag.pointerId !== e.pointerId) return;
+        if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+            e.currentTarget.releasePointerCapture(e.pointerId);
+        }
+        dragRef.current = null;
+        setDraggingKey(null);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -769,39 +870,94 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
                 <div>
                     <label className="text-sm font-medium mb-2 block">Images</label>
                     <p className="text-sm text-muted-foreground mb-3">
-                        Drag a thumbnail to reorder. The first image is what customers see first.
+                        Drag a thumbnail to reorder, or use the arrows. The first image is what customers see first.
                         {colors.length > 0 && " Tag an image with a colour to show it only when that colour is selected — leave it as \"All colours\" to always show it."}
                     </p>
                     <div className="flex flex-wrap gap-4">
-                        {images.map((img) => (
+                        {images.map((img, index) => (
                             <div
                                 key={img.key}
-                                className="w-24 space-y-1"
-                                draggable
-                                onDragStart={() => setDragKey(img.key)}
-                                onDragOver={(e) => { e.preventDefault(); setDragOverKey(img.key); }}
-                                onDragLeave={() => setDragOverKey(prev => prev === img.key ? null : prev)}
-                                onDrop={(e) => { e.preventDefault(); handleDrop(img.key); }}
-                                onDragEnd={() => { setDragKey(null); setDragOverKey(null); }}
+                                ref={registerSlot(img.key)}
+                                className={cn(
+                                    "w-24 space-y-1 select-none",
+                                    draggingKey === img.key && "opacity-40"
+                                )}
+                                onPointerDown={(e) => handlePointerDown(e, img.key)}
+                                onPointerMove={handlePointerMove}
+                                onPointerUp={handlePointerEnd}
+                                onPointerCancel={handlePointerEnd}
                             >
                                 <div
                                     className={cn(
-                                        "relative w-24 h-32 border rounded overflow-hidden group cursor-grab active:cursor-grabbing transition-opacity",
-                                        dragKey === img.key && "opacity-40",
-                                        dragOverKey === img.key && dragKey !== img.key && "ring-2 ring-primary"
+                                        "relative w-24 h-32 border rounded overflow-hidden group transition-shadow",
+                                        "md:cursor-grab md:active:cursor-grabbing",
+                                        draggingKey && draggingKey !== img.key && "ring-1 ring-primary/30",
+                                        draggingKey === img.key && "ring-2 ring-primary shadow-lg"
                                     )}
                                 >
-                                    <img src={img.url} className="w-full h-full object-cover pointer-events-none" />
-                                    <div className="absolute top-1 left-1 bg-black/50 text-white rounded p-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <GripVertical className="w-3 h-3" />
+                                    <img
+                                        src={img.url}
+                                        alt=""
+                                        // draggable={false} stops the browser's own
+                                        // image drag, which is what produced the copy
+                                        // ghost; the callout/select rules stop the
+                                        // long-press "save image" menu on mobile.
+                                        draggable={false}
+                                        onContextMenu={(e) => e.preventDefault()}
+                                        className="w-full h-full object-cover pointer-events-none select-none [-webkit-touch-callout:none]"
+                                    />
+                                    <div
+                                        data-drag-handle
+                                        title="Drag to reorder"
+                                        // touch-action:none is what lets a touch drag
+                                        // reach us at all — without it the browser
+                                        // claims the gesture for scrolling. It is set
+                                        // only on the grip so swiping anywhere else
+                                        // still scrolls the page normally.
+                                        className="absolute top-1 left-1 bg-black/60 text-white rounded p-1 cursor-grab active:cursor-grabbing touch-none md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                                    >
+                                        <GripVertical className="w-3 h-3 pointer-events-none" />
                                     </div>
                                     <button
                                         type="button"
                                         onClick={() => removeImage(img)}
-                                        className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+                                        className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity shadow-md"
                                         title="Delete image"
                                     >
                                         <X className="w-3 h-3" />
+                                    </button>
+                                    {index === 0 && (
+                                        <span className="absolute bottom-1 left-1 bg-primary text-primary-foreground text-[10px] font-medium px-1.5 py-0.5 rounded">
+                                            Cover
+                                        </span>
+                                    )}
+                                </div>
+
+                                {/* Explicit reorder controls: the reliable path on
+                                    touch, and the only keyboard-reachable one. */}
+                                <div className="flex items-center justify-between gap-1">
+                                    <button
+                                        type="button"
+                                        onClick={() => shiftImage(img.key, -1)}
+                                        disabled={index === 0}
+                                        className="flex-1 flex items-center justify-center py-1 border rounded text-muted-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed"
+                                        title="Move earlier"
+                                        aria-label={`Move image ${index + 1} earlier`}
+                                    >
+                                        <ArrowLeft className="w-3 h-3" />
+                                    </button>
+                                    <span className="text-[10px] text-muted-foreground tabular-nums w-4 text-center">
+                                        {index + 1}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => shiftImage(img.key, 1)}
+                                        disabled={index === images.length - 1}
+                                        className="flex-1 flex items-center justify-center py-1 border rounded text-muted-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed"
+                                        title="Move later"
+                                        aria-label={`Move image ${index + 1} later`}
+                                    >
+                                        <ArrowRight className="w-3 h-3" />
                                     </button>
                                 </div>
                                 {colors.length > 0 && (

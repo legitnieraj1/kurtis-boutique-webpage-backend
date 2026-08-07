@@ -29,10 +29,24 @@ export async function GET(request: NextRequest) {
         const offset = parseInt(searchParams.get('offset') || '0');
         const sortBy = searchParams.get('sort') || 'created_at';
         const order = searchParams.get('order') === 'asc' ? true : false;
+        // `view=summary` returns just the columns a list screen renders.
+        // The full shape below joins eight related tables and selects every
+        // product column; pulling that for a 100-row admin table meant
+        // megabytes of combo pricing, size rows and add-ons that the table
+        // never displays, which is the bulk of the wait on /admin/products.
+        const summary = searchParams.get('view') === 'summary';
+        // Only count when the caller actually paginates. count:'exact' makes
+        // Postgres walk the whole matching set on every request.
+        const wantCount = searchParams.get('count') !== 'false' && !summary;
 
-        let query = supabase
-            .from('products')
-            .select(`
+        const SUMMARY_FIELDS = `
+                id, name, slug, price, discount_price, stock_remaining,
+                low_stock_threshold, is_active, created_at,
+                category:categories(id, name),
+                images:product_images(image_url, display_order)
+            `;
+
+        const FULL_FIELDS = `
                 *,
                 category:categories(id, name, slug),
                 images:product_images(id, image_url, display_order, color),
@@ -42,7 +56,14 @@ export async function GET(request: NextRequest) {
                 couple_combos(id, women_price, men_price),
                 addons:product_addons(id, name, price),
                 baby_size_prices(id, size, price)
-            `, { count: 'exact' });
+            `;
+
+        let query = supabase
+            .from('products')
+            .select(
+                summary ? SUMMARY_FIELDS : FULL_FIELDS,
+                wantCount ? { count: 'exact' } : undefined
+            );
 
         // For non-admins, force active only
         if (!admin) {

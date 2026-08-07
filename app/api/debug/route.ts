@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { isAdmin } from '@/lib/supabase/server';
 
-// Simple debug endpoint - bypasses all complexity
+// Diagnostics endpoint. Admin-only: it reports which secrets are
+// configured and runs a service-role query, so leaving it open told any
+// visitor how the backend is wired and confirmed the service key works.
 export async function GET(request: NextRequest) {
+    if (!(await isAdmin())) {
+        return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    }
+
     const results: Record<string, any> = {};
 
     // Check environment variables

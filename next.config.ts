@@ -15,18 +15,29 @@ const nextConfig: NextConfig = {
   },
 
   images: {
-    formats: ["image/avif", "image/webp"],
-    minimumCacheTTL: 31536000, // Cache optimized images for 1 year
+    // Images are transformed by Supabase Storage rather than Vercel's
+    // /_next/image optimizer. See lib/imageLoader.ts for why: the Vercel
+    // optimizer is metered, and when the allowance ran out it answered
+    // HTTP 402 for most product photos, which the browser renders as a
+    // broken image. Supabase's transformer is not metered per request,
+    // so that failure mode is gone rather than merely postponed.
+    //
+    // `loader: "custom"` also means no image request touches the Vercel
+    // optimizer at all — nothing to run out of.
+    loader: "custom",
+    loaderFile: "./lib/imageLoader.ts",
+
     deviceSizes: [375, 640, 750, 828, 1080, 1200, 1920],
     // Next.js 16 only serves qualities listed here (default [75]); anything else
     // is rejected with a 400. These are the values used across the app.
     qualities: [70, 75, 80],
-    // Dev-only: some local/sandboxed environments resolve Supabase's storage
-    // domain to an address Next's image optimizer treats as private and
-    // refuses to fetch server-side, even though the browser reaches it fine.
-    // Skipping the optimizer here lets the browser fetch images directly.
-    // Production always goes through the optimizer — this never applies there.
-    unoptimized: process.env.NODE_ENV !== "production",
+    // NOTE: `formats` and `minimumCacheTTL` are settings for the built-in
+    // optimizer and have no effect with a custom loader. WebP is instead
+    // negotiated by Supabase from the browser's Accept header, and cache
+    // lifetime comes from Supabase's own Cache-Control plus Cloudflare.
+    // The old `unoptimized` dev workaround is gone with it: the custom
+    // loader makes the browser fetch Supabase directly, in dev and prod
+    // alike, so there is no server-side optimizer fetch left to fail.
     remotePatterns: [
       {
         protocol: 'https',

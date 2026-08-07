@@ -124,6 +124,7 @@ export function SearchSheet({ isOpen, onClose }: SearchSheetProps) {
                                                                     src={product.images[0].image_url}
                                                                     alt={product.name}
                                                                     fill
+                                                                    sizes="64px"
                                                                     className="object-cover"
                                                                 />
                                                             ) : (
