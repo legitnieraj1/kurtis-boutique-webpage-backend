@@ -16,7 +16,7 @@ interface Product {
     discount_price?: number;
     stock_remaining: number;
     is_active: boolean;
-    images: { image_url: string }[];
+    images: { image_url: string; display_order?: number }[];
 }
 
 export default function AdminProducts() {
@@ -24,19 +24,22 @@ export default function AdminProducts() {
     const [loading, setLoading] = useState(true);
     const [isAdding, setIsAdding] = useState(false);
     const [editingProduct, setEditingProduct] = useState<any>(null);
+    const [editLoadingId, setEditLoadingId] = useState<string | null>(null);
 
     // Fetch Products
     const fetchProducts = async () => {
         setLoading(true);
         try {
-            // Add timestamp to prevent caching
-            const res = await fetch(`/api/products?limit=100&t=${Date.now()}`, {
+            // view=summary asks for only the columns this table renders. The
+            // default shape joins eight related tables and every product
+            // column, none of which appear below — that payload was the
+            // reason this screen took seconds to appear.
+            const res = await fetch(`/api/products?view=summary&limit=100&t=${Date.now()}`, {
                 headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
             });
             const data = await res.json();
             if (data.products) {
                 setProducts(data.products);
-                console.log("Fetched products:", data.products.length);
             }
         } catch (error) {
             console.error("Failed to fetch products", error);
@@ -71,6 +74,26 @@ export default function AdminProducts() {
             fetchProducts();
         } catch (error: any) {
             toast.error(error.message || "Error deleting product");
+        }
+    };
+
+    // The list is fetched with view=summary, which omits sizes, colours,
+    // combo pricing and add-ons. Handing that trimmed row to ProductForm
+    // would open the editor with those sections blank and then save the
+    // blanks over the real data — so load the full record on demand.
+    const startEdit = async (id: string) => {
+        setEditLoadingId(id);
+        try {
+            const res = await fetch(`/api/products/${id}?t=${Date.now()}`, {
+                headers: { 'Cache-Control': 'no-cache' }
+            });
+            const data = await res.json();
+            if (!res.ok || !data.product) throw new Error(data.error || "Failed to load product");
+            setEditingProduct(data.product);
+        } catch (error: any) {
+            toast.error(error.message || "Could not open product for editing");
+        } finally {
+            setEditLoadingId(null);
         }
     };
 
@@ -122,7 +145,14 @@ export default function AdminProducts() {
                             <tbody className="divide-y divide-border">
                                 {products.map(product => {
                                     const inStock = product.stock_remaining > 0;
-                                    const displayImage = product.images?.[0]?.image_url;
+                                    // Nested rows come back in no guaranteed order,
+                                    // so pick the lowest display_order rather than
+                                    // trusting whichever row arrived first.
+                                    const displayImage = product.images?.length
+                                        ? [...product.images].sort(
+                                            (a, b) => (a.display_order ?? 0) - (b.display_order ?? 0)
+                                        )[0].image_url
+                                        : undefined;
 
                                     return (
                                         <tr key={product.id} className="hover:bg-muted/10">
@@ -168,8 +198,15 @@ export default function AdminProducts() {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-right space-x-2 whitespace-nowrap">
-                                                <Button variant="ghost" size="icon" onClick={() => setEditingProduct(product)}>
-                                                    <Edit className="w-4 h-4" />
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => startEdit(product.id)}
+                                                    disabled={editLoadingId === product.id}
+                                                >
+                                                    {editLoadingId === product.id
+                                                        ? <Loader2 className="w-4 h-4 animate-spin" />
+                                                        : <Edit className="w-4 h-4" />}
                                                 </Button>
                                                 <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => handleDelete(product.id)}>
                                                     <Trash className="w-4 h-4" />
