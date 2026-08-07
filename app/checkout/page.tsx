@@ -408,7 +408,7 @@ export default function CheckoutPage() {
                                             <div key={item.id} className="flex gap-4 py-4 border-b last:border-0 border-gray-100">
                                                 <div className="relative w-16 h-20 flex-shrink-0 bg-gray-100 rounded-md overflow-hidden">
                                                     {item.product?.images?.[0]?.image_url ? (
-                                                        <Image src={item.product.images[0].image_url} alt={item.product.name || ''} fill className="object-cover" />
+                                                        <Image src={item.product.images[0].image_url} alt={item.product.name || ''} fill sizes="80px" className="object-cover" />
                                                     ) : (
                                                         <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">No Img</div>
                                                     )}

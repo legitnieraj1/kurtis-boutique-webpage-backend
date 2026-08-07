@@ -142,6 +142,7 @@ export default function AdminOrderDetailsPage() {
                                                     src={item.image_url}
                                                     alt={baseName}
                                                     fill
+                                                    sizes="96px"
                                                     className="object-cover"
                                                 />
                                             ) : (

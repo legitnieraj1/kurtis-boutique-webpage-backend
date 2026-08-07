@@ -166,6 +166,7 @@ export default function UserOrderDetailsPage() {
                                                     src={item.image_url}
                                                     alt={item.product_name}
                                                     fill
+                                                    sizes="96px"
                                                     className="object-cover"
                                                 />
                                             ) : (
