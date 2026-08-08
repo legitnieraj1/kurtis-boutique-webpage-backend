@@ -313,6 +313,37 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
             .map(img => img.image_url);
     }, [product.images, selectedColor]);
 
+    // Swipe between images on touch devices. The thumbnails below stay in
+    // sync — this only moves the same activeImage pointer they set.
+    const touchStart = useRef<{ x: number; y: number } | null>(null);
+
+    const stepImage = (delta: number) => {
+        if (displayImages.length < 2) return;
+        const current = displayImages.indexOf(activeImage);
+        const next = (current + delta + displayImages.length) % displayImages.length;
+        setActiveImage(displayImages[next]);
+    };
+
+    const handleTouchStart = (e: React.TouchEvent) => {
+        const touch = e.touches[0];
+        touchStart.current = { x: touch.clientX, y: touch.clientY };
+    };
+
+    const handleTouchEnd = (e: React.TouchEvent) => {
+        const start = touchStart.current;
+        touchStart.current = null;
+        if (!start) return;
+
+        const touch = e.changedTouches[0];
+        const dx = touch.clientX - start.x;
+        const dy = touch.clientY - start.y;
+
+        // Ignore anything that reads as a vertical scroll or a tap.
+        if (Math.abs(dx) < 45 || Math.abs(dx) < Math.abs(dy)) return;
+
+        stepImage(dx < 0 ? 1 : -1);
+    };
+
     // Keep the main image inside the current colour's gallery
     useEffect(() => {
         if (displayImages.length > 0 && !displayImages.includes(activeImage)) {
@@ -350,7 +381,11 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
                         )}
 
                         <div className="flex-1 space-y-3">
-                            <div className="relative aspect-[4/5] md:aspect-[3/4] bg-secondary/30 rounded-xl overflow-hidden group shadow-[var(--shadow-soft)]">
+                            <div
+                                className="relative aspect-[4/5] md:aspect-[3/4] bg-secondary/30 rounded-xl overflow-hidden group shadow-[var(--shadow-soft)] touch-pan-y select-none"
+                                onTouchStart={handleTouchStart}
+                                onTouchEnd={handleTouchEnd}
+                            >
                                 <AnimatePresence mode="wait">
                                     {activeImage ? (
                                         <motion.div
