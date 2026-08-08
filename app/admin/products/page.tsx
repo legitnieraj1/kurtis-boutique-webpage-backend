@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { formatPrice } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Plus, Edit, Trash, EyeOff, Loader2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Plus, Edit, Trash, EyeOff, Loader2, Search, X } from "lucide-react";
 import ProductForm from "@/components/admin/ProductForm";
 import { toast } from "sonner";
 
@@ -25,16 +26,22 @@ export default function AdminProducts() {
     const [isAdding, setIsAdding] = useState(false);
     const [editingProduct, setEditingProduct] = useState<any>(null);
     const [editLoadingId, setEditLoadingId] = useState<string | null>(null);
+    // Search runs server-side so it covers the whole catalogue, not just the
+    // first page of rows already loaded into the table.
+    const [search, setSearch] = useState("");
+    const [activeSearch, setActiveSearch] = useState("");
+    const [hasLoaded, setHasLoaded] = useState(false);
 
     // Fetch Products
-    const fetchProducts = async () => {
+    const fetchProducts = useCallback(async (term: string = activeSearch) => {
         setLoading(true);
         try {
             // view=summary asks for only the columns this table renders. The
             // default shape joins eight related tables and every product
             // column, none of which appear below — that payload was the
             // reason this screen took seconds to appear.
-            const res = await fetch(`/api/products?view=summary&limit=100&t=${Date.now()}`, {
+            const query = term.trim() ? `&search=${encodeURIComponent(term.trim())}` : "";
+            const res = await fetch(`/api/products?view=summary&limit=100${query}&t=${Date.now()}`, {
                 headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
             });
             const data = await res.json();
@@ -46,12 +53,19 @@ export default function AdminProducts() {
             toast.error("Failed to load products");
         } finally {
             setLoading(false);
+            setHasLoaded(true);
         }
-    };
+    }, [activeSearch]);
+
+    // Debounce typing so each keystroke does not fire its own request.
+    useEffect(() => {
+        const timer = setTimeout(() => setActiveSearch(search), 350);
+        return () => clearTimeout(timer);
+    }, [search]);
 
     useEffect(() => {
-        fetchProducts();
-    }, []);
+        fetchProducts(activeSearch);
+    }, [activeSearch, fetchProducts]);
 
     const handleDelete = async (id: string) => {
         if (!confirm("Are you sure you want to delete this product?")) return;
@@ -103,14 +117,17 @@ export default function AdminProducts() {
         fetchProducts(); // Refresh list
     };
 
-    if (loading && !products.length) return <div className="p-8 flex items-center gap-2"><Loader2 className="animate-spin" /> Loading products...</div>;
+    // Only the very first load takes over the screen. Later loads (a search,
+    // a refresh) keep the table and search box mounted so typing is not
+    // interrupted and focus is never lost.
+    if (!hasLoaded) return <div className="p-8 flex items-center gap-2"><Loader2 className="animate-spin" /> Loading products...</div>;
 
     return (
         <div className="p-8 space-y-6">
             <div className="flex justify-between items-center">
                 <div className="flex items-center gap-4">
                     <h1 className="text-3xl font-serif font-bold">Products ({products.length})</h1>
-                    <Button variant="outline" size="sm" onClick={fetchProducts} disabled={loading}>
+                    <Button variant="outline" size="sm" onClick={() => fetchProducts()} disabled={loading}>
                         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Refresh"}
                     </Button>
                 </div>
@@ -120,6 +137,29 @@ export default function AdminProducts() {
                     </Button>
                 )}
             </div>
+
+            {!isAdding && !editingProduct && (
+                <div className="relative max-w-md">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        placeholder="Search products by name"
+                        aria-label="Search products by name"
+                        className="pl-9 pr-9 bg-background"
+                    />
+                    {search && (
+                        <button
+                            type="button"
+                            onClick={() => setSearch("")}
+                            aria-label="Clear search"
+                            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-muted"
+                        >
+                            <X className="h-4 w-4 text-muted-foreground" />
+                        </button>
+                    )}
+                </div>
+            )}
 
             {(isAdding || editingProduct) && (
                 <ProductForm
@@ -217,6 +257,14 @@ export default function AdminProducts() {
                                 })}
                             </tbody>
                         </table>
+
+                        {!loading && products.length === 0 && (
+                            <div className="p-10 text-center text-muted-foreground text-sm">
+                                {activeSearch
+                                    ? `No products match "${activeSearch}".`
+                                    : "No products yet."}
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

@@ -10,8 +10,10 @@ import { CategoryGridItem } from "@/components/home/CategoryGridItem";
 import { HeroBannerCarousel } from "@/components/ui/HeroBannerCarousel";
 import { CircularTestimonialsWrapper } from "@/components/ui/circular-testimonials-wrapper";
 import { NewArrivalsSection } from "@/components/NewArrivalsSection";
+import { ShopByLookSection } from "@/components/home/ShopByLookSection";
 import { createSupabasePublic, createSupabaseAdmin } from "@/lib/supabase/server";
 import { Category, Product } from "@/types";
+import { LOOK_FIELDS, type Look } from "@/lib/shopByLook";
 
 // ISR: statically render homepage, re-generate in background every 5 minutes.
 export const revalidate = 300;
@@ -19,7 +21,7 @@ export const revalidate = 300;
 async function getHomeData() {
   const supabase = createSupabasePublic();
 
-  const [bannersRes, categoriesRes, productsRes] = await Promise.all([
+  const [bannersRes, categoriesRes, productsRes, looksRes] = await Promise.all([
     supabase
       .from("banners")
       .select("*")
@@ -54,6 +56,11 @@ async function getHomeData() {
       .eq("is_active", true)
       .order("created_at", { ascending: false })
       .limit(20),
+    supabase
+      .from("shop_by_look")
+      .select(LOOK_FIELDS)
+      .eq("is_active", true)
+      .order("display_order"),
   ]);
 
   // Reviews require the admin client (RLS blocks anon reads); server-only, never exposed to client bundle.
@@ -73,12 +80,13 @@ async function getHomeData() {
     banners: bannersRes.data || [],
     categories: (categoriesRes.data || []) as unknown as Category[],
     products: (productsRes.data || []) as unknown as Product[],
+    looks: (looksRes.data || []) as unknown as Look[],
     reviews,
   };
 }
 
 export default async function Home() {
-  const { banners, categories, products, reviews } = await getHomeData();
+  const { banners, categories, products, looks, reviews } = await getHomeData();
 
   // "As seen on Instagram" — real post/reel imagery, each shoppable straight
   // to its product page. Images live in /public/insta (saved from the posts).
@@ -176,6 +184,12 @@ export default async function Home() {
             ))}
           </div>
         </section>
+
+        {/* SHOP BY LOOK — shoppable reels, sits between the category grid and
+            the New Arrivals rail. */}
+        <div id="shop-by-look" className="scroll-mt-24">
+          <ShopByLookSection looks={looks} />
+        </div>
 
         {/* NEW ARRIVALS */}
         <NewArrivalsSection initialProducts={products} />

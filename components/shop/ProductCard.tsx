@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Heart, Plus } from "lucide-react";
+import { useState } from "react";
+import { Eye, Heart } from "lucide-react";
 import { Product } from "@/types";
 import { formatPrice } from "@/lib/utils";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { QuickViewModal } from "@/components/shop/QuickViewModal";
 
 interface ProductCardProps {
     product: Product;
@@ -16,6 +18,7 @@ interface ProductCardProps {
 export function ProductCard({ product, hideWishlist }: ProductCardProps) {
     const { isInWishlist, addToWishlist, removeFromWishlist } = useStore();
     const isWishlisted = isInWishlist(product.id);
+    const [quickViewOpen, setQuickViewOpen] = useState(false);
 
     const toggleWishlist = (e: React.MouseEvent) => {
         e.preventDefault(); // Prevent navigation
@@ -96,16 +99,21 @@ export function ProductCard({ product, hideWishlist }: ProductCardProps) {
                     )}
                 </div>
 
-                {/* Quick Add — slides up on hover (desktop). Routes to the product
-                    page where size / combo options are chosen. */}
+                {/* Quick view — slides up on hover (desktop). Opens a modal with
+                    images, price and add-to-cart without leaving the listing. */}
                 {inStock && (
-                    <Link
-                        href={`/product/${product.slug}`}
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setQuickViewOpen(true);
+                        }}
                         className="absolute inset-x-2 bottom-2 z-10 hidden md:flex items-center justify-center gap-1.5 rounded-full bg-white/95 text-foreground text-xs font-medium py-2.5 shadow-md translate-y-[130%] opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100 hover:bg-primary hover:text-primary-foreground"
-                        title={`Quick add ${product.name}`}
+                        title={`Quick view ${product.name}`}
                     >
-                        <Plus className="h-3.5 w-3.5" /> Quick Add
-                    </Link>
+                        <Eye className="h-3.5 w-3.5" /> Quick view
+                    </button>
                 )}
 
                 {/* Wishlist Button */}
@@ -142,6 +150,10 @@ export function ProductCard({ product, hideWishlist }: ProductCardProps) {
                     <link itemProp="availability" href={inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock"} />
                 </div>
             </div>
+
+            {quickViewOpen && (
+                <QuickViewModal slug={product.slug} onClose={() => setQuickViewOpen(false)} />
+            )}
         </article>
     );
 }

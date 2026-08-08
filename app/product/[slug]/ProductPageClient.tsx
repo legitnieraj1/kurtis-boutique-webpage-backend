@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { AnimatePresence, motion } from "framer-motion";
-import { formatPrice, cn } from "@/lib/utils";
+import { formatPrice, cn, sortBySize } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Heart, Minus, Plus, Truck, ShieldCheck, RefreshCw, Zap, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
@@ -74,6 +74,17 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
     }, []);
 
     const inStock = product.stock_remaining > 0;
+
+    // Sizes come back in insertion order; shoppers expect XS → 3XL (and the
+    // youngest baby size first), so order them once here.
+    const sizeOptions = useMemo(
+        () => sortBySize(product.sizes, (s) => s.size),
+        [product.sizes]
+    );
+    const babySizeOptions = useMemo(
+        () => sortBySize(product.baby_size_prices, (bp) => bp.size),
+        [product.baby_size_prices]
+    );
 
     const babyPriceFor = (size: string | null, fallback: number) => {
         if (size && product.baby_size_prices?.length) {
@@ -509,7 +520,7 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
                                         <span className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground font-medium">{comboType === 'mom_baby' && extraBabies.length > 0 ? 'Baby 1 Size' : 'Baby Size'}</span>
                                     </div>
                                     <div className="flex flex-col gap-2">
-                                        {product.baby_size_prices.map(bp => (
+                                        {babySizeOptions.map(bp => (
                                             <button key={bp.id} onClick={() => setSelectedBabySize(bp.size)} className={cn("flex items-center justify-between p-3 border rounded-lg text-left transition-all", selectedBabySize === bp.size ? "border-primary ring-1 ring-primary bg-primary/5" : "hover:border-primary/50")}>
                                                 <span className="font-medium text-sm">{bp.size}</span>
                                                 <span className="text-sm text-muted-foreground">{formatPrice(bp.price)}</span>
@@ -545,7 +556,7 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
                                                     </button>
                                                 </div>
                                                 <div className="flex flex-col gap-2">
-                                                    {product.baby_size_prices!.map(bp => (
+                                                    {babySizeOptions.map(bp => (
                                                         <button
                                                             key={bp.id}
                                                             onClick={() => setExtraBabies(extraBabies.map((b, i) => i === index ? { ...b, size: bp.size } : b))}
@@ -625,7 +636,7 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
                                         <Link href="/size-chart" className="text-xs underline text-muted-foreground hover:text-primary transition-colors">Size Chart</Link>
                                     </div>
                                     <div className="flex gap-3 flex-wrap">
-                                        {product.sizes?.map(sizeObj => (
+                                        {sizeOptions.map(sizeObj => (
                                             <button key={`father-${sizeObj.size}`} onClick={() => setSelectedFatherSize(sizeObj.size)} disabled={!inStock} className={cn("min-w-[46px] h-11 px-3 rounded-lg border text-sm font-medium flex items-center justify-center transition-all duration-200", selectedFatherSize === sizeObj.size ? "border-primary bg-primary text-primary-foreground shadow-[var(--shadow-soft)]" : "border-border bg-surface text-foreground hover:border-primary/50 hover:bg-secondary/40", !inStock && "opacity-50 cursor-not-allowed")}>
                                                 {sizeObj.size}
                                             </button>
@@ -637,7 +648,7 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
                                         <span className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground font-medium">{comboType === 'couple' ? "Women's Size" : 'Mother Size'}</span>
                                     </div>
                                     <div className="flex gap-3 flex-wrap">
-                                        {product.sizes?.map(sizeObj => (
+                                        {sizeOptions.map(sizeObj => (
                                             <button key={`mother-${sizeObj.size}`} onClick={() => setSelectedMotherSize(sizeObj.size)} disabled={!inStock} className={cn("min-w-[46px] h-11 px-3 rounded-lg border text-sm font-medium flex items-center justify-center transition-all duration-200", selectedMotherSize === sizeObj.size ? "border-primary bg-primary text-primary-foreground shadow-[var(--shadow-soft)]" : "border-border bg-surface text-foreground hover:border-primary/50 hover:bg-secondary/40", !inStock && "opacity-50 cursor-not-allowed")}>
                                                 {sizeObj.size}
                                             </button>
@@ -652,7 +663,7 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
                                     <Link href="/size-chart" className="text-xs underline text-muted-foreground hover:text-primary transition-colors">Size Chart</Link>
                                 </div>
                                 <div className="flex gap-3 flex-wrap">
-                                    {product.sizes?.map(sizeObj => (
+                                    {sizeOptions.map(sizeObj => (
                                         <button key={sizeObj.size} onClick={() => setSelectedSize(sizeObj.size)} disabled={!inStock} className={cn("min-w-[46px] h-11 px-3 rounded-lg border text-sm font-medium flex items-center justify-center transition-all duration-200", selectedSize === sizeObj.size ? "border-primary bg-primary text-primary-foreground shadow-[var(--shadow-soft)]" : "border-border bg-surface text-foreground hover:border-primary/50 hover:bg-secondary/40", !inStock && "opacity-50 cursor-not-allowed")}>
                                             {sizeObj.size}
                                         </button>
