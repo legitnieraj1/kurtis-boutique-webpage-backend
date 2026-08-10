@@ -105,11 +105,21 @@ export async function POST(request: NextRequest) {
                     shipping_city: '',
                     shipping_state: '',
                     shipping_pincode: '',
+                    // Both let the unique index do the dedupe that the ±₹10
+                    // heuristic above only approximates, and give the owner a
+                    // way to reach the customer.
+                    razorpay_order_id: payment.order_id || null,
+                    customer_email: email || null,
                 })
                 .select()
                 .single();
 
             if (insertErr || !order) {
+                // Unique violation: this payment already has an order.
+                if (insertErr?.code === '23505') {
+                    skipped.push({ paymentId: payment.id, amount: amountRupees, reason: 'Order already exists' });
+                    continue;
+                }
                 console.error(`[Recover] ❌ Insert failed for ${payment.id}:`, JSON.stringify(insertErr));
                 failed.push({
                     paymentId: payment.id,

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { after } from 'next/server';
 import { createSupabaseAdmin, createSupabaseServerClient } from '@/lib/supabase/server';
 import { RazorpayService } from '@/lib/razorpay';
 import { calculateShipping, DEFAULT_SHIPPING_OUTSIDE } from '@/lib/shipping';
@@ -222,6 +223,9 @@ export async function POST(request: NextRequest) {
             shipping_city: (parsedShipping?.city || '').trim(),
             shipping_state: (parsedShipping?.state || '').trim(),
             shipping_pincode: (parsedShipping?.pincode || '').trim(),
+            // The buyer's real address. profiles.email is a synthetic
+            // guest-...@checkout.kurtisboutique.in and cannot be emailed.
+            customer_email: (customerEmail || '').trim().toLowerCase() || null,
         };
 
         // razorpay_order_id enables idempotency — duplicate verify calls return the existing order (step 4 above)
@@ -234,6 +238,29 @@ export async function POST(request: NextRequest) {
             .single();
 
         if (orderError || !order) {
+            // The webhook won the race and created this order microseconds
+            // ago. The payment is fine, so return its details as success —
+            // the customer must not see an error. The webhook owns the
+            // confirmation email for this order.
+            if (orderError?.code === '23505') {
+                const { data: raced } = await adminDb
+                    .from('orders')
+                    .select('id, order_number')
+                    .eq('razorpay_order_id', razorpay_order_id)
+                    .maybeSingle();
+
+                if (raced) {
+                    console.log('[Razorpay] Order already created by webhook:', raced.order_number);
+                    return NextResponse.json({
+                        success: true,
+                        orderId: raced.id,
+                        orderNumber: raced.order_number,
+                        paymentId: razorpay_payment_id,
+                        message: 'Payment successful! Your order has been placed.',
+                    });
+                }
+            }
+
             const dbErrMsg = orderError?.message || 'unknown DB error';
             const dbErrDetails = orderError?.details || '';
             const dbErrHint = orderError?.hint || '';
@@ -279,16 +306,55 @@ export async function POST(request: NextRequest) {
             if (stockErr) console.error('[Razorpay] Stock decrement error:', stockErr.message);
         }
 
-        // ── 12. Admin push notification ─────────────────────────────────
-        try {
-            const { sendAdminOrderNotification } = await import('@/lib/webpush');
-            const names = orderItemsData.map(i => `${i.product_name} x${i.quantity}`).join(', ');
-            await sendAdminOrderNotification(orderNumber, total, names);
-        } catch (pushErr) {
-            console.error('[WebPush] ⚠️ Error:', pushErr);
-        }
+        // ── 12. Timeline entry (parity with the webhook path) ───────────
+        const { error: timelineErr } = await adminDb.from('order_timeline').insert({
+            order_id: order.id,
+            status: 'pending',
+            description: 'Order placed successfully',
+        });
+        if (timelineErr) console.error('[Razorpay] ⚠️ timeline error:', timelineErr.message);
 
-        // ── 13. Success ─────────────────────────────────────────────────
+        // ── 13. Notifications ───────────────────────────────────────────
+        // after() runs these once the response is on its way, so neither the
+        // email round-trip nor web push sits in front of the customer's
+        // "payment successful" screen.
+        after(async () => {
+            try {
+                const { sendOrderPlacedEmails } = await import('@/lib/orderEmails');
+                await sendOrderPlacedEmails({
+                    orderId: order.id,
+                    orderNumber,
+                    customerEmail: (customerEmail || '').trim() || null,
+                    customerName: orderInsert.shipping_name,
+                    customerPhone: phone10,
+                    items: orderItemsData,
+                    subtotal,
+                    shippingCost,
+                    total,
+                    address: {
+                        line1: orderInsert.shipping_address_line1,
+                        line2: orderInsert.shipping_address_line2,
+                        city: orderInsert.shipping_city,
+                        state: orderInsert.shipping_state,
+                        pincode: orderInsert.shipping_pincode,
+                    },
+                    paymentId: razorpay_payment_id,
+                    source: 'verify',
+                });
+            } catch (emailErr) {
+                console.error('[OrderEmail] ⚠️ verify hook failed:', emailErr);
+            }
+
+            try {
+                const { sendAdminOrderNotification } = await import('@/lib/webpush');
+                const names = orderItemsData.map(i => `${i.product_name} x${i.quantity}`).join(', ');
+                await sendAdminOrderNotification(orderNumber, total, names);
+            } catch (pushErr) {
+                console.error('[WebPush] ⚠️ Error:', pushErr);
+            }
+        });
+
+        // ── 14. Success ─────────────────────────────────────────────────
         return NextResponse.json({
             success: true,
             orderId: order.id,

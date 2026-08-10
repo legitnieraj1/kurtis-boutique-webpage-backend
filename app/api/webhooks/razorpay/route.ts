@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { after } from 'next/server';
 import crypto from 'crypto';
 import { createSupabaseAdmin } from '@/lib/supabase/server';
 
@@ -174,11 +175,21 @@ export async function POST(request: NextRequest) {
             shipping_city: (shippingAddress?.city || '').trim(),
             shipping_state: (shippingAddress?.state || '').trim(),
             shipping_pincode: (shippingAddress?.pincode || '').trim(),
+            customer_email: customerEmail.trim().toLowerCase() || null,
         })
         .select()
         .single();
 
     if (orderError || !order) {
+        // 23505 means the browser verify call won the race and already created
+        // this order. That is a success, so answer 200 — a 500 here would make
+        // Razorpay retry a payment that is already fully recorded.
+        if (orderError?.code === '23505') {
+            console.log('[Webhook] Order already created by verify:', razorpayOrderId);
+            await adminDb.from('checkout_sessions').update({ used: true }).eq('razorpay_order_id', razorpayOrderId);
+            return NextResponse.json({ ok: true, duplicate: true, razorpayOrderId });
+        }
+
         console.error('[Webhook] ❌ Order insert failed:', orderError?.message);
         // Return 500 so Razorpay retries; transient DB error may resolve on retry.
         return NextResponse.json({ error: 'order_insert_failed', dbError: orderError?.message, razorpayOrderId }, { status: 500 });
@@ -216,17 +227,47 @@ export async function POST(request: NextRequest) {
         if (stockErr) console.error('[Webhook] Stock decrement error:', stockErr.message);
     }
 
-    // ── 12. Admin push notification ──────────────────────────────────────
-    try {
-        const { sendAdminOrderNotification } = await import('@/lib/webpush');
-        const names = orderItemsData.map(i => `${i.product_name} x${i.quantity}`).join(', ');
-        await sendAdminOrderNotification(orderNumber, total, names);
-    } catch (pushErr) {
-        console.error('[Webhook/WebPush] ⚠️:', pushErr);
-    }
-
-    // ── 13. Mark session as used ─────────────────────────────────────────
+    // ── 12. Mark session as used ─────────────────────────────────────────
     await adminDb.from('checkout_sessions').update({ used: true }).eq('razorpay_order_id', razorpayOrderId);
+
+    // ── 13. Notifications ────────────────────────────────────────────────
+    // Deferred until after the response: Razorpay retries slow webhooks, and
+    // an email round-trip is exactly the kind of delay that triggers one.
+    after(async () => {
+        try {
+            const { sendOrderPlacedEmails } = await import('@/lib/orderEmails');
+            await sendOrderPlacedEmails({
+                orderId: order.id,
+                orderNumber,
+                customerEmail: customerEmail.trim() || null,
+                customerName: (shippingAddress?.name || '').trim(),
+                customerPhone: phone10,
+                items: orderItemsData,
+                subtotal,
+                shippingCost,
+                total,
+                address: {
+                    line1: (shippingAddress?.address || '').trim(),
+                    line2: '',
+                    city: (shippingAddress?.city || '').trim(),
+                    state: (shippingAddress?.state || '').trim(),
+                    pincode: (shippingAddress?.pincode || '').trim(),
+                },
+                paymentId: razorpayPaymentId,
+                source: 'webhook',
+            });
+        } catch (emailErr) {
+            console.error('[OrderEmail] ⚠️ webhook hook failed:', emailErr);
+        }
+
+        try {
+            const { sendAdminOrderNotification } = await import('@/lib/webpush');
+            const names = orderItemsData.map(i => `${i.product_name} x${i.quantity}`).join(', ');
+            await sendAdminOrderNotification(orderNumber, total, names);
+        } catch (pushErr) {
+            console.error('[Webhook/WebPush] ⚠️:', pushErr);
+        }
+    });
 
     console.log(`[Webhook] ✅ Order created: ${orderNumber} (${order.id}) for payment ${razorpayPaymentId}`);
     return NextResponse.json({ ok: true, orderId: order.id, orderNumber });
