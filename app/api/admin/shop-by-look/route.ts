@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { requireAdmin, createSupabaseAdmin } from '@/lib/supabase/server';
 import { LOOK_FIELDS } from '@/lib/shopByLook';
 
@@ -75,6 +76,12 @@ export async function POST(request: NextRequest) {
             console.error('Look creation error:', error);
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
+
+        // The homepage and look pages are ISR'd for minutes at a time. Without
+        // this the admin saves a look and then watches an unchanged homepage
+        // until the window expires.
+        revalidatePath('/');
+        revalidatePath('/look/[id]', 'page');
 
         return NextResponse.json({ look }, { status: 201 });
     } catch (error: any) {

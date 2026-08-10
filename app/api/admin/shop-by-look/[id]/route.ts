@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { requireAdmin, createSupabaseAdmin } from '@/lib/supabase/server';
 import { LOOK_FIELDS } from '@/lib/shopByLook';
 
@@ -35,6 +36,10 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
 
+        // Push the change straight to the cached homepage / look pages.
+        revalidatePath('/');
+        revalidatePath('/look/[id]', 'page');
+
         return NextResponse.json({ look });
     } catch (error: any) {
         if (error instanceof Error && error.message === 'Forbidden: Admin access required') {
@@ -58,6 +63,9 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
             console.error('Look delete error:', error);
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
+
+        revalidatePath('/');
+        revalidatePath('/look/[id]', 'page');
 
         return NextResponse.json({ success: true });
     } catch (error: any) {
