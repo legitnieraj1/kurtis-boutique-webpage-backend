@@ -343,6 +343,7 @@ export default function CheckoutPage() {
                                     <div>
                                         <label htmlFor="email" className={labelClass}>Email Address</label>
                                         <input type="email" id="email" name="email" required value={formData.email} onChange={handleInputChange} className={inputClass} placeholder="your@email.com" />
+                                        <p className="mt-1.5 text-xs text-muted-foreground">Your order confirmation and updates are sent here.</p>
                                     </div>
 
                                     <div>

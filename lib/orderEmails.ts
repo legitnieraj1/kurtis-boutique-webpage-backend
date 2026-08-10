@@ -89,6 +89,14 @@ function nowInIST(): string {
     });
 }
 
+/** Readable names for the combo_type values stored on order items. */
+const COMBO_LABELS: Record<string, string> = {
+    mom_baby: 'Mom & Baby combo',
+    family: 'Family combo',
+    couple: 'Couples combo',
+    baby_only: 'Baby only',
+};
+
 /**
  * Variant line under a product name. Skips the stored defaults — size is
  * written as 'N/A' when a product has none, combo_type as 'single'.
@@ -99,7 +107,7 @@ function variantLine(item: OrderEmailItem): string {
     if (item.color) parts.push(item.color);
     if (item.baby_size) parts.push(`Baby: ${item.baby_size}`);
     if (item.combo_type && item.combo_type !== 'single') {
-        parts.push(item.combo_type.replace(/_/g, ' '));
+        parts.push(COMBO_LABELS[item.combo_type] || item.combo_type.replace(/_/g, ' '));
     }
     return parts.join(' · ');
 }

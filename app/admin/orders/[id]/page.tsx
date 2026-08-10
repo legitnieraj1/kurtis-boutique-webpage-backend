@@ -26,6 +26,7 @@ interface OrderDetail {
     shipping_pincode: string;
     shipping_name: string;
     shipping_phone: string;
+    customer_email?: string | null;
     items: {
         id: string;
         product_name: string;
@@ -248,6 +249,17 @@ export default function AdminOrderDetailsPage() {
                                 <a href={`tel:${order.shipping_phone}`} className="font-medium text-primary hover:underline">
                                     {order.shipping_phone || "N/A"}
                                 </a>
+                            </div>
+                            <div>
+                                <p className="text-muted-foreground text-xs uppercase">Email</p>
+                                {order.customer_email ? (
+                                    <a href={`mailto:${order.customer_email}`} className="font-medium text-primary hover:underline break-all">
+                                        {order.customer_email}
+                                    </a>
+                                ) : (
+                                    // Orders placed before customer_email existed have none stored.
+                                    <p className="text-muted-foreground">Not recorded</p>
+                                )}
                             </div>
                             {/* WhatsApp quick link */}
                             {order.shipping_phone && (
