@@ -19,6 +19,20 @@
 --      nuisance; a lost sale or an unsaveable product is not.
 --
 -- Run in the Supabase SQL editor. Idempotent.
+--
+-- STATUS: applied to production on 2026-08-12 as the Supabase migration
+-- `fix_stock_decrement_and_notification_triggers`. Verified afterwards:
+--   - all four functions report prosecdef = true, owner postgres
+--   - a products UPDATE run as the `authenticated` role now succeeds and
+--     writes its low_stock notification, where it previously failed with
+--     "new row violates row-level security policy for table notifications"
+--
+-- What the diagnostics found before the fix:
+--   decrement_stock existed only as (uuid, int) and
+--   (uuid, int, text, text) — no p_color. The app calls it with five named
+--   arguments, so PostgREST matched no overload and every checkout call
+--   failed with "function not found", swallowed by the route. Stock had
+--   never decremented on any order since that call was written.
 -- ============================================
 
 
@@ -61,7 +75,7 @@ BEGIN
     VALUES (
       'new_order',
       'New Order Received',
-      format('Order %s placed for ₹%s', NEW.order_number, NEW.total),
+      format('Order %s placed for Rs.%s', NEW.order_number, NEW.total),
       NEW.id
     );
   EXCEPTION WHEN OTHERS THEN
