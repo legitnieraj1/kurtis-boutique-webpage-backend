@@ -214,18 +214,9 @@ export async function POST(request: NextRequest) {
         description: 'Order placed successfully (payment confirmed)',
     });
 
-    // ── 11. Decrement stock (best-effort) ────────────────────────────────
-    for (const item of cartItems) {
-        if (!item.product_id || !isValidUUID(item.product_id)) continue;
-        const { error: stockErr } = await adminDb.rpc('decrement_stock', {
-            p_product_id: item.product_id,
-            p_quantity: item.quantity,
-            p_size: item.size || null,
-            p_color: item.color || null,
-            p_combo_type: item.combo_type || 'single',
-        });
-        if (stockErr) console.error('[Webhook] Stock decrement error:', stockErr.message);
-    }
+    // ── 11. Decrement stock ──────────────────────────────────────────────
+    const { decrementStockForOrder } = await import('@/lib/stock');
+    await decrementStockForOrder(adminDb, cartItems, orderNumber);
 
     // ── 12. Mark session as used ─────────────────────────────────────────
     await adminDb.from('checkout_sessions').update({ used: true }).eq('razorpay_order_id', razorpayOrderId);

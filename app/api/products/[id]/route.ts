@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServerClient, requireAdmin } from '@/lib/supabase/server';
+import { createSupabaseServerClient, createSupabaseAdmin, requireAdmin } from '@/lib/supabase/server';
 
 interface RouteParams {
     params: Promise<{ id: string }>;
@@ -54,7 +54,11 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     try {
         await requireAdmin();
         const { id } = await params;
-        const supabase = await createSupabaseServerClient();
+        // Service role, like the DELETE handler below. The cookie-scoped
+        // client writes as `authenticated`, and the triggers that fire on a
+        // products UPDATE insert into `notifications`, which has no INSERT
+        // policy — that rejection rolled the whole product save back.
+        const supabase = createSupabaseAdmin();
         const body = await request.json();
 
         const {

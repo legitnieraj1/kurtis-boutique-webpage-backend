@@ -293,18 +293,9 @@ export async function POST(request: NextRequest) {
             .insert(orderItemsData.map(item => ({ ...item, order_id: order.id })));
         if (itemsErr) console.error('[Razorpay] ⚠️ order_items error:', itemsErr.message);
 
-        // ── 11. Decrement stock (best-effort) ───────────────────────────
-        for (const item of cartItems) {
-            if (!item.product_id || !isValidUUID(item.product_id)) continue;
-            const { error: stockErr } = await adminDb.rpc('decrement_stock', {
-                p_product_id: item.product_id,
-                p_quantity: item.quantity,
-                p_size: item.size || null,
-                p_color: item.color || null,
-                p_combo_type: item.combo_type || 'single',
-            });
-            if (stockErr) console.error('[Razorpay] Stock decrement error:', stockErr.message);
-        }
+        // ── 11. Decrement stock ─────────────────────────────────────────
+        const { decrementStockForOrder } = await import('@/lib/stock');
+        await decrementStockForOrder(adminDb, cartItems, orderNumber);
 
         // ── 12. Timeline entry (parity with the webhook path) ───────────
         const { error: timelineErr } = await adminDb.from('order_timeline').insert({
