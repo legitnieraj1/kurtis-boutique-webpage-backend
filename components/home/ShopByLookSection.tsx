@@ -4,7 +4,7 @@ import { useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Play } from "lucide-react";
-import { formatPrice } from "@/lib/utils";
+import { formatPrice, sortByDisplayOrder } from "@/lib/utils";
 import { lookThumbnail, type Look } from "@/lib/shopByLook";
 
 /**
@@ -91,9 +91,9 @@ export function ShopByLookSection({ looks }: { looks: Look[] }) {
                                     {product && (
                                         <div className="mt-3 flex items-center gap-3 rounded-lg border border-border bg-background p-2.5">
                                             <div className="relative h-12 w-10 shrink-0 overflow-hidden rounded bg-muted">
-                                                {product.images?.[0]?.image_url && (
+                                                {sortByDisplayOrder(product.images)[0]?.image_url && (
                                                     <Image
-                                                        src={product.images[0].image_url}
+                                                        src={sortByDisplayOrder(product.images)[0].image_url}
                                                         alt=""
                                                         fill
                                                         sizes="40px"

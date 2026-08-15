@@ -16,7 +16,7 @@ export interface DBWishlistItem {
         price: number;
         discount_price?: number;
         is_active: boolean;
-        images?: { image_url: string }[];
+        images?: { image_url: string; display_order?: number | null }[];
     };
 }
 

@@ -5,7 +5,7 @@ export interface Product {
     description?: string;
     price: number;
     discount_price?: number;
-    images: { image_url: string }[];
+    images: { id?: string; image_url: string; display_order?: number | null; color?: string | null }[];
     sizes: { size: string; stock: number }[];
     category_id: string;
     category?: { name: string; slug: string };

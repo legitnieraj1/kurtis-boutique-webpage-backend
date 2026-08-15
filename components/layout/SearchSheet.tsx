@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Search as SearchIcon, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "../ui/input";
-import { cn } from "@/lib/utils";
+import { cn, sortByDisplayOrder } from "@/lib/utils";
 import { Product } from "@/types";
 
 interface SearchSheetProps {
@@ -119,9 +119,9 @@ export function SearchSheet({ isOpen, onClose }: SearchSheetProps) {
                                                         className="flex items-center gap-4 p-2 rounded-lg hover:bg-secondary/30 transition-colors group"
                                                     >
                                                         <div className="h-16 w-12 bg-muted rounded overflow-hidden relative flex-shrink-0">
-                                                            {product.images?.[0]?.image_url ? (
+                                                            {sortByDisplayOrder(product.images)[0]?.image_url ? (
                                                                 <Image
-                                                                    src={product.images[0].image_url}
+                                                                    src={sortByDisplayOrder(product.images)[0].image_url}
                                                                     alt={product.name}
                                                                     fill
                                                                     sizes="64px"

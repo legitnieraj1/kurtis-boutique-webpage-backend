@@ -55,3 +55,13 @@ export function compareSizes(a: string, b: string): number {
 export function sortBySize<T>(items: T[] | undefined | null, getSize: (item: T) => string): T[] {
   return [...(items || [])].sort((a, b) => compareSizes(getSize(a), getSize(b)))
 }
+
+// Product photos come back from PostgREST in whatever order the rows happen to
+// be returned in — the admin's `display_order` is only respected if we sort by
+// it. The product page did; the grids did not, which is why a card could show
+// a different photo than the one set as the cover.
+export function sortByDisplayOrder<T>(items: T[] | undefined | null): T[] {
+  const order = (item: T) =>
+    (item as { display_order?: number | null })?.display_order ?? 0
+  return [...(items || [])].sort((a, b) => order(a) - order(b))
+}

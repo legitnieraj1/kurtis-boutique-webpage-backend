@@ -13,6 +13,7 @@ import { NewArrivalsSection } from "@/components/NewArrivalsSection";
 import { ShopByLookSection } from "@/components/home/ShopByLookSection";
 import { createSupabasePublic, createSupabaseAdmin } from "@/lib/supabase/server";
 import { Category, Product } from "@/types";
+import { sortByDisplayOrder } from "@/lib/utils";
 import { LOOK_FIELDS, type Look } from "@/lib/shopByLook";
 
 // ISR: statically render homepage, re-generate in background every 5 minutes.
@@ -102,9 +103,9 @@ export default async function Home() {
   ]);
   // Fill the remaining tiles with recent product photos (also shoppable).
   const fillInsta = products
-    .filter((p) => !curatedSlugs.has(p.slug) && p.images?.[0]?.image_url)
+    .filter((p) => !curatedSlugs.has(p.slug) && sortByDisplayOrder(p.images)[0]?.image_url)
     .slice(0, 3)
-    .map((p) => ({ src: p.images[0].image_url, href: `/product/${p.slug}` }));
+    .map((p) => ({ src: sortByDisplayOrder(p.images)[0].image_url, href: `/product/${p.slug}` }));
   const instagramTiles = [...curatedInsta, ...fillInsta];
 
   return (

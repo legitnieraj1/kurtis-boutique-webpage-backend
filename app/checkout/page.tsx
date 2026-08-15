@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Loader2, ShieldCheck, CreditCard, Lock } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { formatPrice, cn } from '@/lib/utils';
+import { formatPrice, cn, sortByDisplayOrder } from '@/lib/utils';
 import { toast } from 'sonner';
 import Script from 'next/script';
 import { getCartItemPrice } from '@/lib/cartService';
@@ -172,7 +172,7 @@ export default function CheckoutPage() {
                 baby_size: item.baby_size || null,
                 unit_price: getCartItemPrice(item),
                 product_name: item.product?.name || '',
-                product_image: item.product?.images?.[0]?.image_url || null,
+                product_image: sortByDisplayOrder(item.product?.images)[0]?.image_url || null,
             }));
 
             const response = await fetch('/api/checkout/initiate', {
@@ -450,8 +450,8 @@ export default function CheckoutPage() {
                                         {cart.map((item) => (
                                             <div key={item.id} className="flex gap-3.5 py-4 border-b last:border-0 border-border">
                                                 <div className="relative w-16 h-20 flex-shrink-0 bg-gray-100 rounded-md overflow-hidden">
-                                                    {item.product?.images?.[0]?.image_url ? (
-                                                        <Image src={item.product.images[0].image_url} alt={item.product.name || ''} fill sizes="80px" className="object-cover" />
+                                                    {sortByDisplayOrder(item.product?.images)[0]?.image_url ? (
+                                                        <Image src={sortByDisplayOrder(item.product?.images)[0].image_url} alt={item.product?.name || ''} fill sizes="80px" className="object-cover" />
                                                     ) : (
                                                         <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">No Img</div>
                                                     )}

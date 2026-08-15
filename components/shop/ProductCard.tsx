@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { Eye, Heart } from "lucide-react";
 import { Product } from "@/types";
-import { formatPrice } from "@/lib/utils";
+import { formatPrice, sortByDisplayOrder } from "@/lib/utils";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { QuickViewModal } from "@/components/shop/QuickViewModal";
@@ -33,8 +33,11 @@ export function ProductCard({ product, hideWishlist }: ProductCardProps) {
     // Derived state
     const inStock = product.stock_remaining > 0 && product.is_active;
     const categoryName = product.category?.name || "Ethnic Wear";
-    const mainImage = product.images?.[0]?.image_url || null;
-    const hoverImage = product.images?.[1]?.image_url || null;
+    // Sorted, so the cover photo the admin picked is the one the card shows —
+    // the product page sorts the same way, and the two must not disagree.
+    const orderedImages = sortByDisplayOrder(product.images);
+    const mainImage = orderedImages[0]?.image_url || null;
+    const hoverImage = orderedImages[1]?.image_url || null;
 
     // SEO optimized alt text for images
     const imageAlt = `${product.name} - ${categoryName} from Kurtis Boutique online store India`;

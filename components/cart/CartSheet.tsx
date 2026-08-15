@@ -8,7 +8,7 @@ import { X, Plus, Minus, Trash2, ShoppingBag, Loader2, ArrowRight, ShieldCheck }
 import { useStore } from "@/lib/store";
 import { getCartItemPrice } from "@/lib/cartService";
 import { Button } from "@/components/ui/button";
-import { formatPrice } from "@/lib/utils";
+import { formatPrice, sortByDisplayOrder } from "@/lib/utils";
 import { useIsMobile } from "@/lib/hooks/use-mobile";
 import { createPortal } from "react-dom";
 
@@ -121,7 +121,7 @@ export function CartSheet({ isOpen, onClose }: CartSheetProps) {
                             ) : (
                                 cart.map((item) => {
                                     const isUpdating = updatingItems.has(item.id);
-                                    const imageUrl = item.product?.images?.[0]?.image_url;
+                                    const imageUrl = sortByDisplayOrder(item.product?.images)[0]?.image_url;
                                     const price = getCartItemPrice(item);
 
                                     return (

@@ -50,11 +50,15 @@ export function instagramEmbedUrl(url?: string | null): string | null {
     return code ? `https://www.instagram.com/reel/${code}/embed/` : null;
 }
 
+/** A look's product photos in the order the admin arranged them. */
+export function lookProductImages(look: Look) {
+    return [...(look.product?.images || [])].sort(
+        (a, b) => (a.display_order ?? 0) - (b.display_order ?? 0)
+    );
+}
+
 /** Tile image: explicit thumbnail wins, else the product's first photo. */
 export function lookThumbnail(look: Look): string | null {
     if (look.thumbnail_url) return look.thumbnail_url;
-    const images = [...(look.product?.images || [])].sort(
-        (a, b) => (a.display_order ?? 0) - (b.display_order ?? 0)
-    );
-    return images[0]?.image_url || null;
+    return lookProductImages(look)[0]?.image_url || null;
 }

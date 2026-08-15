@@ -17,7 +17,7 @@ export async function GET() {
                 id,
                 product_id,
                 created_at,
-                product:products(id, name, slug, price, discount_price, is_active, images:product_images(image_url))
+                product:products(id, name, slug, price, discount_price, is_active, images:product_images(image_url, display_order))
             `)
             .eq('user_id', user.id)
             .order('created_at', { ascending: false });

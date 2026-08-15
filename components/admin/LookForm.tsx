@@ -6,7 +6,7 @@ import { Loader2, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import { cn, sortByDisplayOrder } from "@/lib/utils";
 import { instagramShortcode, type Look } from "@/lib/shopByLook";
 
 interface ProductOption {
@@ -234,7 +234,7 @@ export function LookForm({ initialData, onClose }: LookFormProps) {
                                             <div className="relative h-12 w-10 shrink-0 overflow-hidden rounded bg-muted">
                                                 {p.images?.[0]?.image_url && (
                                                     <Image
-                                                        src={p.images[0].image_url}
+                                                        src={sortByDisplayOrder(p.images)[0].image_url}
                                                         alt=""
                                                         fill
                                                         sizes="40px"

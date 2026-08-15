@@ -122,7 +122,8 @@ export const CartService = {
                     is_mom_baby,
                     is_family_combo,
                     images:product_images (
-                         image_url
+                         image_url,
+                         display_order
                     ),
                     mom_baby_combos (
                         mom_price,
