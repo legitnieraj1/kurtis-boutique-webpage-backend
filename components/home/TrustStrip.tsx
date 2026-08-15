@@ -1,11 +1,11 @@
 // Trust strip below the hero. Server component — 4 static proof points, gold line icons.
-import { Users, Leaf, Truck, RefreshCw } from "lucide-react";
+import { Users, Leaf, Truck, PackageCheck } from "lucide-react";
 
 const ITEMS = [
   { Icon: Users, label: "30,000+ Happy Customers" },
   { Icon: Leaf, label: "Premium Narayanpet Cotton" },
   { Icon: Truck, label: "Pan India Shipping" },
-  { Icon: RefreshCw, label: "Easy 7-Day Exchange" },
+  { Icon: PackageCheck, label: "Quality Checked Before Dispatch" },
 ];
 
 export function TrustStrip() {

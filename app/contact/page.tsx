@@ -78,7 +78,7 @@ export default function ContactPage() {
                                 <select className="w-full px-3 py-2 border rounded-md bg-background">
                                     <option>Order Inquiry</option>
                                     <option>Product Information</option>
-                                    <option>Returns & Exchanges</option>
+                                    <option>Damaged Item / Order Issue</option>
                                     <option>Other</option>
                                 </select>
                             </div>

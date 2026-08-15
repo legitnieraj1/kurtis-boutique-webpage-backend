@@ -9,7 +9,7 @@ import { Footer } from "@/components/layout/Footer";
 import { AnimatePresence, motion } from "framer-motion";
 import { formatPrice, cn, sortBySize } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Heart, Minus, Plus, Truck, ShieldCheck, RefreshCw, Zap, ChevronDown } from "lucide-react";
+import { Heart, Minus, Plus, Truck, ShieldCheck, PackageCheck, Zap, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { useStore } from "@/lib/store";
 import { CustomisationForm } from "@/components/product/CustomisationForm";
@@ -484,7 +484,7 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
                                     <span className="text-foreground/70 font-medium">30,000+ on Instagram</span>
                                 </span>
                                 <span className="inline-flex items-center gap-1.5">
-                                    <RefreshCw className="w-3.5 h-3.5 text-accent-brand" /> 7-day exchange
+                                    <ShieldCheck className="w-3.5 h-3.5 text-accent-brand" /> Secure Razorpay payment
                                 </span>
                                 {inStock && (
                                     <span className="inline-flex items-center gap-1.5 text-success font-medium">
@@ -836,8 +836,8 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
                                 <span>100% Secure Payment</span>
                             </div>
                             <div className="flex items-center gap-3 text-sm text-foreground/80">
-                                <RefreshCw className="w-5 h-5 text-muted-foreground" />
-                                <span>Easy 7-day Exchange Policy</span>
+                                <PackageCheck className="w-5 h-5 text-muted-foreground" />
+                                <span>Quality Checked Before Dispatch</span>
                             </div>
                         </div>
 

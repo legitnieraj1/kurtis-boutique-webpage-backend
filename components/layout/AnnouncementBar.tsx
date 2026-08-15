@@ -5,7 +5,7 @@ const ITEMS = [
   "Secure Razorpay Checkout",
   "New Narayanpet Collection Live",
   "Pan India Delivery",
-  "Easy 7-Day Exchange",
+  "Quality Checked Before Dispatch",
 ];
 
 export function AnnouncementBar() {

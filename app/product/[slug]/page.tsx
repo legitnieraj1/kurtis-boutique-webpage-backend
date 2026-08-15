@@ -183,12 +183,13 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                     },
                 },
             },
+            // The store accepts no returns or exchanges (damage claims with a
+            // 360 unboxing video are handled case by case), so the policy Google
+            // is shown has to say exactly that.
             hasMerchantReturnPolicy: {
                 "@type": "MerchantReturnPolicy",
                 applicableCountry: "IN",
-                returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow",
-                merchantReturnDays: 7,
-                returnMethod: "https://schema.org/ReturnByMail",
+                returnPolicyCategory: "https://schema.org/MerchantReturnNotPermitted",
             },
         },
         ...(reviews && reviews.length > 0 && {
