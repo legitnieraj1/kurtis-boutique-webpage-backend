@@ -51,7 +51,9 @@ export async function POST(request: NextRequest) {
 
             // Upload to storage
             const fileExt = file.name.split('.').pop();
-            const fileName = `${Date.now()}.${fileExt}`;
+            // Random segment: a plain timestamp collides when two uploads land in the
+            // same millisecond, and Storage rejects the duplicate key.
+            const fileName = `${Date.now()}-${crypto.randomUUID()}.${fileExt}`;
 
             const { error: uploadError } = await supabase.storage
                 .from('banners')

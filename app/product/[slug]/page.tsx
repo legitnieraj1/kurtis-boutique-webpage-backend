@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { createClient } from '@supabase/supabase-js';
 import { ProductPageClient } from "./ProductPageClient";
 import type { Metadata } from "next";
+import { sortByDisplayOrder } from "@/lib/utils";
 
 // ISR: statically render, re-generate in background every 10 minutes.
 // Stock displayed may lag up to 10 min; checkout APIs validate live stock.
@@ -120,8 +121,10 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         .eq('product_id', product.id)
         .order('created_at', { ascending: false });
 
-    // Sort images by display_order
-    const sortedImages = product.images?.sort((a: any, b: any) => a.display_order - b.display_order) || [];
+    // Sort images by display_order — same helper the grids use, so the cover
+    // photo is identical on a card and on this page even when two rows share a
+    // position.
+    const sortedImages = sortByDisplayOrder(product.images as any[]);
 
     const categoryName = (product.category as any)?.name || "Ethnic Wear";
     const categorySlug = (product.category as any)?.slug || "shop";

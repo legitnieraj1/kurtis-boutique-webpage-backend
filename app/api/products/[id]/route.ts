@@ -1,5 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { createSupabaseServerClient, createSupabaseAdmin, requireAdmin } from '@/lib/supabase/server';
+
+/** Storefront pages are statically cached (ISR + CDN), so an admin edit is not
+ *  visible on the live site until the cache is dropped. */
+function revalidateStorefront() {
+    revalidatePath('/');
+    revalidatePath('/shop');
+    revalidatePath('/product/[slug]', 'page');
+}
 
 interface RouteParams {
     params: Promise<{ id: string }>;
@@ -201,6 +210,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
             .eq('id', id)
             .single();
 
+        revalidateStorefront();
         return NextResponse.json({ product });
     } catch (error) {
         if (error instanceof Error && error.message === 'Forbidden: Admin access required') {
@@ -247,6 +257,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
 
+        revalidateStorefront();
         return NextResponse.json({ success: true });
     } catch (error) {
         if (error instanceof Error && error.message === 'Forbidden: Admin access required') {
