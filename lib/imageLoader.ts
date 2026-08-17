@@ -22,9 +22,29 @@
  *
  * It honours width and quality, returns WebP automatically when the
  * browser's Accept header allows it, and is fronted by Cloudflare, so
- * repeat requests are CDN hits. Pointing the loader at it keeps resizing
- * and modern formats while removing the metered dependency completely —
- * there is no quota left to exhaust, so this failure cannot recur.
+ * repeat requests are CDN hits.
+ *
+ * THIS ENDPOINT IS ALSO METERED
+ * -----------------------------
+ * An earlier version of this comment claimed the Supabase transformer had
+ * no quota to exhaust. It does. Supabase bills "Storage Image
+ * Transformations" per *unique origin image* transformed in a billing
+ * cycle — 100 included on the Pro plan, then roughly $5 per additional
+ * thousand. The meter therefore tracks catalogue size, not traffic: a
+ * photo served a million times counts once, and adding products is what
+ * moves it.
+ *
+ * The organisation went to 267/100 on 17 Aug 2026 without anyone noticing,
+ * because this file said there was nothing to notice. The spend cap has
+ * been turned off deliberately so that going over bills a few dollars
+ * instead of putting the project into read-only mode. Leave it off.
+ *
+ * Cutting the bill to nothing means dropping transformation entirely and
+ * serving the original objects. That is only reasonable once every photo
+ * in storage is already small: uploads have been downscaled to 1800px and
+ * re-encoded since the image-upload fix, but objects stored before it are
+ * full-size phone photos and would be far worse to serve raw than to
+ * transform.
  */
 
 const SUPABASE_PUBLIC_OBJECT = '/storage/v1/object/public/';
