@@ -60,8 +60,16 @@ export function sortBySize<T>(items: T[] | undefined | null, getSize: (item: T) 
 // be returned in — the admin's `display_order` is only respected if we sort by
 // it. The product page did; the grids did not, which is why a card could show
 // a different photo than the one set as the cover.
+// Rows written before positions were normalised can still share a
+// `display_order`, and a tie leaves the winner up to whatever order PostgREST
+// returned — which differs between requests, so a card could show a different
+// photo than the product page for the same product. Falling back to the row id
+// breaks ties the same way everywhere.
 export function sortByDisplayOrder<T>(items: T[] | undefined | null): T[] {
   const order = (item: T) =>
     (item as { display_order?: number | null })?.display_order ?? 0
-  return [...(items || [])].sort((a, b) => order(a) - order(b))
+  const tiebreak = (item: T) => (item as { id?: string })?.id ?? ''
+  return [...(items || [])].sort(
+    (a, b) => order(a) - order(b) || tiebreak(a).localeCompare(tiebreak(b))
+  )
 }

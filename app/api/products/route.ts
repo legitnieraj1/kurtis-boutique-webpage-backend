@@ -1,5 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { createSupabaseServerClient, requireAdmin, isAdmin } from '@/lib/supabase/server';
+
+/** Storefront pages are statically cached (ISR + CDN), so an admin edit is not
+ *  visible on the live site until the cache is dropped. */
+function revalidateStorefront() {
+    revalidatePath('/');
+    revalidatePath('/shop');
+    revalidatePath('/product/[slug]', 'page');
+}
 
 // GET /api/products - List all products (public)
 export async function GET(request: NextRequest) {
@@ -269,6 +278,7 @@ export async function POST(request: NextRequest) {
             console.error("Error fetching created product:", fetchError);
         }
 
+        revalidateStorefront();
         return NextResponse.json({ product: fullProduct || product }, { status: 201 });
 
     } catch (error: any) {

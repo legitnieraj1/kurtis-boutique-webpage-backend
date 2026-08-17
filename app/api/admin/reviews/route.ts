@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
         // Upload image if provided
         if (file && file.size > 0) {
             const fileExt = file.name.split('.').pop() || 'jpg';
-            const fileName = `review_${Date.now()}.${fileExt}`;
+            const fileName = `review_${Date.now()}-${crypto.randomUUID()}.${fileExt}`;
             const filePath = `reviews/${fileName}`;
 
             const arrayBuffer = await file.arrayBuffer();

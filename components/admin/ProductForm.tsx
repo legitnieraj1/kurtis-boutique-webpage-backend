@@ -6,6 +6,7 @@ import { Trash, ArrowRight, ArrowLeft, Upload, Plus, X, ChevronsUp, Loader2, Che
 import { toast } from "sonner";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+import { prepareImageForUpload, uploadWithRetry } from "@/lib/imageProcessing";
 
 interface ProductFormProps {
     initialData?: any;
@@ -95,6 +96,10 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
 
     const [categories, setCategories] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
+    // Set while picked photos are being downscaled, so the form cannot be saved
+    // with a half-processed image list.
+    const [processingImages, setProcessingImages] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null);
 
     // New Category State
     const [isAddingCategory, setIsAddingCategory] = useState(false);
@@ -215,17 +220,44 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
         if (!initialData) setStockRemaining(stockTotal);
     }, [stockTotal, initialData]);
 
-    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (!e.target.files) return;
-        const added: ImageSlot[] = Array.from(e.target.files).map((file, i) => ({
-            key: `new-${Date.now()}-${i}-${file.name}`,
-            kind: "new",
-            file,
-            url: URL.createObjectURL(file),
-            color: "",
-        }));
-        setImages(prev => [...prev, ...added]);
+    // Photos are shrunk here, at pick time, rather than on upload:
+    //
+    //   * A phone photo is 4-12 MB, which is over the request body limit the
+    //     upload route runs under. Those uploads failed silently — the reason
+    //     cropping a photo first "sometimes" worked was that the crop re-encoded
+    //     it small enough to fit, not the crop itself.
+    //   * iPhone HEIC files that did get through are not renderable in most
+    //     browsers; re-encoding produces a JPEG every browser can show.
+    //
+    // Doing it on pick also means an unreadable file is reported while the admin
+    // is still looking at the picker, instead of after a long save.
+    const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files?.length) return;
+        const picked = Array.from(e.target.files);
         e.target.value = ""; // allow re-selecting the same file
+
+        setProcessingImages(true);
+        const added: ImageSlot[] = [];
+        const failures: string[] = [];
+
+        for (const [i, file] of picked.entries()) {
+            try {
+                const prepared = await prepareImageForUpload(file);
+                added.push({
+                    key: `new-${Date.now()}-${i}-${file.name}`,
+                    kind: "new",
+                    file: prepared,
+                    url: URL.createObjectURL(prepared),
+                    color: "",
+                });
+            } catch (error: any) {
+                failures.push(error?.message || `${file.name} could not be read`);
+            }
+        }
+
+        if (added.length) setImages(prev => [...prev, ...added]);
+        failures.forEach(message => toast.error(message, { duration: 8000 }));
+        setProcessingImages(false);
     };
 
     const updateImageColor = (key: string, color: string) => {
@@ -415,46 +447,87 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
 
             const productId = data.product?.id;
 
-            // 2 & 3. Upload new images and update existing ones' order/colour in
-            // parallel — the array position is the display_order, so whatever
-            // the admin dragged into place is exactly what gets saved. Sequential
-            // awaits here is what made multi-image saves feel slow.
-            const newUploads = images
+            // 2. Upload the new photos, two at a time.
+            //
+            // These used to all fire at once and their results were never read,
+            // so a photo the server rejected — too large, or a storage key that
+            // collided with a sibling upload in the same millisecond — vanished
+            // with the save still reporting success. Now every response is
+            // checked and any failure is named.
+            const pending = images
                 .map((img, idx) => ({ img, idx }))
-                .filter(({ img }) => img.kind === "new")
-                .map(({ img, idx }) => {
+                .filter(({ img }) => img.kind === "new");
+
+            const uploadedIds = new Map<string, string>(); // slot key -> new image id
+            const failures: string[] = [];
+            const CONCURRENCY = 2;
+
+            if (pending.length) setUploadProgress({ done: 0, total: pending.length });
+
+            for (let i = 0; i < pending.length; i += CONCURRENCY) {
+                const batch = pending.slice(i, i + CONCURRENCY);
+                await Promise.all(batch.map(async ({ img, idx }) => {
                     const fd = new FormData();
                     fd.append('file', img.file!);
                     fd.append('display_order', String(idx));
                     if (img.color) fd.append('color', img.color);
-                    return fetch(`/api/products/${productId}/images`, { method: 'POST', body: fd });
-                });
 
-            const existingUpdates = images
-                .map((img, idx) => ({ img, idx }))
-                .filter(({ img }) => img.kind === "existing");
-            const reorderCall = existingUpdates.length > 0
-                ? fetch(`/api/products/${productId}/images`, {
+                    try {
+                        const res = await uploadWithRetry(`/api/products/${productId}/images`, fd);
+                        const payload = await res.json().catch(() => ({}));
+                        if (!res.ok) throw new Error(payload.error || `Upload failed (${res.status})`);
+                        if (payload.image?.id) uploadedIds.set(img.key, payload.image.id);
+                    } catch (error: any) {
+                        failures.push(error?.message || `${img.file?.name} failed to upload`);
+                    } finally {
+                        setUploadProgress(prev => prev ? { ...prev, done: prev.done + 1 } : prev);
+                    }
+                }));
+            }
+
+            // 3. Write the final order in one call, covering existing and
+            //    just-uploaded photos together. The server numbers them by
+            //    array position, so position 1 in the form is the cover on the
+            //    storefront — no two photos can end up sharing a position.
+            const ordered = images
+                .map(img => ({
+                    id: img.kind === "existing" ? img.id : uploadedIds.get(img.key),
+                    color: img.color || null,
+                }))
+                .filter((img): img is { id: string; color: string | null } => Boolean(img.id));
+
+            if (ordered.length > 0) {
+                const res = await fetch(`/api/products/${productId}/images`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        images: existingUpdates.map(({ img, idx }) => ({
-                            id: img.id,
-                            display_order: idx,
-                            color: img.color || null,
-                        })),
-                    }),
-                })
-                : Promise.resolve(null);
+                    body: JSON.stringify({ images: ordered }),
+                });
+                if (!res.ok) {
+                    const payload = await res.json().catch(() => ({}));
+                    failures.push(payload.error || 'Could not save the photo order');
+                }
+            }
 
-            await Promise.all([...newUploads, reorderCall]);
+            setUploadProgress(null);
 
-            toast.success("Product saved successfully");
+            if (failures.length) {
+                // The product itself saved; say so, then name what did not, so
+                // the admin knows which photos to add again.
+                toast.warning(
+                    `Product saved, but ${failures.length} photo${failures.length > 1 ? 's' : ''} did not upload`,
+                    { duration: 10000 }
+                );
+                failures.forEach(message => toast.error(message, { duration: 10000 }));
+            } else {
+                toast.success("Product saved successfully");
+            }
+
             onSuccess();
         } catch (error: any) {
             console.error(error);
             toast.error(error.message || "Failed to save");
         } finally {
+            setUploadProgress(null);
             setLoading(false);
         }
     };
@@ -977,19 +1050,42 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
                                 )}
                             </div>
                         ))}
-                        <label className="w-24 h-32 border-2 border-dashed rounded flex flex-col items-center justify-center cursor-pointer hover:bg-muted">
-                            <Upload className="w-6 h-6 text-muted-foreground" />
-                            <span className="text-xs mt-1">Add</span>
-                            <input type="file" multiple accept="image/*" className="hidden" onChange={handleImageChange} />
+                        <label className={cn(
+                            "w-24 h-32 border-2 border-dashed rounded flex flex-col items-center justify-center hover:bg-muted",
+                            processingImages ? "cursor-wait opacity-60" : "cursor-pointer"
+                        )}>
+                            {processingImages ? (
+                                <>
+                                    <Loader2 className="w-6 h-6 text-muted-foreground animate-spin" />
+                                    <span className="text-xs mt-1">Preparing</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Upload className="w-6 h-6 text-muted-foreground" />
+                                    <span className="text-xs mt-1">Add</span>
+                                </>
+                            )}
+                            <input
+                                type="file"
+                                multiple
+                                accept="image/*,.heic,.heif"
+                                className="hidden"
+                                disabled={processingImages}
+                                onChange={handleImageChange}
+                            />
                         </label>
                     </div>
                 </div>
 
                 <div className="flex justify-end gap-3 pt-6 border-t border-border">
                     <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>Cancel</Button>
-                    <Button type="submit" disabled={loading}>
-                        {loading && <Loader2 className="animate-spin mr-2 h-4 w-4" />}
-                        Save Product
+                    <Button type="submit" disabled={loading || processingImages}>
+                        {(loading || processingImages) && <Loader2 className="animate-spin mr-2 h-4 w-4" />}
+                        {processingImages
+                            ? "Preparing photos..."
+                            : uploadProgress
+                                ? `Uploading photos ${uploadProgress.done}/${uploadProgress.total}`
+                                : "Save Product"}
                     </Button>
                 </div>
             </form>

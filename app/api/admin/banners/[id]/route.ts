@@ -28,7 +28,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
             // Upload new image if provided
             if (file && file.size > 0) {
                 const fileExt = file.name.split('.').pop();
-                const fileName = `${Date.now()}.${fileExt}`;
+                const fileName = `${Date.now()}-${crypto.randomUUID()}.${fileExt}`;
 
                 const { error: uploadError } = await supabase.storage
                     .from('banners')

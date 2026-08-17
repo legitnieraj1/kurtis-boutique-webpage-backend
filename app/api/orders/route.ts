@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient, requireAuth } from '@/lib/supabase/server';
+import { sortByDisplayOrder } from '@/lib/utils';
 
 // GET /api/orders - List orders (user's own or all for admin)
 export async function GET() {
@@ -136,7 +137,7 @@ export async function POST(request: NextRequest) {
             orderItems.push({
                 product_id: product.id,
                 product_name: product.name,
-                product_image: product.images?.[0]?.image_url || null,
+                product_image: sortByDisplayOrder<{ image_url?: string }>(product.images)[0]?.image_url || null,
                 size: item.size,
                 color: item.color || null,
                 combo_type: item.combo_type || 'single',

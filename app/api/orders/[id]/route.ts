@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseAdmin, requireAuth, isAdmin } from '@/lib/supabase/server';
+import { sortByDisplayOrder } from '@/lib/utils';
 
 interface RouteParams {
     params: Promise<{ id: string }>;
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
             items: order.items.map((item: any) => ({
                 ...item,
                 product_name: item.product_name || item.product?.name || 'Unknown Product',
-                image_url: item.product?.images?.[0]?.image_url || null,
+                image_url: sortByDisplayOrder<{ image_url?: string }>(item.product?.images)[0]?.image_url || null,
                 slug: item.product?.slug,
             }))
         };

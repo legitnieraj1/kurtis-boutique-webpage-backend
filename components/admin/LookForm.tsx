@@ -163,7 +163,7 @@ export function LookForm({ initialData, onClose }: LookFormProps) {
         }
     };
 
-    const productImage = product?.images?.[0]?.image_url;
+    const productImage = sortByDisplayOrder(product?.images)[0]?.image_url;
 
     return (
         <form onSubmit={handleSubmit} className="space-y-6 bg-white border border-border rounded-lg p-6">
@@ -232,7 +232,7 @@ export function LookForm({ initialData, onClose }: LookFormProps) {
                                             className="w-full flex items-center gap-3 p-2 text-left hover:bg-muted"
                                         >
                                             <div className="relative h-12 w-10 shrink-0 overflow-hidden rounded bg-muted">
-                                                {p.images?.[0]?.image_url && (
+                                                {sortByDisplayOrder(p.images)[0]?.image_url && (
                                                     <Image
                                                         src={sortByDisplayOrder(p.images)[0].image_url}
                                                         alt=""
