@@ -13,6 +13,7 @@ import { Heart, Minus, Plus, Truck, ShieldCheck, PackageCheck, Zap, ChevronDown 
 import { toast } from "sonner";
 import { useStore } from "@/lib/store";
 import { CustomisationForm } from "@/components/product/CustomisationForm";
+import { babyAgeOptions } from "@/lib/babyAge";
 
 interface Product {
     id: string;
@@ -53,10 +54,13 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
     const [selectedColor, setSelectedColor] = useState<string | null>(null);
     const [selectedBabySize, setSelectedBabySize] = useState<string | null>(null);
     const [selectedBabyGender, setSelectedBabyGender] = useState<string | null>(null);
+    // The band above is a price bracket; this is what the garment is cut to.
+    const [selectedBabyAge, setSelectedBabyAge] = useState<string | null>(null);
+    const [babyHeight, setBabyHeight] = useState<string>("");
     const [comboType, setComboType] = useState<string>('single');
     const [quantity, setQuantity] = useState(1);
     // Additional babies beyond the first (mom & baby combo only)
-    const [extraBabies, setExtraBabies] = useState<{ size: string; gender: string }[]>([]);
+    const [extraBabies, setExtraBabies] = useState<{ size: string; gender: string; age: string; height: string }[]>([]);
     // Customisation add-ons (charged extra, prices set per product in admin)
     const [selectedAddonIds, setSelectedAddonIds] = useState<string[]>([]);
     const [activeImage, setActiveImage] = useState<string>(product.images?.[0]?.image_url || "");
@@ -85,6 +89,19 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
         () => sortBySize(product.baby_size_prices, (bp) => bp.size),
         [product.baby_size_prices]
     );
+    // Exact ages offered inside the chosen band. Months for the newborn band,
+    // years for the rest — see lib/babyAge.ts.
+    const babyAgeChoices = useMemo(
+        () => (selectedBabySize ? babyAgeOptions(selectedBabySize) : []),
+        [selectedBabySize]
+    );
+
+    // Picking a different band changes which ages are on offer, so an age
+    // chosen under the old band must not silently survive.
+    const chooseBabySize = (size: string) => {
+        setSelectedBabySize(size);
+        setSelectedBabyAge(null);
+    };
 
     const babyPriceFor = (size: string | null, fallback: number) => {
         if (size && product.baby_size_prices?.length) {
@@ -172,18 +189,27 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
         return parts.length ? ` + ${parts.join(' + ')}` : '';
     };
 
+    // "0 - 2 years · 6–9 months, 72cm" — band for the price, age and height
+    // for the tailor.
+    const babyFit = (size: string | null, age: string, height: string) => {
+        const parts = [size || ''];
+        if (age) parts.push(age);
+        const line = parts.filter(Boolean).join(' · ');
+        return height ? `${line}, ${height}cm` : line;
+    };
+
     const buildFinalSize = () => {
         let s: string;
         if (comboType === 'family') {
-            s = `Father: ${selectedFatherSize}, Mother: ${selectedMotherSize}${selectedBabyGender ? `, Baby: ${selectedBabyGender}` : ''}`;
+            s = `Father: ${selectedFatherSize}, Mother: ${selectedMotherSize}${selectedBabySize ? `, Baby: ${babyFit(selectedBabySize, selectedBabyAge || '', babyHeight)}` : ''}${selectedBabyGender ? ` (${selectedBabyGender})` : ''}`;
         } else if (comboType === 'couple') {
             s = `Women: ${selectedMotherSize}, Men: ${selectedFatherSize}`;
         } else if (comboType === 'baby_only') {
-            s = `Baby: ${selectedBabySize}${selectedBabyGender ? ` (${selectedBabyGender})` : ''}`;
+            s = `Baby: ${babyFit(selectedBabySize, selectedBabyAge || '', babyHeight)}${selectedBabyGender ? ` (${selectedBabyGender})` : ''}`;
         } else if (comboType === 'mom_baby') {
-            s = `Mom: ${selectedSize}, Baby 1: ${selectedBabySize}${selectedBabyGender ? ` (${selectedBabyGender})` : ''}`;
+            s = `Mom: ${selectedSize}, Baby 1: ${babyFit(selectedBabySize, selectedBabyAge || '', babyHeight)}${selectedBabyGender ? ` (${selectedBabyGender})` : ''}`;
             extraBabies.forEach((baby, i) => {
-                s += `, Baby ${i + 2}: ${baby.size} (${baby.gender})`;
+                s += `, Baby ${i + 2}: ${babyFit(baby.size, baby.age, baby.height)} (${baby.gender})`;
             });
         } else {
             s = selectedSize!;
@@ -204,6 +230,7 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
             }
         } else if (comboType === 'baby_only') {
             if (!selectedBabySize) { toast.error("Please select a baby size"); return false; }
+            if (babyAgeChoices.length > 0 && !selectedBabyAge) { toast.error("Please tell us the baby's exact age so we stitch the right fit"); return false; }
             if (!selectedBabyGender) { toast.error("Please select baby gender"); return false; }
         } else if (!selectedSize) {
             toast.error(comboType === 'mom_baby' ? "Please select Mom's size" : "Please select a size");
@@ -217,12 +244,14 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
 
         if ((comboType === 'mom_baby' || comboType === 'family') && product.baby_size_prices?.length) {
             if (!selectedBabySize) { toast.error("Please select a baby size"); return false; }
+            if (babyAgeChoices.length > 0 && !selectedBabyAge) { toast.error("Please tell us the baby's exact age so we stitch the right fit"); return false; }
             if (!selectedBabyGender) { toast.error("Please select baby gender"); return false; }
         }
 
         if (comboType === 'mom_baby') {
             for (let i = 0; i < extraBabies.length; i++) {
                 if (!extraBabies[i].size) { toast.error(`Please select a size for Baby ${i + 2}`); return false; }
+                if (babyAgeOptions(extraBabies[i].size).length > 0 && !extraBabies[i].age) { toast.error(`Please tell us Baby ${i + 2}'s exact age`); return false; }
                 if (!extraBabies[i].gender) { toast.error(`Please select gender for Baby ${i + 2}`); return false; }
             }
         }
@@ -231,7 +260,7 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
     };
 
     const buildAddons = () => {
-        const addons: { selected?: { name: string; price: number }[]; babies?: { size: string; gender: string }[] } = {};
+        const addons: { selected?: { name: string; price: number }[]; babies?: { size: string; gender: string; age: string; height: string }[] } = {};
         if (selectedAddons.length > 0) addons.selected = selectedAddons.map(a => ({ name: a.name, price: a.price }));
         if (comboType === 'mom_baby' && extraBabies.length > 0) addons.babies = extraBabies;
         return Object.keys(addons).length > 0 ? addons : null;
@@ -556,13 +585,77 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
                                     </div>
                                     <div className="flex flex-col gap-2">
                                         {babySizeOptions.map(bp => (
-                                            <button key={bp.id} onClick={() => setSelectedBabySize(bp.size)} className={cn("flex items-center justify-between p-3 border rounded-lg text-left transition-all", selectedBabySize === bp.size ? "border-primary ring-1 ring-primary bg-primary/5" : "hover:border-primary/50")}>
+                                            <button key={bp.id} onClick={() => chooseBabySize(bp.size)} className={cn("flex items-center justify-between p-3 border rounded-lg text-left transition-all", selectedBabySize === bp.size ? "border-primary ring-1 ring-primary bg-primary/5" : "hover:border-primary/50")}>
                                                 <span className="font-medium text-sm">{bp.size}</span>
                                                 <span className="text-sm text-muted-foreground">{formatPrice(bp.price)}</span>
                                             </button>
                                         ))}
                                     </div>
+                                    <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
+                                        These are price ranges. Pick your baby&apos;s exact age below so the outfit is stitched to fit.
+                                    </p>
                                 </div>
+
+                                {/* EXACT AGE — the band above sets the price, this sets the fit. */}
+                                <AnimatePresence>
+                                    {selectedBabySize && babyAgeChoices.length > 0 && (
+                                        <motion.div
+                                            initial={{ opacity: 0, height: 0 }}
+                                            animate={{ opacity: 1, height: "auto" }}
+                                            exit={{ opacity: 0, height: 0 }}
+                                            transition={{ duration: 0.25 }}
+                                            className="overflow-hidden"
+                                        >
+                                            <div className="rounded-xl border border-primary/20 bg-primary/[0.03] p-4 space-y-3.5">
+                                                <div className="flex items-baseline justify-between gap-3">
+                                                    <span className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground font-medium">
+                                                        {comboType === 'mom_baby' && extraBabies.length > 0 ? "Baby 1 — Exact Age" : "Baby's Exact Age"}
+                                                    </span>
+                                                    <span className="text-[11px] text-muted-foreground">Required</span>
+                                                </div>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {babyAgeChoices.map(age => (
+                                                        <button
+                                                            key={age}
+                                                            onClick={() => setSelectedBabyAge(age)}
+                                                            aria-pressed={selectedBabyAge === age}
+                                                            className={cn(
+                                                                "px-3.5 py-2 rounded-full border text-xs font-medium transition-all",
+                                                                selectedBabyAge === age
+                                                                    ? "border-primary ring-1 ring-primary bg-primary/10 text-primary"
+                                                                    : "border-border hover:border-primary/50 text-foreground/80"
+                                                            )}
+                                                        >
+                                                            {age}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                                <div className="flex items-center gap-2.5 pt-1">
+                                                    <label htmlFor="baby-height" className="text-xs text-muted-foreground whitespace-nowrap">
+                                                        Height <span className="text-foreground/40">(optional)</span>
+                                                    </label>
+                                                    <div className="relative">
+                                                        <input
+                                                            id="baby-height"
+                                                            type="number"
+                                                            inputMode="numeric"
+                                                            min={30}
+                                                            max={160}
+                                                            value={babyHeight}
+                                                            onChange={e => setBabyHeight(e.target.value)}
+                                                            placeholder="72"
+                                                            className="w-24 pl-3 pr-8 py-1.5 text-sm border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                                                        />
+                                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">cm</span>
+                                                    </div>
+                                                    <span className="text-[11px] text-muted-foreground leading-tight">
+                                                        Helps us get the length right
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
                                 <div id="baby-gender-selector">
                                     <div className="flex justify-between items-center mb-2">
                                         <span className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground font-medium">{comboType === 'mom_baby' && extraBabies.length > 0 ? 'Baby 1 Gender' : 'Baby Gender'}</span>
@@ -594,7 +687,8 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
                                                     {babySizeOptions.map(bp => (
                                                         <button
                                                             key={bp.id}
-                                                            onClick={() => setExtraBabies(extraBabies.map((b, i) => i === index ? { ...b, size: bp.size } : b))}
+                                                            // Changing the band clears the age, same as Baby 1.
+                                                            onClick={() => setExtraBabies(extraBabies.map((b, i) => i === index ? { ...b, size: bp.size, age: '' } : b))}
                                                             className={cn("flex items-center justify-between p-2.5 border rounded-lg text-left transition-all", baby.size === bp.size ? "border-primary ring-1 ring-primary bg-primary/5" : "hover:border-primary/50")}
                                                         >
                                                             <span className="font-medium text-sm">{bp.size}</span>
@@ -602,6 +696,49 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
                                                         </button>
                                                     ))}
                                                 </div>
+
+                                                {baby.size && babyAgeOptions(baby.size).length > 0 && (
+                                                    <div className="rounded-lg border border-primary/20 bg-primary/[0.03] p-3 space-y-2.5">
+                                                        <div className="flex items-baseline justify-between gap-3">
+                                                            <span className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground font-medium">Exact Age</span>
+                                                            <span className="text-[11px] text-muted-foreground">Required</span>
+                                                        </div>
+                                                        <div className="flex flex-wrap gap-1.5">
+                                                            {babyAgeOptions(baby.size).map(age => (
+                                                                <button
+                                                                    key={age}
+                                                                    onClick={() => setExtraBabies(extraBabies.map((b, i) => i === index ? { ...b, age } : b))}
+                                                                    aria-pressed={baby.age === age}
+                                                                    className={cn(
+                                                                        "px-3 py-1.5 rounded-full border text-xs font-medium transition-all",
+                                                                        baby.age === age
+                                                                            ? "border-primary ring-1 ring-primary bg-primary/10 text-primary"
+                                                                            : "border-border hover:border-primary/50 text-foreground/80"
+                                                                    )}
+                                                                >
+                                                                    {age}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-xs text-muted-foreground whitespace-nowrap">Height <span className="text-foreground/40">(optional)</span></span>
+                                                            <div className="relative">
+                                                                <input
+                                                                    type="number"
+                                                                    inputMode="numeric"
+                                                                    min={30}
+                                                                    max={160}
+                                                                    value={baby.height}
+                                                                    onChange={e => setExtraBabies(extraBabies.map((b, i) => i === index ? { ...b, height: e.target.value } : b))}
+                                                                    placeholder="72"
+                                                                    aria-label={`Baby ${index + 2} height in centimetres`}
+                                                                    className="w-24 pl-3 pr-8 py-1.5 text-sm border rounded-lg bg-background focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
+                                                                />
+                                                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">cm</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
                                                 <div className="flex gap-3">
                                                     {['Boy', 'Girl'].map(gender => (
                                                         <button
@@ -616,7 +753,7 @@ export function ProductPageClient({ product }: ProductPageClientProps) {
                                             </div>
                                         ))}
                                         <button
-                                            onClick={() => setExtraBabies([...extraBabies, { size: '', gender: '' }])}
+                                            onClick={() => setExtraBabies([...extraBabies, { size: '', gender: '', age: '', height: '' }])}
                                             className="w-full p-3 border border-dashed rounded-lg text-sm font-medium text-primary hover:bg-primary/5 transition-all flex items-center justify-center gap-2"
                                         >
                                             <Plus className="w-4 h-4" /> Add Another Baby
