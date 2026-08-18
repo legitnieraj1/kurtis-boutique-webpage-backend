@@ -16,10 +16,27 @@ interface Banner {
     display_order: number;
 }
 
+/** Shape of the box until the first banner reports its real proportions.
+ *  Only ever visible for the instant before the image's dimensions are known. */
+const FALLBACK_ASPECT = 16 / 9;
+
+/** A portrait banner would otherwise push the rest of the page off several
+ *  screens, so the box stops growing here. Past this point — and only past it —
+ *  the image letterboxes rather than crops. */
+const MAX_ASPECT_HEIGHT_VH = 88;
+
 export function HeroBannerCarousel({ initialBanners }: { initialBanners?: Banner[] }) {
     const [banners, setBanners] = useState<Banner[]>(initialBanners?.filter(b => b.is_active) || []);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [loading, setLoading] = useState(!initialBanners);
+    // Natural width/height ratio of each banner, keyed by image URL.
+    //
+    // The carousel used to sit in a fixed 70vh/85vh box and fill it with
+    // object-cover, which crops whatever does not fit — on a phone that meant
+    // most of a wide banner was simply cut away. Sizing the box to the image's
+    // own proportions instead means the whole banner is on screen at every
+    // width, with no crop and no empty bands.
+    const [aspects, setAspects] = useState<Record<string, number>>({});
     const isMobile = useIsMobile();
 
     useEffect(() => {
@@ -41,6 +58,26 @@ export function HeroBannerCarousel({ initialBanners }: { initialBanners?: Banner
     }, [initialBanners]);
 
     const activeBanners = banners;
+
+    // Read each banner's natural proportions once. Preloading rather than
+    // waiting for the <Image> onLoad means the box is already the right shape
+    // when the picture appears, so nothing jumps.
+    useEffect(() => {
+        activeBanners.forEach(banner => {
+            if (!banner.image_url || aspects[banner.image_url]) return;
+            const probe = new window.Image();
+            probe.onload = () => {
+                if (!probe.naturalWidth || !probe.naturalHeight) return;
+                setAspects(prev => prev[banner.image_url]
+                    ? prev
+                    : { ...prev, [banner.image_url]: probe.naturalWidth / probe.naturalHeight });
+            };
+            probe.src = banner.image_url;
+        });
+    }, [activeBanners, aspects]);
+
+    const currentUrl = activeBanners[currentIndex]?.image_url;
+    const currentAspect = (currentUrl && aspects[currentUrl]) || FALLBACK_ASPECT;
 
     // Auto-slide logic
     useEffect(() => {
@@ -67,7 +104,7 @@ export function HeroBannerCarousel({ initialBanners }: { initialBanners?: Banner
 
     if (loading) {
         return (
-            <div className="w-full h-full flex items-center justify-center">
+            <div className="w-full aspect-[16/9] flex items-center justify-center">
                 <LoadingScreen />
             </div>
         );
@@ -75,7 +112,7 @@ export function HeroBannerCarousel({ initialBanners }: { initialBanners?: Banner
 
     if (activeBanners.length === 0) {
         return (
-            <div className="w-full aspect-[21/9] bg-gradient-to-r from-rose-100 to-stone-100 flex items-center justify-center">
+            <div className="w-full aspect-[16/9] bg-gradient-to-r from-rose-100 to-stone-100 flex items-center justify-center">
                 <span className="text-stone-500 text-lg">No banners available</span>
             </div>
         );
@@ -83,7 +120,10 @@ export function HeroBannerCarousel({ initialBanners }: { initialBanners?: Banner
 
     return (
         <motion.div
-            className="relative w-full h-full overflow-hidden group mobile-gpu"
+            // The box takes the banner's own shape, so the image fits the width
+            // and the height exactly — no cropping on desktop, none on mobile.
+            style={{ aspectRatio: currentAspect, maxHeight: `${MAX_ASPECT_HEIGHT_VH}vh` }}
+            className="relative w-full overflow-hidden group mobile-gpu"
             drag="x"
             dragConstraints={{ left: 0, right: 0 }}
             dragElastic={0.05}
@@ -107,7 +147,7 @@ export function HeroBannerCarousel({ initialBanners }: { initialBanners?: Banner
                     transition={{ duration: 0.3, ease: "easeInOut" }}
                     className="absolute inset-0"
                 >
-                        <Link href={activeBanners[currentIndex]?.link_url || "/"} className="block w-full h-full">
+                        <Link href={activeBanners[currentIndex]?.link_url || "/"} className="block absolute inset-0">
                         {activeBanners[currentIndex]?.image_url ? (
                             <Image
                                 src={activeBanners[currentIndex].image_url}
@@ -115,8 +155,8 @@ export function HeroBannerCarousel({ initialBanners }: { initialBanners?: Banner
                                 fill
                                 sizes="100vw"
                                 priority={currentIndex === 0}
-                                quality={75}
-                                className="object-cover"
+                                quality={90}
+                                className="object-contain"
                             />
                         ) : (
                             <div className="w-full h-full bg-gradient-to-r from-rose-100 to-stone-100 flex items-center justify-center">

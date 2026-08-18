@@ -124,30 +124,33 @@ export default async function Home() {
             fixed maroon gradient + serif copy layered on top (CTAs clickable,
             rest pass-through so the carousel arrows/dots still work). */}
         <section
-          className="relative w-full h-[70vh] min-h-[480px] md:h-[85vh] md:min-h-[600px] overflow-hidden"
+          className="relative w-full"
           aria-label="Featured designer kurtis and ethnic wear collections"
         >
-          <div className="absolute inset-0">
-            <HeroBannerCarousel initialBanners={banners} />
-          </div>
+          {/* The carousel sizes itself to the banner's own proportions, so it
+              sets the height of this section rather than being cropped to fit
+              a height chosen here. */}
+          <HeroBannerCarousel initialBanners={banners} />
 
-          {/* Darkening gradient — left-to-right on desktop, bottom-up on mobile */}
-          <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-t from-black/65 via-black/20 to-transparent md:bg-gradient-to-r md:from-black/60 md:via-black/25 md:to-transparent" />
+          {/* Darkening gradient and overlaid copy, desktop only. A banner shown
+              uncropped on a phone is only as tall as its own shape allows —
+              far too short to hold a headline — so on mobile the same copy runs
+              underneath the image instead of on top of it. */}
+          <div className="pointer-events-none absolute inset-0 z-10 hidden md:block bg-gradient-to-r from-black/60 via-black/25 to-transparent" />
 
-          {/* Copy block */}
-          <div className="pointer-events-none absolute inset-0 z-20 flex items-end md:items-center">
-            <div className="container mx-auto px-6 md:px-8 pb-14 md:pb-0">
-              <div className="max-w-xl text-center md:text-left mx-auto md:mx-0 space-y-5">
-                <p className="text-[13px] md:text-[14px] uppercase tracking-[0.25em] text-accent-gold font-medium">
+          <div className="pointer-events-none absolute inset-0 z-20 hidden md:flex items-center">
+            <div className="container mx-auto px-8">
+              <div className="max-w-xl space-y-5">
+                <p className="text-[14px] uppercase tracking-[0.25em] text-accent-gold font-medium">
                   New Collection · 2025
                 </p>
-                <h2 className="font-serif text-white text-4xl md:text-6xl leading-[1.05]">
+                <h2 className="font-serif text-white text-6xl leading-[1.05]">
                   Dressed Together,<br />Memories Forever.
                 </h2>
-                <p className="text-white/80 text-base md:text-lg max-w-md mx-auto md:mx-0">
+                <p className="text-white/80 text-lg max-w-md">
                   Premium ethnic sets for you, your little one &amp; your whole family.
                 </p>
-                <div className="pointer-events-auto flex flex-wrap items-center justify-center md:justify-start gap-3 pt-1">
+                <div className="pointer-events-auto flex flex-wrap items-center gap-3 pt-1">
                   <Link
                     href="/shop"
                     className="inline-flex items-center rounded-full bg-primary text-primary-foreground px-7 py-3 text-sm font-medium hover:bg-primary-hover transition-colors shadow-lg"
@@ -162,6 +165,33 @@ export default async function Home() {
                   </Link>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Mobile copy — same words, below the banner, on the page ground. */}
+          <div className="md:hidden px-6 pt-7 pb-9 text-center space-y-4">
+            <p className="text-[12px] uppercase tracking-[0.25em] text-accent-gold font-medium">
+              New Collection · 2025
+            </p>
+            <h2 className="font-serif text-foreground text-[2rem] leading-[1.1]">
+              Dressed Together,<br />Memories Forever.
+            </h2>
+            <p className="text-muted-foreground text-[15px] max-w-sm mx-auto">
+              Premium ethnic sets for you, your little one &amp; your whole family.
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
+              <Link
+                href="/shop"
+                className="inline-flex items-center rounded-full bg-primary text-primary-foreground px-7 py-3 text-sm font-medium hover:bg-primary-hover transition-colors shadow-sm"
+              >
+                Shop Collections
+              </Link>
+              <Link
+                href="/shop"
+                className="inline-flex items-center rounded-full border border-foreground/25 text-foreground px-7 py-3 text-sm font-medium hover:bg-foreground/5 transition-colors"
+              >
+                Mom &amp; Baby Combos →
+              </Link>
             </div>
           </div>
         </section>
