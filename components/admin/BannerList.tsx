@@ -1,10 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, ArrowUp, ArrowDown, Eye, Edit, Trash2 } from "lucide-react";
+import { Plus, ArrowUp, ArrowDown, Eye, Edit, Trash2, Monitor, Smartphone, MonitorSmartphone } from "lucide-react";
 import { toast } from "sonner";
 import { BannerForm } from "./BannerForm";
+import {
+    BANNER_DEVICE_LABEL,
+    BANNER_DEVICE_TYPES,
+    normalizeDeviceType,
+    type BannerDeviceType,
+} from "@/lib/banners";
 
 interface Banner {
     id: string;
@@ -14,13 +20,31 @@ interface Banner {
     subtitle?: string;
     is_active: boolean;
     display_order: number;
+    device_type?: BannerDeviceType | null;
 }
+
+const TAB_ICON: Record<BannerDeviceType, typeof Monitor> = {
+    all: MonitorSmartphone,
+    desktop: Monitor,
+    mobile: Smartphone,
+};
+
+const TAB_HINT: Record<BannerDeviceType, string> = {
+    all: "Legacy banners shown on every screen size. 21:9 landscape.",
+    desktop: "Shown only on screens 768px and wider. 21:9 landscape.",
+    mobile: "Shown only on screens under 768px. 9:16 portrait, fills the phone screen.",
+};
 
 export function BannerList() {
     const [banners, setBanners] = useState<Banner[]>([]);
     const [loading, setLoading] = useState(true);
     const [editingBanner, setEditingBanner] = useState<Banner | null>(null);
     const [isCreating, setIsCreating] = useState(false);
+    const [activeTab, setActiveTab] = useState<BannerDeviceType>("desktop");
+    const [isReordering, setIsReordering] = useState(false);
+    // Land on the legacy group when it still holds banners, so an existing
+    // setup does not open on an empty tab.
+    const pickedInitialTab = useRef(false);
 
     // Fetch banners from API
     const fetchBanners = async () => {
@@ -40,6 +64,26 @@ export function BannerList() {
     useEffect(() => {
         fetchBanners();
     }, []);
+
+    // Each device group is an independent carousel, so it is ordered on its own.
+    const groups = useMemo(() => {
+        const byDevice: Record<BannerDeviceType, Banner[]> = { all: [], desktop: [], mobile: [] };
+        for (const banner of banners) {
+            byDevice[normalizeDeviceType(banner.device_type)].push(banner);
+        }
+        for (const key of BANNER_DEVICE_TYPES) {
+            byDevice[key].sort((a, b) => a.display_order - b.display_order);
+        }
+        return byDevice;
+    }, [banners]);
+
+    useEffect(() => {
+        if (loading || pickedInitialTab.current) return;
+        pickedInitialTab.current = true;
+        if (groups.all.length > 0) setActiveTab('all');
+    }, [loading, groups]);
+
+    const visibleBanners = groups[activeTab];
 
     // Close form handler
     const closeForm = () => {
@@ -79,28 +123,32 @@ export function BannerList() {
         }
     };
 
-    // Move banner up/down
+    // Move a banner within its own device group.
     const moveBanner = async (index: number, direction: 'up' | 'down') => {
         const newIndex = direction === 'up' ? index - 1 : index + 1;
-        if (newIndex < 0 || newIndex >= banners.length) return;
+        if (newIndex < 0 || newIndex >= visibleBanners.length || isReordering) return;
 
-        const reordered = [...banners];
+        const reordered = [...visibleBanners];
         const [removed] = reordered.splice(index, 1);
         reordered.splice(newIndex, 0, removed);
 
-        // Update display_order for affected banners
+        setIsReordering(true);
         try {
-            for (let i = 0; i < reordered.length; i++) {
-                await fetch(`/api/admin/banners/${reordered[i].id}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ display_order: i })
-                });
-            }
-            fetchBanners();
+            await Promise.all(
+                reordered.map((banner, i) =>
+                    fetch(`/api/admin/banners/${banner.id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ display_order: i })
+                    })
+                )
+            );
+            await fetchBanners();
         } catch (error) {
             console.error('Failed to reorder banners:', error);
             toast.error('Failed to reorder banners');
+        } finally {
+            setIsReordering(false);
         }
     };
 
@@ -116,21 +164,53 @@ export function BannerList() {
 
     return (
         <div className="space-y-6 max-w-6xl mx-auto p-6 md:p-0">
-            <div className="flex items-center justify-end">
-                {!isFormOpen && (
-                    <Button
-                        onClick={() => setIsCreating(true)}
-                        className="bg-[#C5A265] hover:bg-[#B08D55] text-white rounded-md px-6 py-2 h-10 shadow-sm transition-colors text-sm font-medium w-full md:w-auto"
-                    >
-                        <Plus className="w-4 h-4 mr-2" /> Add Banner
-                    </Button>
-                )}
-            </div>
+            {!isFormOpen && (
+                <>
+                    {/* Device sub-sections */}
+                    <div className="flex flex-wrap gap-2 border-b border-stone-200 pb-3">
+                        {BANNER_DEVICE_TYPES.map((tab) => {
+                            const Icon = TAB_ICON[tab];
+                            const count = groups[tab].length;
+                            // The legacy "All Devices" group is hidden once it is empty,
+                            // so new setups only see the two real choices.
+                            if (tab === 'all' && count === 0) return null;
+                            return (
+                                <button
+                                    key={tab}
+                                    onClick={() => setActiveTab(tab)}
+                                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === tab
+                                        ? "bg-[#C5A265] text-white shadow-sm"
+                                        : "text-stone-600 hover:bg-stone-100"
+                                        }`}
+                                >
+                                    <Icon className="w-4 h-4" />
+                                    {BANNER_DEVICE_LABEL[tab]}
+                                    <span className={`text-xs rounded-full px-1.5 py-0.5 ${activeTab === tab ? "bg-white/25" : "bg-stone-200 text-stone-600"
+                                        }`}>
+                                        {count}
+                                    </span>
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                        <p className="text-sm text-stone-500">{TAB_HINT[activeTab]}</p>
+                        <Button
+                            onClick={() => setIsCreating(true)}
+                            className="bg-[#C5A265] hover:bg-[#B08D55] text-white rounded-md px-6 py-2 h-10 shadow-sm transition-colors text-sm font-medium w-full md:w-auto shrink-0"
+                        >
+                            <Plus className="w-4 h-4 mr-2" /> Add {BANNER_DEVICE_LABEL[activeTab]} Banner
+                        </Button>
+                    </div>
+                </>
+            )}
 
             {isFormOpen ? (
                 <div className="animate-in slide-in-from-top-4 fade-in duration-300">
                     <BannerForm
                         initialData={editingBanner}
+                        defaultDeviceType={activeTab}
                         onClose={closeForm}
                     />
                 </div>
@@ -147,19 +227,23 @@ export function BannerList() {
 
                         {/* Table Body */}
                         <div className="px-4 py-4 md:px-6 md:py-0">
-                            {banners.length === 0 ? (
+                            {visibleBanners.length === 0 ? (
                                 <div className="text-center py-24">
                                     <div className="w-16 h-16 bg-stone-50 rounded-full flex items-center justify-center mx-auto mb-4">
                                         <Plus className="w-8 h-8 text-stone-300" />
                                     </div>
-                                    <h3 className="text-lg font-medium text-stone-900 mb-1">No banners yet</h3>
+                                    <h3 className="text-lg font-medium text-stone-900 mb-1">
+                                        No {BANNER_DEVICE_LABEL[activeTab].toLowerCase()} banners yet
+                                    </h3>
                                     <p className="text-stone-500 max-w-sm mx-auto">
-                                        Add your first hero banner.
+                                        {activeTab === 'mobile'
+                                            ? 'Add a 9:16 banner that fills the phone screen.'
+                                            : 'Add your first hero banner.'}
                                     </p>
                                 </div>
                             ) : (
                                 <div className="space-y-4 md:space-y-0 divide-y divide-stone-100">
-                                    {banners.map((banner, index) => (
+                                    {visibleBanners.map((banner, index) => (
                                         <div
                                             key={banner.id}
                                             className="grid grid-cols-1 md:grid-cols-12 gap-4 py-4 items-center"
@@ -170,10 +254,12 @@ export function BannerList() {
                                                     <img
                                                         src={banner.image_url}
                                                         alt="Banner"
-                                                        className="w-24 h-14 object-cover rounded border"
+                                                        className={`object-cover rounded border ${activeTab === 'mobile' ? 'w-12 h-[85px]' : 'w-24 h-14'
+                                                            }`}
                                                     />
                                                 ) : (
-                                                    <div className="w-24 h-14 bg-stone-100 rounded border flex items-center justify-center text-stone-400 text-xs">
+                                                    <div className={`bg-stone-100 rounded border flex items-center justify-center text-stone-400 text-xs ${activeTab === 'mobile' ? 'w-12 h-[85px]' : 'w-24 h-14'
+                                                        }`}>
                                                         No Img
                                                     </div>
                                                 )}
@@ -187,8 +273,8 @@ export function BannerList() {
                                             {/* Status */}
                                             <div className="col-span-2">
                                                 <span className={`px-2 py-1 rounded text-xs font-medium ${banner.is_active
-                                                        ? 'bg-green-100 text-green-700'
-                                                        : 'bg-stone-100 text-stone-500'
+                                                    ? 'bg-green-100 text-green-700'
+                                                    : 'bg-stone-100 text-stone-500'
                                                     }`}>
                                                     {banner.is_active ? 'Active' : 'Inactive'}
                                                 </span>
@@ -198,14 +284,14 @@ export function BannerList() {
                                             <div className="col-span-2 flex items-center justify-end gap-1">
                                                 <button
                                                     onClick={() => moveBanner(index, 'up')}
-                                                    disabled={index === 0}
+                                                    disabled={index === 0 || isReordering}
                                                     className="p-1.5 text-stone-400 hover:text-stone-600 disabled:opacity-30"
                                                 >
                                                     <ArrowUp className="w-4 h-4" />
                                                 </button>
                                                 <button
                                                     onClick={() => moveBanner(index, 'down')}
-                                                    disabled={index === banners.length - 1}
+                                                    disabled={index === visibleBanners.length - 1 || isReordering}
                                                     className="p-1.5 text-stone-400 hover:text-stone-600 disabled:opacity-30"
                                                 >
                                                     <ArrowDown className="w-4 h-4" />

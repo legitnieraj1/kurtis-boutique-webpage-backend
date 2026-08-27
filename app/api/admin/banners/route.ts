@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin, createSupabaseAdmin } from '@/lib/supabase/server';
 
+const DEVICE_TYPES = ['all', 'desktop', 'mobile'] as const;
+type DeviceType = (typeof DEVICE_TYPES)[number];
+
+/** Falls back to 'all' so a banner saved without the field keeps the legacy
+ *  behaviour of showing on every viewport. */
+function parseDeviceType(value: unknown): DeviceType {
+    return DEVICE_TYPES.includes(value as DeviceType) ? (value as DeviceType) : 'all';
+}
+
 // GET /api/admin/banners - List all banners (admin only)
 export async function GET() {
     try {
@@ -10,6 +19,7 @@ export async function GET() {
         const { data: banners, error } = await supabase
             .from('banners')
             .select('*')
+            .order('device_type')
             .order('display_order');
 
         if (error) {
@@ -44,6 +54,7 @@ export async function POST(request: NextRequest) {
             const link_url = formData.get('link_url') as string;
             const display_order = parseInt(formData.get('display_order') as string || '0');
             const is_active = formData.get('is_active') !== 'false';
+            const device_type = parseDeviceType(formData.get('device_type'));
 
             if (!file) {
                 return NextResponse.json({ error: 'No file provided' }, { status: 400 });
@@ -77,7 +88,8 @@ export async function POST(request: NextRequest) {
                     image_url: urlData.publicUrl,
                     link_url,
                     display_order,
-                    is_active
+                    is_active,
+                    device_type
                 })
                 .select()
                 .single();
@@ -92,6 +104,7 @@ export async function POST(request: NextRequest) {
             // Handle JSON (with existing image URL)
             const body = await request.json();
             const { title, subtitle, image_url, link_url, display_order = 0, is_active = true } = body;
+            const device_type = parseDeviceType(body.device_type);
 
             if (!image_url) {
                 return NextResponse.json({ error: 'image_url is required' }, { status: 400 });
@@ -99,7 +112,7 @@ export async function POST(request: NextRequest) {
 
             const { data: banner, error } = await supabase
                 .from('banners')
-                .insert({ title, subtitle, image_url, link_url, display_order, is_active })
+                .insert({ title, subtitle, image_url, link_url, display_order, is_active, device_type })
                 .select()
                 .single();
 

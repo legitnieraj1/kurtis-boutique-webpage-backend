@@ -127,15 +127,27 @@ export default async function Home() {
           className="relative w-full"
           aria-label="Featured designer kurtis and ethnic wear collections"
         >
-          {/* The carousel sizes itself to the banner's own proportions, so it
-              sets the height of this section rather than being cropped to fit
-              a height chosen here. */}
-          <HeroBannerCarousel initialBanners={banners} />
+          {/* Two carousels, one per breakpoint, toggled with CSS so the page
+              stays statically rendered (no per-request device sniffing). Each
+              one draws only the banners targeted at its device — plus the
+              legacy 'all' banners — and its `sizes` collapses to 1px on the
+              viewport that cannot see it, so the hidden one costs no bandwidth.
 
-          {/* Darkening gradient and overlaid copy, desktop only. A banner shown
-              uncropped on a phone is only as tall as its own shape allows —
-              far too short to hold a headline — so on mobile the same copy runs
-              underneath the image instead of on top of it. */}
+              Desktop: the carousel sizes itself to the banner's own
+              proportions, so it sets the height of this section rather than
+              being cropped to fit a height chosen here. */}
+          <div className="hidden md:block">
+            <HeroBannerCarousel initialBanners={banners} variant="desktop" />
+          </div>
+
+          {/* Mobile: a 9:16 banner filling the phone screen edge to edge. */}
+          <div className="md:hidden">
+            <HeroBannerCarousel initialBanners={banners} variant="mobile" />
+          </div>
+
+          {/* Darkening gradient and overlaid copy, desktop only. The mobile
+              banner is a full-screen image of its own, so on phones the same
+              copy runs underneath it instead of on top of it. */}
           <div className="pointer-events-none absolute inset-0 z-10 hidden md:block bg-gradient-to-r from-black/60 via-black/25 to-transparent" />
 
           <div className="pointer-events-none absolute inset-0 z-20 hidden md:flex items-center">

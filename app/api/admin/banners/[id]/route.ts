@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin, createSupabaseAdmin } from '@/lib/supabase/server';
 
+const DEVICE_TYPES = ['all', 'desktop', 'mobile'] as const;
+type DeviceType = (typeof DEVICE_TYPES)[number];
+
+/** Returns undefined when the field was not sent, so a partial update (a
+ *  status toggle, a reorder) never silently rewrites the device targeting. */
+function parseDeviceType(value: unknown): DeviceType | undefined {
+    if (value === undefined || value === null || value === '') return undefined;
+    return DEVICE_TYPES.includes(value as DeviceType) ? (value as DeviceType) : undefined;
+}
+
 interface RouteParams {
     params: Promise<{ id: string }>;
 }
@@ -20,10 +30,12 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
             const file = formData.get('file') as File;
             const link_url = formData.get('link_url') as string;
             const is_active = formData.get('is_active') === 'true';
+            const device_type = parseDeviceType(formData.get('device_type'));
 
             const updateData: Record<string, unknown> = {};
             if (link_url !== undefined) updateData.link_url = link_url;
             if (is_active !== undefined) updateData.is_active = is_active;
+            if (device_type !== undefined) updateData.device_type = device_type;
 
             // Upload new image if provided
             if (file && file.size > 0) {
@@ -63,6 +75,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
             // JSON update
             const body = await request.json();
             const { title, subtitle, image_url, link_url, display_order, is_active } = body;
+            const device_type = parseDeviceType(body.device_type);
 
             const updateData: Record<string, unknown> = {};
             if (title !== undefined) updateData.title = title;
@@ -71,6 +84,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
             if (link_url !== undefined) updateData.link_url = link_url;
             if (display_order !== undefined) updateData.display_order = display_order;
             if (is_active !== undefined) updateData.is_active = is_active;
+            if (device_type !== undefined) updateData.device_type = device_type;
 
             const { data: banner, error } = await supabase
                 .from('banners')

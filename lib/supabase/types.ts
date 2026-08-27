@@ -157,6 +157,8 @@ export interface Review {
     updated_at: string;
 }
 
+export type BannerDeviceType = 'all' | 'desktop' | 'mobile';
+
 export interface Banner {
     id: string;
     title: string | null;
@@ -165,6 +167,8 @@ export interface Banner {
     link_url: string | null;
     display_order: number;
     is_active: boolean;
+    /** Which viewports the banner is served to. 'all' is the legacy default. */
+    device_type: BannerDeviceType;
     created_at: string;
     updated_at: string;
 }
