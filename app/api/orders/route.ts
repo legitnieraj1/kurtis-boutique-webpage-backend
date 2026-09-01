@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServerClient, requireAuth } from '@/lib/supabase/server';
 import { sortByDisplayOrder } from '@/lib/utils';
+import { normalizeIndianMobile, validateIndianAddress } from '@/lib/indiaValidation';
 
 // GET /api/orders - List orders (user's own or all for admin)
 export async function GET() {
@@ -105,6 +106,15 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Shipping address required' }, { status: 400 });
         }
 
+        // India-only store — reject non-Indian mobile numbers and PIN codes
+        const shippingCheck = validateIndianAddress(
+            { ...shipping, address: shipping.address ?? shipping.address_line1 },
+            'Shipping'
+        );
+        if (!shippingCheck.valid) {
+            return NextResponse.json({ error: shippingCheck.error }, { status: 400 });
+        }
+
         // Calculate totals and validate stock
         let subtotal = 0;
         const orderItems = [];
@@ -160,7 +170,7 @@ export async function POST(request: NextRequest) {
                 shipping_cost: shippingCost,
                 total,
                 shipping_name: shipping.name,
-                shipping_phone: shipping.phone,
+                shipping_phone: normalizeIndianMobile(shipping.phone),
                 shipping_address_line1: shipping.address_line1,
                 shipping_address_line2: shipping.address_line2,
                 shipping_city: shipping.city,

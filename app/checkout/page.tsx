@@ -13,6 +13,11 @@ import Script from 'next/script';
 import { getCartItemPrice } from '@/lib/cartService';
 import { PaymentProcessingLoader } from '@/components/orders/PaymentProcessingLoader';
 import { getSupabaseClient } from '@/lib/supabase/client';
+import {
+    digitsOnly,
+    isValidIndianPincode,
+    validateIndianAddress,
+} from '@/lib/indiaValidation';
 
 declare global {
     interface Window {
@@ -92,7 +97,7 @@ export default function CheckoutPage() {
     // Debounce pincode check
     useEffect(() => {
         const checkShipping = async () => {
-            if (formData.pincode.length === 6) {
+            if (isValidIndianPincode(formData.pincode)) {
                 setIsCheckingShipping(true);
                 try {
                     const res = await fetch(`/api/settings/shipping?pincode=${formData.pincode}`);
@@ -111,14 +116,27 @@ export default function CheckoutPage() {
         return () => clearTimeout(id);
     }, [formData.pincode]);
 
+    // Phone and pincode are India-only numeric fields — strip anything else as it is typed
+    const maskField = (name: string, value: string) => {
+        if (name === 'phone') {
+            // Drop a pasted +91 / 0 prefix before capping at 10 national digits
+            let d = digitsOnly(value);
+            if (d.length > 10 && d.startsWith('91')) d = d.slice(2);
+            if (d.length > 10 && d.startsWith('0')) d = d.slice(1);
+            return d.slice(0, 10);
+        }
+        if (name === 'pincode') return digitsOnly(value).slice(0, 6);
+        return value;
+    };
+
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        setFormData(prev => ({ ...prev, [name]: maskField(name, value) }));
     };
 
     const handleBillingChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
-        setBillingData(prev => ({ ...prev, [name]: value }));
+        setBillingData(prev => ({ ...prev, [name]: maskField(name, value) }));
     };
 
     const formRef = useRef<HTMLFormElement>(null);
@@ -131,25 +149,25 @@ export default function CheckoutPage() {
             return;
         }
 
-        if (!formData.name || !formData.email || !formData.phone || !formData.address || !formData.city || !formData.state || !formData.pincode) {
-            toast.error("Please fill in all shipping details");
-            return;
-        }
-
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(formData.email)) {
+        if (!formData.email || !emailRegex.test(formData.email)) {
             toast.error("Please enter a valid email address");
             return;
         }
 
-        if (!/^\d{10}$/.test(formData.phone)) {
-            toast.error("Please enter a valid 10-digit mobile number");
+        // India-only store: reject non-Indian mobile numbers and PIN codes
+        const shippingCheck = validateIndianAddress(formData, 'Shipping');
+        if (!shippingCheck.valid) {
+            toast.error(shippingCheck.error!);
             return;
         }
 
-        if (!sameAsShipping && (!billingData.name || !billingData.phone || !billingData.address || !billingData.city || !billingData.state || !billingData.pincode)) {
-            toast.error("Please fill in all billing details");
-            return;
+        if (!sameAsShipping) {
+            const billingCheck = validateIndianAddress(billingData, 'Billing');
+            if (!billingCheck.valid) {
+                toast.error(billingCheck.error!);
+                return;
+            }
         }
 
         if (!razorpayLoaded) {
@@ -348,7 +366,8 @@ export default function CheckoutPage() {
 
                                     <div>
                                         <label htmlFor="phone" className={labelClass}>Mobile Number</label>
-                                        <input type="tel" id="phone" name="phone" required value={formData.phone} onChange={handleInputChange} className={inputClass} placeholder="10-digit mobile number" maxLength={10} />
+                                        <input type="tel" id="phone" name="phone" required inputMode="numeric" pattern="[6-9][0-9]{9}" value={formData.phone} onChange={handleInputChange} className={inputClass} placeholder="10-digit Indian mobile number" maxLength={10} />
+                                        <p className="mt-1 text-xs text-muted-foreground">Indian mobile numbers only — we ship within India.</p>
                                     </div>
 
                                     <div>
@@ -369,7 +388,8 @@ export default function CheckoutPage() {
 
                                     <div>
                                         <label htmlFor="pincode" className={labelClass}>Pincode</label>
-                                        <input type="text" id="pincode" name="pincode" required value={formData.pincode} onChange={handleInputChange} className={inputClass} placeholder="6-digit pincode" maxLength={6} />
+                                        <input type="text" id="pincode" name="pincode" required inputMode="numeric" pattern="[1-9][0-9]{5}" value={formData.pincode} onChange={handleInputChange} className={inputClass} placeholder="6-digit Indian PIN code" maxLength={6} />
+                                        <p className="mt-1 text-xs text-muted-foreground">Indian PIN codes only — international addresses are not supported.</p>
                                     </div>
                                 </form>
                             </div>
@@ -398,7 +418,7 @@ export default function CheckoutPage() {
                                         </div>
                                         <div>
                                             <label className={labelClass}>Phone Number</label>
-                                            <input type="tel" name="phone" required={!sameAsShipping} value={billingData.phone} onChange={handleBillingChange} className={inputClass} placeholder="Billing phone" />
+                                            <input type="tel" name="phone" required={!sameAsShipping} inputMode="numeric" pattern="[6-9][0-9]{9}" maxLength={10} value={billingData.phone} onChange={handleBillingChange} className={inputClass} placeholder="10-digit Indian mobile number" />
                                         </div>
                                         <div>
                                             <label className={labelClass}>Address</label>
@@ -416,7 +436,7 @@ export default function CheckoutPage() {
                                         </div>
                                         <div>
                                             <label className={labelClass}>Pincode</label>
-                                            <input type="text" name="pincode" required={!sameAsShipping} value={billingData.pincode} onChange={handleBillingChange} className={inputClass} placeholder="Billing pincode" />
+                                            <input type="text" name="pincode" required={!sameAsShipping} inputMode="numeric" pattern="[1-9][0-9]{5}" maxLength={6} value={billingData.pincode} onChange={handleBillingChange} className={inputClass} placeholder="6-digit Indian PIN code" />
                                         </div>
                                     </div>
                                 )}

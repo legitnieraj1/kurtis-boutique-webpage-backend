@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { RazorpayService } from '@/lib/razorpay';
 import { calculateShipping, DEFAULT_SHIPPING_OUTSIDE } from '@/lib/shipping';
 import { createSupabaseServerClient, createSupabaseAdmin } from '@/lib/supabase/server';
+import { validateIndianAddress } from '@/lib/indiaValidation';
 
 interface CartItemPayload {
     product_id: string;
@@ -38,8 +39,18 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Cart is empty' }, { status: 400 });
         }
 
-        if (!shippingAddress?.name || !shippingAddress?.phone) {
-            return NextResponse.json({ error: 'Shipping address is required' }, { status: 400 });
+        // India-only store — block non-Indian mobile numbers and PIN codes
+        // before a Razorpay order exists, so no international payment can be taken.
+        const shippingCheck = validateIndianAddress(shippingAddress, 'Shipping');
+        if (!shippingCheck.valid) {
+            return NextResponse.json({ error: shippingCheck.error }, { status: 400 });
+        }
+
+        if (sameAsShipping === false) {
+            const billingCheck = validateIndianAddress(billingAddress, 'Billing');
+            if (!billingCheck.valid) {
+                return NextResponse.json({ error: billingCheck.error }, { status: 400 });
+            }
         }
 
         // Calculate total from submitted cart
