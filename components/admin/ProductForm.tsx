@@ -128,7 +128,7 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
     }, []);
 
     const fetchCatergories = () => {
-        fetch('/api/categories')
+        fetch(`/api/categories?_t=${Date.now()}`, { cache: 'no-store' })
             .then(res => res.json())
             .then(data => setCategories(data.categories || []));
     };
@@ -164,11 +164,14 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
             }
 
             const data = await res.json();
-            toast.success("Category created");
-            await fetchCatergories(); // Refresh list
-            setCategoryId(data.category.id); // Select new category
+            // Immediately update local state for instant UI response
+            setCategories((prev: any[]) => [...prev, data.category]);
+            setCategoryId(data.category.id);
             setIsAddingCategory(false);
             setNewCategoryName("");
+            toast.success("Category created");
+            // Background sync
+            fetchCatergories();
         } catch (error) {
             console.error("Category creation error:", error);
             toast.error(error instanceof Error ? error.message : "Failed to create category");
@@ -194,8 +197,13 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
                 body: JSON.stringify({ name: editCategoryName, slug })
             });
             if (!res.ok) throw new Error("Failed to edit category");
-            toast.success("Category updated");
+            // Immediately update local state for instant UI response
+            setCategories((prev: any[]) => prev.map((c: any) =>
+                c.id === id ? { ...c, name: editCategoryName, slug } : c
+            ));
             setEditingCategory(null);
+            toast.success("Category updated");
+            // Background sync
             fetchCatergories();
         } catch (error) {
             toast.error("Failed to update category");
@@ -211,8 +219,11 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
             if (!res.ok) {
                 throw new Error(data.error || "Failed to delete category");
             }
-            toast.success("Category deleted");
+            // Immediately update local state for instant UI response
+            setCategories((prev: any[]) => prev.filter((c: any) => c.id !== id));
             if (categoryId === id) setCategoryId("");
+            toast.success("Category deleted");
+            // Background sync
             fetchCatergories();
         } catch (error: any) {
             toast.error(error.message || "Error deleting category");
