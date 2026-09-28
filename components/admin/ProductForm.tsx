@@ -158,7 +158,10 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
                 })
             });
 
-            if (!res.ok) throw new Error("Failed to create category");
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.error || "Failed to create category");
+            }
 
             const data = await res.json();
             toast.success("Category created");
@@ -167,7 +170,8 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
             setIsAddingCategory(false);
             setNewCategoryName("");
         } catch (error) {
-            toast.error("Failed to create category");
+            console.error("Category creation error:", error);
+            toast.error(error instanceof Error ? error.message : "Failed to create category");
         } finally {
             setIsCreatingCategory(false);
         }

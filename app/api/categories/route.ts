@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabasePublic, createSupabaseServerClient, requireAdmin } from '@/lib/supabase/server';
+import { createSupabasePublic, createSupabaseAdmin, requireAdmin } from '@/lib/supabase/server';
 
 // GET /api/categories - List all categories with product images (public, cached 1 hour at CDN)
 export async function GET() {
@@ -38,7 +38,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
     try {
         await requireAdmin();
-        const supabase = await createSupabaseServerClient();
+        const supabase = createSupabaseAdmin();
         const body = await request.json();
 
         const { name, slug, image_url, display_order = 0, is_active = true } = body;
