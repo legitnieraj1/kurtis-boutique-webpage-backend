@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { Loader2 } from "lucide-react";
 import { createSupabasePublic } from "@/lib/supabase/server";
+import { fetchCategoriesWithProducts } from "@/lib/productCategories";
 import { ShopClient } from "./ShopClient";
 import { Product, Category } from "@/types";
 
@@ -28,19 +29,7 @@ async function getShopData() {
             .eq("is_active", true)
             .order("created_at", { ascending: false })
             .limit(100),
-        supabase
-            .from("categories")
-            .select(`
-                *,
-                products:products(
-                    id,
-                    name,
-                    product_images(image_url)
-                )
-            `)
-            .eq("is_active", true)
-            .eq("products.is_active", true)
-            .order("display_order"),
+        fetchCategoriesWithProducts(supabase),
     ]);
 
     return {

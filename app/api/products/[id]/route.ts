@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { createSupabaseServerClient, createSupabaseAdmin, requireAdmin } from '@/lib/supabase/server';
+import { normalizeCategoryIds } from '@/lib/productCategories';
 
 /** Storefront pages are statically cached (ISR + CDN), so an admin edit is not
  *  visible on the live site until the cache is dropped. */
@@ -75,6 +76,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
             name,
             description,
             category_id,
+            category_ids,
             price,
             discount_price,
             discount_type,
@@ -103,7 +105,14 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         if (slug !== undefined) updateData.slug = slug;
         if (name !== undefined) updateData.name = name;
         if (description !== undefined) updateData.description = description;
-        if (category_id !== undefined) updateData.category_id = category_id;
+        // category_ids is the full list; the first entry is the primary
+        // category_id. A caller that only sends the legacy category_id still
+        // works. Sending neither leaves the categories untouched.
+        if (category_ids !== undefined || category_id !== undefined) {
+            const categoryIds = normalizeCategoryIds(category_ids, category_id);
+            updateData.category_id = categoryIds[0] ?? null;
+            updateData.category_ids = categoryIds;
+        }
         if (price !== undefined) updateData.price = price;
         if (discount_price !== undefined) updateData.discount_price = discount_price;
         if (discount_type !== undefined) updateData.discount_type = discount_type;

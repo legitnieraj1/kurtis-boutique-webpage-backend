@@ -52,7 +52,10 @@ export interface Product {
     slug: string;
     name: string;
     description: string | null;
+    /** Primary category (always the first of category_ids). */
     category_id: string | null;
+    /** Every category the product belongs to. */
+    category_ids: string[];
     price: number;
     discount_price: number | null;
     discount_type: DiscountType | null;
@@ -269,6 +272,7 @@ export interface CreateProductInput {
     name: string;
     description?: string;
     category_id?: string;
+    category_ids?: string[];
     price: number;
     discount_price?: number;
     discount_type?: DiscountType;

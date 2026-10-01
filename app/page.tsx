@@ -15,6 +15,7 @@ import { createSupabasePublic, createSupabaseAdmin } from "@/lib/supabase/server
 import { Category, Product } from "@/types";
 import { sortByDisplayOrder } from "@/lib/utils";
 import { LOOK_FIELDS, type Look } from "@/lib/shopByLook";
+import { fetchCategoriesWithProducts } from "@/lib/productCategories";
 
 // ISR: statically render homepage, re-generate in background every 5 minutes.
 export const revalidate = 300;
@@ -28,19 +29,7 @@ async function getHomeData() {
       .select("*")
       .eq("is_active", true)
       .order("display_order"),
-    supabase
-      .from("categories")
-      .select(`
-        *,
-        products:products(
-          id,
-          name,
-          product_images(image_url)
-        )
-      `)
-      .eq("is_active", true)
-      .eq("products.is_active", true)
-      .order("display_order"),
+    fetchCategoriesWithProducts(supabase),
     supabase
       .from("products")
       .select(`

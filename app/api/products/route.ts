@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { createSupabaseServerClient, requireAdmin, isAdmin } from '@/lib/supabase/server';
+import { normalizeCategoryIds } from '@/lib/productCategories';
 
 /** Storefront pages are statically cached (ISR + CDN), so an admin edit is not
  *  visible on the live site until the cache is dropped. */
@@ -51,6 +52,7 @@ export async function GET(request: NextRequest) {
         const SUMMARY_FIELDS = `
                 id, name, slug, price, discount_price, stock_remaining,
                 low_stock_threshold, is_active, created_at,
+                category_id, category_ids,
                 category:categories(id, name),
                 images:product_images(image_url, display_order)
             `;
@@ -88,7 +90,9 @@ export async function GET(request: NextRequest) {
                 .single();
 
             if (cat) {
-                query = query.eq('category_id', cat.id);
+                // A product can sit in several categories; category_id is only
+                // its primary one, so match against the whole list as well.
+                query = query.or(`category_id.eq.${cat.id},category_ids.cs.{${cat.id}}`);
             }
         }
 
@@ -137,6 +141,7 @@ export async function POST(request: NextRequest) {
             name,
             description,
             category_id,
+            category_ids,
             price,
             discount_price,
             discount_type,
@@ -169,6 +174,9 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // The first category picked is the product's primary one.
+        const categoryIds = normalizeCategoryIds(category_ids, category_id);
+
         // Use Service Role Client for INSERT to bypass RLS
         const { createSupabaseAdmin } = await import('@/lib/supabase/server');
         const supabaseAdmin = createSupabaseAdmin();
@@ -181,7 +189,8 @@ export async function POST(request: NextRequest) {
                 slug,
                 name,
                 description,
-                category_id, // Ensure this is UUID or null
+                category_id: categoryIds[0] ?? null,
+                category_ids: categoryIds,
                 price,
                 discount_price,
                 discount_type,

@@ -1,24 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabasePublic, createSupabaseAdmin, requireAdmin } from '@/lib/supabase/server';
+import { fetchCategoriesWithProducts } from '@/lib/productCategories';
 
 // GET /api/categories - List all categories with product images (public, cached 1 hour at CDN)
-export async function GET() {
+// `?view=list` skips the product images, for pickers that only need names.
+export async function GET(request: NextRequest) {
     try {
         const supabase = createSupabasePublic();
+        const listOnly = new URL(request.url).searchParams.get('view') === 'list';
 
-        const { data: categories, error } = await supabase
-            .from('categories')
-            .select(`
-                *,
-                products:products(
-                    id,
-                    name,
-                    product_images(image_url)
-                )
-            `)
-            .eq('is_active', true)
-            .eq('products.is_active', true)
-            .order('display_order');
+        const { data: categories, error } = listOnly
+            ? await supabase
+                .from('categories')
+                .select('id, name, slug, image_url, display_order')
+                .eq('is_active', true)
+                .order('display_order')
+            : await fetchCategoriesWithProducts(supabase);
 
         if (error) {
             console.error('Categories fetch error:', error);

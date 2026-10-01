@@ -7,7 +7,10 @@ export interface Product {
     discount_price?: number;
     images: { id?: string; image_url: string; display_order?: number | null; color?: string | null }[];
     sizes: { size: string; stock: number }[];
+    /** Primary category (always the first of category_ids). */
     category_id: string;
+    /** Every category the product belongs to. */
+    category_ids?: string[];
     category?: { name: string; slug: string };
     stock_remaining: number;
     is_new?: boolean;

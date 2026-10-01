@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Trash, ArrowRight, ArrowLeft, Upload, Plus, X, ChevronsUp, Loader2, ChevronDown, Edit2, GripVertical } from "lucide-react";
+import { Trash, ArrowRight, ArrowLeft, Upload, Plus, X, ChevronsUp, Loader2, ChevronDown, Edit2, GripVertical, Check } from "lucide-react";
 import { toast } from "sonner";
 import { getSupabaseClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { prepareImageForUpload, uploadWithRetry } from "@/lib/imageProcessing";
+import { getProductCategoryIds } from "@/lib/productCategories";
 
 interface ProductFormProps {
     initialData?: any;
@@ -17,7 +18,11 @@ interface ProductFormProps {
 export default function ProductForm({ initialData, onSuccess, onCancel }: ProductFormProps) {
     // Form State
     const [name, setName] = useState(initialData?.name || "");
-    const [categoryId, setCategoryId] = useState(initialData?.category_id || "");
+    // A product can sit in several categories. The first one is its primary
+    // (main) category — the server stores it as category_id.
+    const [categoryIds, setCategoryIds] = useState<string[]>(() =>
+        initialData ? getProductCategoryIds(initialData) : []
+    );
     const [price, setPrice] = useState(initialData?.price || "");
     const [description, setDescription] = useState(initialData?.description || "");
 
@@ -95,6 +100,10 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
     const [discountPrice, setDiscountPrice] = useState(initialData?.discount_price || "");
 
     const [categories, setCategories] = useState<any[]>([]);
+    // Chips follow the order the admin picked; the first is the main category.
+    const selectedCategories = categoryIds
+        .map(id => categories.find(c => c.id === id))
+        .filter(Boolean);
     const [loading, setLoading] = useState(false);
     // Set while picked photos are being downscaled, so the form cannot be saved
     // with a half-processed image list.
@@ -128,19 +137,13 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
     }, []);
 
     const fetchCatergories = () => {
-        fetch(`/api/categories?_t=${Date.now()}`, { cache: 'no-store' })
+        fetch(`/api/categories?view=list&_t=${Date.now()}`, { cache: 'no-store' })
             .then(res => res.json())
             .then(data => setCategories(data.categories || []));
     };
 
-    const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const val = e.target.value;
-        if (val === 'new') {
-            setIsAddingCategory(true);
-            setCategoryId("");
-        } else {
-            setCategoryId(val);
-        }
+    const toggleCategory = (id: string) => {
+        setCategoryIds(prev => prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]);
     };
 
     const handleCreateCategory = async () => {
@@ -166,7 +169,7 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
             const data = await res.json();
             // Immediately update local state for instant UI response
             setCategories((prev: any[]) => [...prev, data.category]);
-            setCategoryId(data.category.id);
+            setCategoryIds(prev => [...prev, data.category.id]);
             setIsAddingCategory(false);
             setNewCategoryName("");
             toast.success("Category created");
@@ -221,7 +224,7 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
             }
             // Immediately update local state for instant UI response
             setCategories((prev: any[]) => prev.filter((c: any) => c.id !== id));
-            if (categoryId === id) setCategoryId("");
+            setCategoryIds(prev => prev.filter(c => c !== id));
             toast.success("Category deleted");
             // Background sync
             fetchCatergories();
@@ -427,7 +430,7 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
             const productBody = {
                 name,
                 slug,
-                category_id: categoryId || null,
+                category_ids: categoryIds,
                 description,
                 price: parseFloat(price),
                 discount_price: discountPrice ? parseFloat(discountPrice) : null,
@@ -613,7 +616,7 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
                         />
                     </div>
                     <div className="space-y-2">
-                        <label className="text-sm font-medium">Category</label>
+                        <label className="text-sm font-medium">Categories</label>
                         {isAddingCategory ? (
                             <div className="flex gap-2">
                                 <input
@@ -627,7 +630,7 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
                                 <Button type="button" onClick={handleCreateCategory} disabled={isCreatingCategory}>
                                     {isCreatingCategory ? <Loader2 className="w-4 h-4 animate-spin" /> : "Add"}
                                 </Button>
-                                <Button type="button" variant="ghost" onClick={() => { setIsAddingCategory(false); setCategoryId(""); }}>
+                                <Button type="button" variant="ghost" onClick={() => setIsAddingCategory(false)}>
                                     <X className="w-4 h-4" />
                                 </Button>
                             </div>
@@ -635,52 +638,87 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
                             <div className="relative" ref={dropdownRef}>
                                 <div
                                     onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                                    className="w-full px-3 py-2 border rounded-md cursor-pointer bg-background flex justify-between items-center"
+                                    className="w-full min-h-[42px] px-3 py-2 border rounded-md cursor-pointer bg-background flex justify-between items-center gap-2"
                                 >
-                                    <span>{categories.find(c => c.id === categoryId)?.name || "Select Category"}</span>
-                                    <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                                    <div className="flex flex-wrap gap-1.5 flex-1 min-w-0">
+                                        {selectedCategories.length === 0 ? (
+                                            <span className="text-muted-foreground">Select categories</span>
+                                        ) : (
+                                            selectedCategories.map((c, i) => (
+                                                <span
+                                                    key={c.id}
+                                                    className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary pl-2.5 pr-1.5 py-0.5 text-sm"
+                                                >
+                                                    {c.name}
+                                                    {i === 0 && selectedCategories.length > 1 && (
+                                                        <span className="text-[10px] uppercase tracking-wide opacity-70">main</span>
+                                                    )}
+                                                    <button
+                                                        type="button"
+                                                        aria-label={`Remove ${c.name}`}
+                                                        onClick={(e) => { e.stopPropagation(); toggleCategory(c.id); }}
+                                                        className="rounded-full p-0.5 hover:bg-primary/20"
+                                                    >
+                                                        <X className="w-3 h-3" />
+                                                    </button>
+                                                </span>
+                                            ))
+                                        )}
+                                    </div>
+                                    <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
                                 </div>
-                                
+
                                 {isDropdownOpen && (
                                     <div className="absolute top-full left-0 w-full mt-1 bg-background border border-border rounded-md shadow-lg max-h-60 overflow-y-auto z-50">
-                                        <div 
-                                            className="px-3 py-2 hover:bg-muted/50 cursor-pointer border-b border-border text-muted-foreground text-sm"
-                                            onClick={() => { setCategoryId(""); setIsDropdownOpen(false); }}
-                                        >
-                                            Select Category
-                                        </div>
-                                        {categories.map(c => (
-                                            <div key={c.id} className="flex justify-between items-center px-3 py-2 hover:bg-muted/50 border-b border-border last:border-0 group">
-                                                {editingCategory === c.id ? (
-                                                    <div className="flex gap-2 w-full items-center">
-                                                        <input 
-                                                            value={editCategoryName} 
-                                                            onChange={(e) => setEditCategoryName(e.target.value)} 
-                                                            onClick={(e) => e.stopPropagation()} 
-                                                            className="flex-1 px-2 py-1 border rounded min-w-0 text-sm" 
-                                                            autoFocus
-                                                        />
-                                                        <Button type="button" size="sm" onClick={(e) => saveEditCategory(c.id, e)} className="h-7 px-2 text-xs">Save</Button>
-                                                        <Button type="button" size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); setEditingCategory(null); }} className="h-7 w-7"><X className="w-3 h-3" /></Button>
-                                                    </div>
-                                                ) : (
-                                                    <>
-                                                        <span 
-                                                            onClick={() => { setCategoryId(c.id); setIsDropdownOpen(false); }} 
-                                                            className="flex-1 cursor-pointer truncate"
-                                                        >
-                                                            {c.name}
-                                                        </span>
-                                                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                                                            <button type="button" onClick={(e) => startEditCategory(c, e)} className="p-1 text-muted-foreground hover:text-blue-500 rounded"><Edit2 size={14} /></button>
-                                                            <button type="button" onClick={(e) => handleDeleteCategory(c.id, e)} className="p-1 text-muted-foreground hover:text-red-500 rounded"><Trash size={14} /></button>
-                                                        </div>
-                                                    </>
-                                                )}
+                                        {categoryIds.length > 0 && (
+                                            <div
+                                                className="px-3 py-2 hover:bg-muted/50 cursor-pointer border-b border-border text-muted-foreground text-sm"
+                                                onClick={() => setCategoryIds([])}
+                                            >
+                                                Clear selection
                                             </div>
-                                        ))}
-                                        <div 
-                                            className="p-3 bg-muted/20 cursor-pointer text-primary text-sm font-medium hover:bg-muted/50 transition-colors" 
+                                        )}
+                                        {categories.map(c => {
+                                            const checked = categoryIds.includes(c.id);
+                                            return (
+                                                <div key={c.id} className="flex justify-between items-center px-3 py-2 hover:bg-muted/50 border-b border-border last:border-0 group">
+                                                    {editingCategory === c.id ? (
+                                                        <div className="flex gap-2 w-full items-center">
+                                                            <input
+                                                                value={editCategoryName}
+                                                                onChange={(e) => setEditCategoryName(e.target.value)}
+                                                                onClick={(e) => e.stopPropagation()}
+                                                                className="flex-1 px-2 py-1 border rounded min-w-0 text-sm"
+                                                                autoFocus
+                                                            />
+                                                            <Button type="button" size="sm" onClick={(e) => saveEditCategory(c.id, e)} className="h-7 px-2 text-xs">Save</Button>
+                                                            <Button type="button" size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); setEditingCategory(null); }} className="h-7 w-7"><X className="w-3 h-3" /></Button>
+                                                        </div>
+                                                    ) : (
+                                                        <>
+                                                            <span
+                                                                onClick={() => toggleCategory(c.id)}
+                                                                className="flex-1 flex items-center gap-2 cursor-pointer min-w-0"
+                                                            >
+                                                                <span className={cn(
+                                                                    "w-4 h-4 shrink-0 rounded border flex items-center justify-center",
+                                                                    checked ? "bg-primary border-primary text-white" : "border-input"
+                                                                )}>
+                                                                    {checked && <Check className="w-3 h-3" />}
+                                                                </span>
+                                                                <span className="truncate">{c.name}</span>
+                                                            </span>
+                                                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                                                                <button type="button" onClick={(e) => startEditCategory(c, e)} className="p-1 text-muted-foreground hover:text-blue-500 rounded"><Edit2 size={14} /></button>
+                                                                <button type="button" onClick={(e) => handleDeleteCategory(c.id, e)} className="p-1 text-muted-foreground hover:text-red-500 rounded"><Trash size={14} /></button>
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                        <div
+                                            className="p-3 bg-muted/20 cursor-pointer text-primary text-sm font-medium hover:bg-muted/50 transition-colors"
                                             onClick={() => { setIsAddingCategory(true); setIsDropdownOpen(false); }}
                                         >
                                             + Add New Category
@@ -689,6 +727,9 @@ export default function ProductForm({ initialData, onSuccess, onCancel }: Produc
                                 )}
                             </div>
                         )}
+                        <p className="text-xs text-muted-foreground">
+                            Tick every category this product fits in. The first one is its main category, shown on the product card.
+                        </p>
                     </div>
                     <div className="space-y-2 md:col-span-2">
                         <label className="text-sm font-medium">Description</label>

@@ -7,12 +7,15 @@ import { Input } from "@/components/ui/input";
 import { Plus, Edit, Trash, EyeOff, Loader2, Search, X } from "lucide-react";
 import ProductForm from "@/components/admin/ProductForm";
 import { toast } from "sonner";
+import { getProductCategoryIds } from "@/lib/productCategories";
 
 // Define matching types
 interface Product {
     id: string;
     name: string;
     category: any;
+    category_id?: string | null;
+    category_ids?: string[] | null;
     price: number;
     discount_price?: number;
     stock_remaining: number;
@@ -31,6 +34,19 @@ export default function AdminProducts() {
     const [search, setSearch] = useState("");
     const [activeSearch, setActiveSearch] = useState("");
     const [hasLoaded, setHasLoaded] = useState(false);
+    // id -> name, so a product's whole category list can be shown by name.
+    const [categoryNames, setCategoryNames] = useState<Record<string, string>>({});
+
+    useEffect(() => {
+        fetch(`/api/categories?view=list&_t=${Date.now()}`, { cache: 'no-store' })
+            .then(res => res.json())
+            .then(data => {
+                const names: Record<string, string> = {};
+                for (const c of data.categories || []) names[c.id] = c.name;
+                setCategoryNames(names);
+            })
+            .catch(() => { /* the primary category still renders from the product row */ });
+    }, []);
 
     // Fetch Products
     const fetchProducts = useCallback(async (term: string = activeSearch) => {
@@ -209,7 +225,26 @@ export default function AdminProducts() {
                                                     <span className="text-xs text-muted-foreground md:hidden">Qty: {product.stock_remaining}</span>
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4 capitalize hidden md:table-cell">{product.category?.name || '-'}</td>
+                                            <td className="px-6 py-4 hidden md:table-cell">
+                                                {(() => {
+                                                    const names = getProductCategoryIds(product)
+                                                        .map(id => categoryNames[id])
+                                                        .filter(Boolean);
+                                                    // Fall back to the joined primary category while the
+                                                    // names list is still loading.
+                                                    const shown = names.length ? names : product.category?.name ? [product.category.name] : [];
+                                                    if (!shown.length) return '-';
+                                                    return (
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {shown.map(name => (
+                                                                <span key={name} className="px-2 py-0.5 rounded-full bg-muted text-xs capitalize whitespace-nowrap">
+                                                                    {name}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    );
+                                                })()}
+                                            </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex flex-col">
                                                     {product.discount_price && product.discount_price < product.price ? (

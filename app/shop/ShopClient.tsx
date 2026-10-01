@@ -8,6 +8,7 @@ import { ProductCard } from "@/components/shop/ProductCard";
 import { Button } from "@/components/ui/button";
 import { Check, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getProductCategoryIds } from "@/lib/productCategories";
 
 import { Product, Category } from "@/types";
 
@@ -39,7 +40,7 @@ export function ShopClient({ initialProducts, initialCategories }: { initialProd
 
         if (activeCategoryId) {
             result = result.filter(p =>
-                p.category_id === activeCategoryId ||
+                getProductCategoryIds(p).includes(activeCategoryId) ||
                 (p.category && p.category.slug === selectedCategory)
             );
         }

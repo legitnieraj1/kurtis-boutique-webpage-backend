@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Eye, Search, RefreshCw, Package, CheckCircle, MessageCircle, Trash2, CloudDownload } from "lucide-react";
+import { Eye, Search, RefreshCw, Package, CheckCircle, MessageCircle, Trash2, CloudDownload, FileSpreadsheet, Download, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { formatPrice } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -108,6 +108,42 @@ function buildWhatsAppMessage(order: Order): string {
 
 const ADMIN_PHONE = '919787635982'; // Order manager number
 
+// <input type="date"> speaks local YYYY-MM-DD. The export route reads those
+// days as India days, which is what the admin picking them is looking at.
+const toInputDate = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+const exportPresets: { label: string; range: () => [Date, Date] }[] = [
+    { label: 'Today', range: () => [new Date(), new Date()] },
+    {
+        label: 'Last 7 days',
+        range: () => {
+            const today = new Date();
+            return [new Date(today.getFullYear(), today.getMonth(), today.getDate() - 6), today];
+        },
+    },
+    {
+        label: 'This month',
+        range: () => {
+            const today = new Date();
+            return [new Date(today.getFullYear(), today.getMonth(), 1), today];
+        },
+    },
+    {
+        label: 'Last month',
+        range: () => {
+            const today = new Date();
+            return [
+                new Date(today.getFullYear(), today.getMonth() - 1, 1),
+                new Date(today.getFullYear(), today.getMonth(), 0),
+            ];
+        },
+    },
+];
+
+const dateInputClass =
+    "h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2";
+
 function buildAdminWhatsAppMessage(order: Order): string {
     const itemLines = (order.items || []).map((item, i) => {
         const parts = [`   ${i + 1}. *${item.product_name}*`];
@@ -143,6 +179,14 @@ export default function AdminOrdersPage() {
     const [dateFilter, setDateFilter] = useState("all");
     const [isRecovering, setIsRecovering] = useState(false);
 
+    // Excel export
+    const [showExport, setShowExport] = useState(false);
+    const [exportFrom, setExportFrom] = useState("");
+    const [exportTo, setExportTo] = useState("");
+    const [exportStatus, setExportStatus] = useState("all");
+    const [exportSort, setExportSort] = useState("asc");
+    const [isExporting, setIsExporting] = useState(false);
+
     const fetchOrders = async () => {
         setLoading(true);
         try {
@@ -156,6 +200,48 @@ export default function AdminOrdersPage() {
             toast.error("Failed to fetch orders");
         } finally {
             setLoading(false);
+        }
+    };
+
+    const exportOrders = async () => {
+        if (exportFrom && exportTo && exportFrom > exportTo) {
+            toast.error("Start date must be on or before the end date");
+            return;
+        }
+
+        const params = new URLSearchParams({ sort: exportSort });
+        if (exportFrom) params.set('from', exportFrom);
+        if (exportTo) params.set('to', exportTo);
+        if (exportStatus !== 'all') params.set('status', exportStatus);
+
+        setIsExporting(true);
+        try {
+            const response = await fetch(`/api/admin/orders/export?${params}`);
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                toast.error(data.error || "Export failed");
+                return;
+            }
+
+            const blob = await response.blob();
+            const filename =
+                /filename="([^"]+)"/.exec(response.headers.get('Content-Disposition') || '')?.[1] || 'orders.xlsx';
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+
+            const count = response.headers.get('X-Order-Count');
+            toast.success(count ? `Exported ${count} order${count === '1' ? '' : 's'}` : "Export ready");
+        } catch (error) {
+            console.error('Order export failed:', error);
+            toast.error("Export failed");
+        } finally {
+            setIsExporting(false);
         }
     };
 
@@ -302,8 +388,104 @@ export default function AdminOrdersPage() {
                         <RefreshCw className={cn("w-4 h-4 mr-2", loading && "animate-spin")} />
                         Refresh
                     </Button>
+
+                    <Button variant="outline" onClick={() => setShowExport(v => !v)}>
+                        <FileSpreadsheet className="w-4 h-4 mr-2" />
+                        Export Excel
+                    </Button>
                 </div>
             </div>
+
+            {showExport && (
+                <div className="bg-background rounded-lg border border-border shadow-sm p-5 space-y-4">
+                    <div>
+                        <h2 className="font-medium">Export orders to Excel</h2>
+                        <p className="text-sm text-muted-foreground">
+                            Downloads customer, product, size, address and amount details. Leave the dates empty to export every order.
+                        </p>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                        {exportPresets.map(preset => (
+                            <Button
+                                key={preset.label}
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                    const [start, end] = preset.range();
+                                    setExportFrom(toInputDate(start));
+                                    setExportTo(toInputDate(end));
+                                }}
+                            >
+                                {preset.label}
+                            </Button>
+                        ))}
+                    </div>
+
+                    <div className="flex flex-col md:flex-row md:items-end gap-4">
+                        <label className="space-y-1.5 text-sm font-medium">
+                            <span>Start date</span>
+                            <input
+                                type="date"
+                                value={exportFrom}
+                                max={exportTo || undefined}
+                                onChange={(e) => setExportFrom(e.target.value)}
+                                className={cn(dateInputClass, "block w-full md:w-44")}
+                            />
+                        </label>
+                        <label className="space-y-1.5 text-sm font-medium">
+                            <span>End date</span>
+                            <input
+                                type="date"
+                                value={exportTo}
+                                min={exportFrom || undefined}
+                                onChange={(e) => setExportTo(e.target.value)}
+                                className={cn(dateInputClass, "block w-full md:w-44")}
+                            />
+                        </label>
+
+                        <div className="space-y-1.5 text-sm font-medium">
+                            <span>Status</span>
+                            <Select value={exportStatus} onValueChange={setExportStatus}>
+                                <SelectTrigger className="w-full md:w-[170px]">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All statuses</SelectItem>
+                                    {Object.keys(statusStyles).map(status => (
+                                        <SelectItem key={status} value={status} className="capitalize">
+                                            {status.replace('_', ' ')}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-1.5 text-sm font-medium">
+                            <span>Sort by date</span>
+                            <Select value={exportSort} onValueChange={setExportSort}>
+                                <SelectTrigger className="w-full md:w-[170px]">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="asc">Oldest first</SelectItem>
+                                    <SelectItem value="desc">Newest first</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <Button onClick={exportOrders} disabled={isExporting} className="md:ml-auto">
+                            {isExporting ? (
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            ) : (
+                                <Download className="w-4 h-4 mr-2" />
+                            )}
+                            {isExporting ? "Preparing..." : "Download Excel"}
+                        </Button>
+                    </div>
+                </div>
+            )}
 
             <div className="bg-background rounded-lg border border-border overflow-hidden shadow-sm">
                 <div className="overflow-x-auto">
