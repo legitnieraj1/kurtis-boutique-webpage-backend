@@ -52,7 +52,7 @@ export function getProductCategoryIds(product: WithCategories): string[] {
  */
 export async function fetchCategoriesWithProducts(supabase: SupabaseClient) {
     const [categoriesRes, productsRes] = await Promise.all([
-        supabase.from('categories').select('*').eq('is_active', true).order('display_order'),
+        supabase.from('categories').select('*').eq('is_active', true).order('display_order').order('created_at'),
         // `*` rather than naming category_ids: the navbar, footer and home page
         // all read this, and naming the column would take them down in the
         // window between deploying and running the migration. With `*` a

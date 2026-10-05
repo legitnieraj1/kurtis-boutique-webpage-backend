@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
                 .select('id, name, slug, image_url, display_order')
                 .eq('is_active', true)
                 .order('display_order')
+                .order('created_at')
             : await fetchCategoriesWithProducts(supabase);
 
         if (error) {
@@ -38,13 +39,25 @@ export async function POST(request: NextRequest) {
         const supabase = createSupabaseAdmin();
         const body = await request.json();
 
-        const { name, slug, image_url, display_order = 0, is_active = true } = body;
+        const { name, slug, image_url, is_active = true } = body;
+        let { display_order } = body;
 
         if (!name || !slug) {
             return NextResponse.json(
                 { error: 'Missing required fields: name, slug' },
                 { status: 400 }
             );
+        }
+
+        // A new category goes to the end of the homepage bubbles unless told otherwise.
+        if (display_order === undefined) {
+            const { data: last } = await supabase
+                .from('categories')
+                .select('display_order')
+                .order('display_order', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+            display_order = (last?.display_order ?? -1) + 1;
         }
 
         const { data: category, error } = await supabase
