@@ -57,7 +57,7 @@ export default function AdminProducts() {
             // column, none of which appear below — that payload was the
             // reason this screen took seconds to appear.
             const query = term.trim() ? `&search=${encodeURIComponent(term.trim())}` : "";
-            const res = await fetch(`/api/products?view=summary&limit=100${query}&t=${Date.now()}`, {
+            const res = await fetch(`/api/products?view=summary&limit=all${query}&t=${Date.now()}`, {
                 headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
             });
             const data = await res.json();

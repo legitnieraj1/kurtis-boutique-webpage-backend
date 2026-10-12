@@ -35,7 +35,7 @@ export default function WishlistPage() {
                 // if we don't have a specific batch endpoint.
                 // Let's assume we can fetch all for now or I'll implement a dedicated 'ids' filter in /api/products later if needed.
 
-                const res = await fetch('/api/products?limit=100'); // Get top 100 recent
+                const res = await fetch('/api/products?limit=all');
                 const data = await res.json();
 
                 if (data.products) {

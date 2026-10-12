@@ -35,7 +35,14 @@ export async function GET(request: NextRequest) {
         // Query parameters
         const category = searchParams.get('category');
         const search = searchParams.get('search');
-        const limit = parseInt(searchParams.get('limit') || '50');
+        const limitParam = searchParams.get('limit');
+        let limit: number | null = null;
+        if (limitParam && limitParam !== 'all' && limitParam !== 'unlimited' && limitParam !== '0') {
+            const parsed = parseInt(limitParam);
+            if (!isNaN(parsed) && parsed > 0) {
+                limit = parsed;
+            }
+        }
         const offset = parseInt(searchParams.get('offset') || '0');
         const sortBy = searchParams.get('sort') || 'created_at';
         const order = searchParams.get('order') === 'asc' ? true : false;
@@ -101,8 +108,13 @@ export async function GET(request: NextRequest) {
             query = query.ilike('name', `%${search}%`);
         }
 
-        query = query.order(sortBy, { ascending: order })
-            .range(offset, offset + limit - 1);
+        query = query.order(sortBy, { ascending: order });
+
+        if (limit !== null) {
+            query = query.range(offset, offset + limit - 1);
+        } else if (offset > 0) {
+            query = query.range(offset, offset + 10000);
+        }
 
         const { data: products, error, count } = await query;
 

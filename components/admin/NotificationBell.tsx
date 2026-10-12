@@ -20,7 +20,7 @@ export function NotificationBell() {
         // abortable so leaving the page does not leave it running.
         const controller = new AbortController();
 
-        fetch('/api/products?view=summary&limit=100', { signal: controller.signal })
+        fetch('/api/products?view=summary&limit=all', { signal: controller.signal })
             .then(res => res.json())
             .then(data => {
                 if (data.products) {
