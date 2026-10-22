@@ -15,6 +15,8 @@ export interface Product {
     stock_remaining: number;
     is_new?: boolean;
     is_active: boolean;
+    display_order?: number;
+    created_at?: string;
 }
 
 export interface Category {

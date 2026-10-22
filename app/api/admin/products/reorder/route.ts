@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { createSupabaseAdmin, requireAdmin } from '@/lib/supabase/server';
 
 /**
@@ -37,6 +38,15 @@ export async function PATCH(request: NextRequest) {
         if (errors.length > 0) {
             console.error('[Reorder] Partial failure:', errors);
             return NextResponse.json({ error: 'Some updates failed', details: errors }, { status: 500 });
+        }
+
+        // Drop the static ISR caches immediately so /shop and homepage show the
+        // newly arranged order on the very next refresh.
+        try {
+            revalidatePath('/shop');
+            revalidatePath('/');
+        } catch (cacheErr) {
+            console.warn('[Reorder] Cache revalidation warning:', cacheErr);
         }
 
         return NextResponse.json({ ok: true, updated: order.length });

@@ -168,6 +168,7 @@ export default function AdminProducts() {
             }
             toast.success('Product order saved!');
             setReorderMode(false);
+            fetchProducts();
         } catch {
             toast.error('Failed to save order');
         } finally {

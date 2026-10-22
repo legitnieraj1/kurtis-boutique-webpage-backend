@@ -45,6 +45,7 @@ async function getHomeData() {
       `)
       .eq("is_active", true)
       .order("display_order", { ascending: true })
+      .order("created_at", { ascending: false })
       .limit(20),
     supabase
       .from("shop_by_look")

@@ -21,7 +21,7 @@ export function ShopClient({ initialProducts, initialCategories }: { initialProd
 
     const [selectedCategory, setSelectedCategory] = useState<string | null>(categoryParam);
     const [showFilters, setShowFilters] = useState(false);
-    const [sortBy, setSortBy] = useState<"new" | "price_asc" | "price_desc">("new");
+    const [sortBy, setSortBy] = useState<"featured" | "new" | "price_asc" | "price_desc">("featured");
 
     // Sync selectedCategory with URL param changes
     useEffect(() => {
@@ -49,10 +49,16 @@ export function ShopClient({ initialProducts, initialCategories }: { initialProd
             result.sort((a, b) => (a.discount_price || a.price) - (b.discount_price || b.price));
         } else if (sortBy === "price_desc") {
             result.sort((a, b) => (b.discount_price || b.price) - (a.discount_price || a.price));
-        } else {
-            // Newest
-            result.sort((a, b) => (b.is_new ? 1 : 0) - (a.is_new ? 1 : 0));
+        } else if (sortBy === "new") {
+            // New arrivals: sort by creation date descending, falling back to is_new
+            result.sort((a, b) => {
+                const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+                const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+                if (dateB !== dateA) return dateB - dateA;
+                return (b.is_new ? 1 : 0) - (a.is_new ? 1 : 0);
+            });
         }
+        // "featured": preserves the server-provided display_order as arranged in admin
 
         return result;
     }, [activeCategoryId, selectedCategory, sortBy, products]);
@@ -120,6 +126,7 @@ export function ShopClient({ initialProducts, initialCategories }: { initialProd
                             value={sortBy}
                             onChange={(e) => setSortBy(e.target.value as any)}
                         >
+                            <option value="featured">Featured</option>
                             <option value="new">New Arrivals</option>
                             <option value="price_asc">Price: Low to High</option>
                             <option value="price_desc">Price: High to Low</option>
