@@ -16,10 +16,14 @@ interface CartItemPayload {
     product_image?: string | null;
 }
 
-/** Generate KB{YYYYMMDD}-{4 rand} order number (fallback if DB trigger absent) */
-function generateOrderNumber(): string {
+/** Generate sequential order number via DB function (KB{YYYYMMDD}-{0001}) */
+async function generateOrderNumber(adminDb: ReturnType<typeof import('@/lib/supabase/server').createSupabaseAdmin>): Promise<string> {
+    const { data, error } = await adminDb.rpc('next_order_number');
+    if (!error && data) return data as string;
+    // Fallback (should never happen): local random
     const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     const rand = String(Math.floor(1000 + Math.random() * 9000));
+    console.error('[Verify] DB order number failed, using fallback:', error?.message);
     return `KB${date}-${rand}`;
 }
 
@@ -206,7 +210,7 @@ export async function POST(request: NextRequest) {
         }
 
         // ── 8. Insert order ─────────────────────────────────────────────
-        const fallbackOrderNumber = generateOrderNumber();
+        const fallbackOrderNumber = await generateOrderNumber(adminDb);
         const phone10 = sanitizePhone(parsedShipping?.phone || '');
 
         const orderInsert: Record<string, any> = {

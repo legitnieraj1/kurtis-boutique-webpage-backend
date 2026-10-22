@@ -3,7 +3,7 @@ import { Users, Leaf, Truck, PackageCheck } from "lucide-react";
 
 const ITEMS = [
   { Icon: Users, label: "30,000+ Happy Customers" },
-  { Icon: Leaf, label: "Premium Narayanpet Cotton" },
+  { Icon: Leaf, label: "Premium Ethnic Wear" },
   { Icon: Truck, label: "Pan India Shipping" },
   { Icon: PackageCheck, label: "Quality Checked Before Dispatch" },
 ];

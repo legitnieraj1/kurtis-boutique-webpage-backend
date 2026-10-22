@@ -526,6 +526,7 @@ export default function AdminOrdersPage() {
                                             <Link href={`/admin/orders/${order.id}`} className="hover:underline hover:text-primary">
                                                 {order.orderNumber}
                                             </Link>
+                                            <div className="text-xs text-muted-foreground md:hidden mt-0.5">{order.date}</div>
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="font-medium">{order.customer.name}</div>

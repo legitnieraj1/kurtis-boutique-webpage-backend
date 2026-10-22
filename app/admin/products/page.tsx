@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { formatPrice } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Edit, Trash, EyeOff, Loader2, Search, X } from "lucide-react";
+import { Plus, Edit, Trash, EyeOff, Loader2, Search, X, GripVertical, ArrowUpDown, Check } from "lucide-react";
 import ProductForm from "@/components/admin/ProductForm";
 import { toast } from "sonner";
 import { getProductCategoryIds } from "@/lib/productCategories";
@@ -29,13 +29,14 @@ export default function AdminProducts() {
     const [isAdding, setIsAdding] = useState(false);
     const [editingProduct, setEditingProduct] = useState<any>(null);
     const [editLoadingId, setEditLoadingId] = useState<string | null>(null);
-    // Search runs server-side so it covers the whole catalogue, not just the
-    // first page of rows already loaded into the table.
     const [search, setSearch] = useState("");
     const [activeSearch, setActiveSearch] = useState("");
     const [hasLoaded, setHasLoaded] = useState(false);
-    // id -> name, so a product's whole category list can be shown by name.
     const [categoryNames, setCategoryNames] = useState<Record<string, string>>({});
+    // Reorder state
+    const [reorderMode, setReorderMode] = useState(false);
+    const [isSavingOrder, setIsSavingOrder] = useState(false);
+    const dragIndexRef = useRef<number | null>(null);
 
     useEffect(() => {
         fetch(`/api/categories?view=list&_t=${Date.now()}`, { cache: 'no-store' })
@@ -133,6 +134,48 @@ export default function AdminProducts() {
         fetchProducts(); // Refresh list
     };
 
+    // ── Drag-and-drop reorder helpers ─────────────────────────────────────
+    const handleDragStart = (index: number) => {
+        dragIndexRef.current = index;
+    };
+
+    const handleDragOver = (e: React.DragEvent, index: number) => {
+        e.preventDefault();
+        const from = dragIndexRef.current;
+        if (from === null || from === index) return;
+        setProducts(prev => {
+            const next = [...prev];
+            const [moved] = next.splice(from, 1);
+            next.splice(index, 0, moved);
+            return next;
+        });
+        dragIndexRef.current = index;
+    };
+
+    const saveOrder = async () => {
+        setIsSavingOrder(true);
+        try {
+            const order = products.map((p, i) => ({ id: p.id, display_order: i + 1 }));
+            const res = await fetch('/api/admin/products/reorder', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ order }),
+            });
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                toast.error(data.error || 'Failed to save order');
+                return;
+            }
+            toast.success('Product order saved!');
+            setReorderMode(false);
+        } catch {
+            toast.error('Failed to save order');
+        } finally {
+            setIsSavingOrder(false);
+        }
+    };
+
+
     // Only the very first load takes over the screen. Later loads (a search,
     // a refresh) keep the table and search box mounted so typing is not
     // interrupted and focus is never lost.
@@ -147,14 +190,46 @@ export default function AdminProducts() {
                         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Refresh"}
                     </Button>
                 </div>
-                {!isAdding && !editingProduct && (
-                    <Button onClick={() => setIsAdding(true)}>
-                        <Plus className="w-4 h-4 mr-2" /> Add Product
-                    </Button>
-                )}
+                <div className="flex items-center gap-2">
+                    {!isAdding && !editingProduct && !reorderMode && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => { setSearch(''); setReorderMode(true); }}
+                            title="Drag rows to reorder products on the shop page"
+                        >
+                            <ArrowUpDown className="w-4 h-4 mr-2" />
+                            Reorder Products
+                        </Button>
+                    )}
+                    {reorderMode && (
+                        <>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => { setReorderMode(false); fetchProducts(); }}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                size="sm"
+                                onClick={saveOrder}
+                                disabled={isSavingOrder}
+                            >
+                                {isSavingOrder ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
+                                Save Order
+                            </Button>
+                        </>
+                    )}
+                    {!isAdding && !editingProduct && !reorderMode && (
+                        <Button onClick={() => setIsAdding(true)}>
+                            <Plus className="w-4 h-4 mr-2" /> Add Product
+                        </Button>
+                    )}
+                </div>
             </div>
 
-            {!isAdding && !editingProduct && (
+            {!isAdding && !editingProduct && !reorderMode && (
                 <div className="relative max-w-md">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -177,7 +252,7 @@ export default function AdminProducts() {
                 </div>
             )}
 
-            {(isAdding || editingProduct) && (
+            {(isAdding || editingProduct) && !reorderMode && (
                 <ProductForm
                     initialData={editingProduct}
                     onSuccess={handleSave}
@@ -187,23 +262,27 @@ export default function AdminProducts() {
 
             {!isAdding && !editingProduct && (
                 <div className="bg-background rounded-lg border border-border overflow-hidden shadow-sm">
+                    {reorderMode && (
+                        <div className="px-4 py-2 bg-amber-50 border-b border-amber-200 text-xs text-amber-800 flex items-center gap-2">
+                            <GripVertical className="w-4 h-4" />
+                            Drag rows to reorder. Changes only apply when you click <strong>Save Order</strong>.
+                        </div>
+                    )}
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm text-left min-w-[600px] md:min-w-full">
                             <thead className="bg-muted/50 text-muted-foreground font-medium border-b border-border">
                                 <tr>
+                                    {reorderMode && <th className="px-3 py-3 w-8" />}
                                     <th className="px-6 py-3">Product</th>
                                     <th className="px-6 py-3 hidden md:table-cell">Category</th>
                                     <th className="px-6 py-3">Price</th>
                                     <th className="px-6 py-3 hidden md:table-cell">Stock</th>
-                                    <th className="px-6 py-3 text-right">Actions</th>
+                                    {!reorderMode && <th className="px-6 py-3 text-right">Actions</th>}
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-border">
-                                {products.map(product => {
+                                {products.map((product, index) => {
                                     const inStock = product.stock_remaining > 0;
-                                    // Nested rows come back in no guaranteed order,
-                                    // so pick the lowest display_order rather than
-                                    // trusting whichever row arrived first.
                                     const displayImage = product.images?.length
                                         ? [...product.images].sort(
                                             (a, b) => (a.display_order ?? 0) - (b.display_order ?? 0)
@@ -211,7 +290,18 @@ export default function AdminProducts() {
                                         : undefined;
 
                                     return (
-                                        <tr key={product.id} className="hover:bg-muted/10">
+                                        <tr
+                                            key={product.id}
+                                            className={`hover:bg-muted/10 transition-colors ${reorderMode ? 'cursor-grab active:cursor-grabbing' : ''}`}
+                                            draggable={reorderMode}
+                                            onDragStart={reorderMode ? () => handleDragStart(index) : undefined}
+                                            onDragOver={reorderMode ? (e) => handleDragOver(e, index) : undefined}
+                                        >
+                                            {reorderMode && (
+                                                <td className="px-3 py-4 text-muted-foreground">
+                                                    <GripVertical className="w-4 h-4" />
+                                                </td>
+                                            )}
                                             <td className="px-6 py-4 font-medium text-foreground flex items-center gap-3">
                                                 <div className="w-10 h-10 rounded bg-muted overflow-hidden relative border border-border shrink-0">
                                                     {displayImage ? (
@@ -230,8 +320,6 @@ export default function AdminProducts() {
                                                     const names = getProductCategoryIds(product)
                                                         .map(id => categoryNames[id])
                                                         .filter(Boolean);
-                                                    // Fall back to the joined primary category while the
-                                                    // names list is still loading.
                                                     const shown = names.length ? names : product.category?.name ? [product.category.name] : [];
                                                     if (!shown.length) return '-';
                                                     return (
@@ -272,21 +360,23 @@ export default function AdminProducts() {
                                                     )}
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4 text-right space-x-2 whitespace-nowrap">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    onClick={() => startEdit(product.id)}
-                                                    disabled={editLoadingId === product.id}
-                                                >
-                                                    {editLoadingId === product.id
-                                                        ? <Loader2 className="w-4 h-4 animate-spin" />
-                                                        : <Edit className="w-4 h-4" />}
-                                                </Button>
-                                                <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => handleDelete(product.id)}>
-                                                    <Trash className="w-4 h-4" />
-                                                </Button>
-                                            </td>
+                                            {!reorderMode && (
+                                                <td className="px-6 py-4 text-right space-x-2 whitespace-nowrap">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        onClick={() => startEdit(product.id)}
+                                                        disabled={editLoadingId === product.id}
+                                                    >
+                                                        {editLoadingId === product.id
+                                                            ? <Loader2 className="w-4 h-4 animate-spin" />
+                                                            : <Edit className="w-4 h-4" />}
+                                                    </Button>
+                                                    <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => handleDelete(product.id)}>
+                                                        <Trash className="w-4 h-4" />
+                                                    </Button>
+                                                </td>
+                                            )}
                                         </tr>
                                     );
                                 })}

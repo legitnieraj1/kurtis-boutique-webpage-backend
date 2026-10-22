@@ -44,8 +44,8 @@ export async function GET(request: NextRequest) {
             }
         }
         const offset = parseInt(searchParams.get('offset') || '0');
-        const sortBy = searchParams.get('sort') || 'created_at';
-        const order = searchParams.get('order') === 'asc' ? true : false;
+        const sortBy = searchParams.get('sort') || 'display_order';
+        const order = searchParams.get('order') === 'desc' ? false : true;
         // `view=summary` returns just the columns a list screen renders.
         // The full shape below joins eight related tables and selects every
         // product column; pulling that for a 100-row admin table meant

@@ -27,7 +27,7 @@ async function getShopData() {
                 baby_size_prices(id, size, price)
             `)
             .eq("is_active", true)
-            .order("created_at", { ascending: false }),
+            .order("display_order", { ascending: true }),
         fetchCategoriesWithProducts(supabase),
     ]);
 

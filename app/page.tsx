@@ -44,7 +44,7 @@ async function getHomeData() {
         baby_size_prices(id, size, price)
       `)
       .eq("is_active", true)
-      .order("created_at", { ascending: false })
+      .order("display_order", { ascending: true })
       .limit(20),
     supabase
       .from("shop_by_look")
@@ -142,9 +142,7 @@ export default async function Home() {
           <div className="pointer-events-none absolute inset-0 z-20 hidden md:flex items-center">
             <div className="container mx-auto px-8">
               <div className="max-w-xl space-y-5">
-                <p className="text-[14px] uppercase tracking-[0.25em] text-accent-gold font-medium">
-                  New Collection · 2025
-                </p>
+
                 <h2 className="font-serif text-white text-6xl leading-[1.05]">
                   Dressed Together,<br />Memories Forever.
                 </h2>
@@ -171,9 +169,7 @@ export default async function Home() {
 
           {/* Mobile copy — same words, below the banner, on the page ground. */}
           <div className="md:hidden px-6 pt-7 pb-9 text-center space-y-4">
-            <p className="text-[12px] uppercase tracking-[0.25em] text-accent-gold font-medium">
-              New Collection · 2025
-            </p>
+
             <h2 className="font-serif text-foreground text-[2rem] leading-[1.1]">
               Dressed Together,<br />Memories Forever.
             </h2>
