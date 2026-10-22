@@ -7,10 +7,10 @@ import { normalizeIndianMobile, validateIndianAddress } from '@/lib/indiaValidat
 export async function GET() {
     try {
         const user = await requireAuth();
-        const supabase = await createSupabaseServerClient();
+        const serverClient = await createSupabaseServerClient();
 
         // Check if user is admin
-        const { data: profile } = await supabase
+        const { data: profile } = await serverClient
             .from('profiles')
             .select('role, email, full_name, phone')
             .eq('id', user.id)
@@ -18,8 +18,12 @@ export async function GET() {
 
         const isAdmin = profile?.role === 'admin';
 
+        // When caller is admin, use admin client to bypass RLS and ensure guest orders are never omitted
+        const { createSupabaseAdmin } = await import('@/lib/supabase/server');
+        const db = isAdmin ? createSupabaseAdmin() : serverClient;
+
         // Build query - admin sees all, user sees their own
-        let query = supabase
+        let query = db
             .from('orders')
             .select(`
                 *,
@@ -41,43 +45,47 @@ export async function GET() {
         }
 
         // Transform for frontend compatibility
-        const transformedOrders = orders?.map(order => ({
-            id: order.id,
-            orderNumber: order.order_number,
-            status: order.status,
-            total: order.total,
-            subtotal: order.subtotal,
-            shippingCost: order.shipping_cost,
-            discountAmount: order.discount_amount,
-            createdAt: order.created_at,
-            date: new Date(order.created_at).toLocaleDateString('en-IN'),
-            // Customer info (for admin view)
-            customer: {
-                name: order.shipping_name || order.profile?.full_name || 'Unknown',
-                email: order.profile?.email || '',
-                phone: order.shipping_phone || order.profile?.phone || '',
-            },
-            // Address
-            shippingAddress: {
-                name: order.shipping_name,
-                phone: order.shipping_phone,
-                line1: order.shipping_address_line1,
-                line2: order.shipping_address_line2,
-                city: order.shipping_city,
-                state: order.shipping_state,
-                pincode: order.shipping_pincode,
-            },
-            // Items
-            items: order.items || [],
-            timeline: order.timeline || [],
-            // Tracking
-            tracking: {
-                awb: order.awb_id,
-                shipmentId: order.shipment_id,
-                courier: order.courier_name,
-                trackingUrl: order.tracking_url,
-            },
-        })) || [];
+        const transformedOrders = orders?.map(order => {
+            const customerEmail = order.customer_email || 
+                (/@checkout\./i.test(order.profile?.email || '') ? '' : order.profile?.email) || '';
+            return {
+                id: order.id,
+                orderNumber: order.order_number,
+                status: order.status,
+                total: order.total,
+                subtotal: order.subtotal,
+                shippingCost: order.shipping_cost,
+                discountAmount: order.discount_amount,
+                createdAt: order.created_at,
+                date: new Date(order.created_at).toLocaleDateString('en-IN'),
+                // Customer info (for admin view)
+                customer: {
+                    name: order.shipping_name || order.profile?.full_name || 'Unknown',
+                    email: customerEmail,
+                    phone: order.shipping_phone || order.profile?.phone || '',
+                },
+                // Address
+                shippingAddress: {
+                    name: order.shipping_name,
+                    phone: order.shipping_phone,
+                    line1: order.shipping_address_line1,
+                    line2: order.shipping_address_line2,
+                    city: order.shipping_city,
+                    state: order.shipping_state,
+                    pincode: order.shipping_pincode,
+                },
+                // Items
+                items: order.items || [],
+                timeline: order.timeline || [],
+                // Tracking
+                tracking: {
+                    awb: order.awb_id,
+                    shipmentId: order.shipment_id,
+                    courier: order.courier_name,
+                    trackingUrl: order.tracking_url,
+                },
+            };
+        }) || [];
 
         return NextResponse.json({ orders: transformedOrders, isAdmin });
     } catch (error) {

@@ -4,13 +4,14 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { formatPrice, cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, Package, Truck, Printer, MapPin, User, Calendar, CreditCard } from "lucide-react";
+import { ChevronLeft, Package, Truck, Printer, MapPin, User, Calendar, CreditCard, Mail, CheckCircle2, Clock, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import Image from "next/image";
 import Link from "next/link";
 
 interface OrderDetail {
     id: string;
+    order_number?: string;
     created_at: string;
     status: string;
     total: number;
@@ -27,6 +28,7 @@ interface OrderDetail {
     shipping_name: string;
     shipping_phone: string;
     customer_email?: string | null;
+    confirmation_email_sent_at?: string | null;
     items: {
         id: string;
         product_name: string;
@@ -68,6 +70,7 @@ export default function AdminOrderDetailsPage() {
     const router = useRouter();
     const [order, setOrder] = useState<OrderDetail | null>(null);
     const [loading, setLoading] = useState(true);
+    const [isResendingEmail, setIsResendingEmail] = useState(false);
 
     useEffect(() => {
         if (params.id) {
@@ -89,8 +92,37 @@ export default function AdminOrderDetailsPage() {
         }
     };
 
+    const handleResendEmail = async () => {
+        if (!order) return;
+        setIsResendingEmail(true);
+        try {
+            const res = await fetch('/api/admin/test-order-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ orderId: order.id, force: true }),
+            });
+            const data = await res.json();
+            if (res.ok && data.sent) {
+                toast.success(`Confirmation email sent for ${order.order_number || order.id.slice(0, 8)}`);
+                setOrder({
+                    ...order,
+                    confirmation_email_sent_at: new Date().toISOString(),
+                });
+            } else {
+                toast.error(data.error || "Failed to dispatch confirmation email");
+            }
+        } catch (err) {
+            console.error("Resend email error:", err);
+            toast.error("Network error resending email");
+        } finally {
+            setIsResendingEmail(false);
+        }
+    };
+
     if (loading) return <div className="p-8 text-center">Loading order details...</div>;
     if (!order) return <div className="p-8 text-center">Order not found</div>;
+
+    const displayOrderNumber = order.order_number || order.id.slice(0, 8).toUpperCase();
 
     return (
         <div className="p-6 md:p-8 space-y-8 max-w-6xl mx-auto">
@@ -101,7 +133,7 @@ export default function AdminOrderDetailsPage() {
                         <ChevronLeft className="w-5 h-5" />
                     </Button>
                     <div>
-                        <h1 className="text-2xl font-serif font-bold">Order #{order.id.slice(0, 8).toUpperCase()}</h1>
+                        <h1 className="text-2xl font-serif font-bold">Order #{displayOrderNumber}</h1>
                         <p className="text-muted-foreground text-sm">
                             Placed on {new Date(order.created_at).toLocaleString("en-IN")}
                         </p>
@@ -273,6 +305,57 @@ export default function AdminOrderDetailsPage() {
                                     WhatsApp
                                 </a>
                             )}
+                        </div>
+                    </div>
+
+                    {/* Email Notification Status */}
+                    <div className="bg-white rounded-xl shadow-sm border p-6">
+                        <h3 className="font-serif text-lg font-semibold mb-4 flex items-center gap-2">
+                            <Mail className="w-5 h-5 text-primary" />
+                            Email Notification
+                        </h3>
+                        <div className="space-y-3 text-sm">
+                            <div>
+                                <p className="text-muted-foreground text-xs uppercase">Confirmation Status</p>
+                                {order.confirmation_email_sent_at ? (
+                                    <div className="mt-1 flex items-center gap-1.5 text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg text-xs font-medium">
+                                        <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                                        <span>Sent on {new Date(order.confirmation_email_sent_at).toLocaleString("en-IN")}</span>
+                                    </div>
+                                ) : (
+                                    <div className="mt-1 flex items-center gap-1.5 text-amber-800 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg text-xs font-medium">
+                                        <Clock className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                                        <span>Not sent yet</span>
+                                    </div>
+                                )}
+                            </div>
+                            <div>
+                                <p className="text-muted-foreground text-xs uppercase">Recipient</p>
+                                <p className="font-medium text-foreground break-all">
+                                    {order.customer_email || 'No email recorded'}
+                                </p>
+                            </div>
+                            <div className="pt-2 border-t">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="w-full gap-2 text-xs"
+                                    onClick={handleResendEmail}
+                                    disabled={isResendingEmail}
+                                >
+                                    {isResendingEmail ? (
+                                        <>
+                                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                            Dispatching Email...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Mail className="w-3.5 h-3.5" />
+                                            Resend Confirmation Email
+                                        </>
+                                    )}
+                                </Button>
+                            </div>
                         </div>
                     </div>
 

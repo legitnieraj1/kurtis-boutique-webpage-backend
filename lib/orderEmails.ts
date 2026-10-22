@@ -409,21 +409,23 @@ export async function sendOrderPlacedEmails(
 ): Promise<void> {
     try {
         if (!options.force) {
-            const supabase = createSupabaseAdmin();
-            const { data: claimed, error } = await supabase
-                .from('orders')
-                .update({ confirmation_email_sent_at: new Date().toISOString() })
-                .eq('id', p.orderId)
-                .is('confirmation_email_sent_at', null)
-                .select('id');
+            try {
+                const supabase = createSupabaseAdmin();
+                const { data: claimed, error } = await supabase
+                    .from('orders')
+                    .update({ confirmation_email_sent_at: new Date().toISOString() })
+                    .eq('id', p.orderId)
+                    .is('confirmation_email_sent_at', null)
+                    .select('id');
 
-            if (error) {
-                console.error(`[OrderEmail] ${p.orderNumber} claim failed:`, error.message);
-                return;
-            }
-            if (!claimed || claimed.length === 0) {
-                console.log(`[OrderEmail] ${p.orderNumber} already notified — skipping (${p.source})`);
-                return;
+                if (error) {
+                    console.error(`[OrderEmail] ${p.orderNumber} claim failed (${error.message}) — proceeding with send to avoid dropped email`);
+                } else if (!claimed || claimed.length === 0) {
+                    console.log(`[OrderEmail] ${p.orderNumber} already notified — skipping (${p.source})`);
+                    return;
+                }
+            } catch (claimErr) {
+                console.error(`[OrderEmail] ${p.orderNumber} claim exception (${claimErr}) — proceeding with send`);
             }
         }
 

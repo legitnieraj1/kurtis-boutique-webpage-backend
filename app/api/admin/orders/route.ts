@@ -40,8 +40,48 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
 
+        const transformedOrders = orders?.map(order => {
+            const customerEmail = order.customer_email || 
+                (/@checkout\./i.test(order.user?.email || '') ? '' : order.user?.email) || '';
+            return {
+                id: order.id,
+                orderNumber: order.order_number,
+                status: order.status,
+                total: order.total,
+                subtotal: order.subtotal,
+                shippingCost: order.shipping_cost,
+                discountAmount: order.discount_amount,
+                createdAt: order.created_at,
+                date: new Date(order.created_at).toLocaleDateString('en-IN'),
+                customer: {
+                    name: order.shipping_name || order.user?.full_name || 'Unknown',
+                    email: customerEmail,
+                    phone: order.shipping_phone || order.user?.phone || '',
+                },
+                shippingAddress: {
+                    name: order.shipping_name,
+                    phone: order.shipping_phone,
+                    line1: order.shipping_address_line1,
+                    line2: order.shipping_address_line2,
+                    city: order.shipping_city,
+                    state: order.shipping_state,
+                    pincode: order.shipping_pincode,
+                },
+                items: order.items || [],
+                tracking: {
+                    awb: order.awb_id,
+                    shipmentId: order.shipment_id,
+                    courier: order.courier_name,
+                    trackingUrl: order.tracking_url,
+                },
+                razorpayOrderId: order.razorpay_order_id,
+                confirmationEmailSentAt: order.confirmation_email_sent_at,
+            };
+        }) || [];
+
         return NextResponse.json({
-            orders,
+            orders: transformedOrders,
+            rawOrders: orders,
             pagination: { limit, offset, total: count }
         });
     } catch (error) {
