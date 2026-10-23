@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { formatPrice } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Edit, Trash, EyeOff, Loader2, Search, X, GripVertical, ArrowUpDown, Check } from "lucide-react";
+import { Plus, Edit, Trash, EyeOff, Loader2, Search, X, GripVertical, ArrowUpDown, Check, ArrowUp, ArrowDown, ChevronsUp } from "lucide-react";
 import ProductForm from "@/components/admin/ProductForm";
 import { toast } from "sonner";
 import { getProductCategoryIds } from "@/lib/productCategories";
@@ -36,7 +36,25 @@ export default function AdminProducts() {
     // Reorder state
     const [reorderMode, setReorderMode] = useState(false);
     const [isSavingOrder, setIsSavingOrder] = useState(false);
+    const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
     const dragIndexRef = useRef<number | null>(null);
+    const startYRef = useRef<number>(0);
+    const isDragActiveRef = useRef<boolean>(false);
+    const tableContainerRef = useRef<HTMLDivElement | null>(null);
+    const scrollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+    const stopAutoScroll = () => {
+        if (scrollIntervalRef.current) {
+            clearInterval(scrollIntervalRef.current);
+            scrollIntervalRef.current = null;
+        }
+    };
+
+    useEffect(() => {
+        return () => {
+            if (scrollIntervalRef.current) clearInterval(scrollIntervalRef.current);
+        };
+    }, []);
 
     useEffect(() => {
         fetch(`/api/categories?view=list&_t=${Date.now()}`, { cache: 'no-store' })
@@ -134,22 +152,114 @@ export default function AdminProducts() {
         fetchProducts(); // Refresh list
     };
 
-    // ── Drag-and-drop reorder helpers ─────────────────────────────────────
-    const handleDragStart = (index: number) => {
-        dragIndexRef.current = index;
-    };
-
-    const handleDragOver = (e: React.DragEvent, index: number) => {
-        e.preventDefault();
-        const from = dragIndexRef.current;
-        if (from === null || from === index) return;
+    // ── Drag-and-drop & Reorder helpers ──────────────────────────────────
+    // Uses Pointer Events with touch-action:none and pointer capture so that
+    // touch on mobile, mouse on desktop, and stylus work identically without
+    // the mobile browser intercepting the long press as a "copy/save image" gesture.
+    const moveProduct = useCallback((from: number, to: number) => {
+        if (from === to || from < 0 || to < 0) return;
         setProducts(prev => {
+            if (from >= prev.length || to >= prev.length) return prev;
             const next = [...prev];
             const [moved] = next.splice(from, 1);
-            next.splice(index, 0, moved);
+            next.splice(to, 0, moved);
             return next;
         });
+    }, []);
+
+    const moveOne = (index: number, direction: -1 | 1) => {
+        const target = index + direction;
+        if (target < 0 || target >= products.length) return;
+        moveProduct(index, target);
+    };
+
+    const moveToTop = (index: number) => {
+        if (index <= 0) return;
+        setProducts(prev => {
+            const next = [...prev];
+            const [moved] = next.splice(index, 1);
+            next.unshift(moved);
+            return next;
+        });
+        toast.info("Moved to top");
+    };
+
+    const checkAutoScroll = (clientY: number) => {
+        const threshold = 80;
+        const viewportHeight = window.innerHeight;
+
+        if (clientY < threshold) {
+            const speed = -Math.max(4, Math.min(16, (threshold - clientY) / 3));
+            if (!scrollIntervalRef.current) {
+                scrollIntervalRef.current = setInterval(() => {
+                    window.scrollBy({ top: speed, behavior: 'instant' as ScrollBehavior });
+                }, 16);
+            }
+        } else if (clientY > viewportHeight - threshold) {
+            const speed = Math.max(4, Math.min(16, (clientY - (viewportHeight - threshold)) / 3));
+            if (!scrollIntervalRef.current) {
+                scrollIntervalRef.current = setInterval(() => {
+                    window.scrollBy({ top: speed, behavior: 'instant' as ScrollBehavior });
+                }, 16);
+            }
+        } else {
+            stopAutoScroll();
+        }
+    };
+
+    const handleGripPointerDown = (e: React.PointerEvent<HTMLDivElement>, index: number) => {
+        if (e.button !== 0) return; // Only left click or primary touch
         dragIndexRef.current = index;
+        startYRef.current = e.clientY;
+        isDragActiveRef.current = false;
+        try {
+            (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+        } catch {}
+    };
+
+    const handleGripPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+        if (dragIndexRef.current === null) return;
+
+        const dy = Math.abs(e.clientY - startYRef.current);
+        if (!isDragActiveRef.current) {
+            if (dy < 6) return;
+            isDragActiveRef.current = true;
+            setDraggingIndex(dragIndexRef.current);
+        }
+
+        e.preventDefault();
+        checkAutoScroll(e.clientY);
+
+        // Probe for row under client coordinates. Clamp probeX slightly inside container
+        // bounds so horizontal finger drifts near screen edges still hit rows cleanly.
+        const containerRect = tableContainerRef.current?.getBoundingClientRect();
+        const probeX = containerRect
+            ? Math.min(Math.max(e.clientX, containerRect.left + 30), containerRect.right - 30)
+            : e.clientX;
+
+        const targetEl = document.elementFromPoint(probeX, e.clientY);
+        const rowEl = targetEl?.closest('[data-reorder-index]');
+        if (rowEl) {
+            const toIndex = Number(rowEl.getAttribute('data-reorder-index'));
+            const fromIndex = dragIndexRef.current;
+            if (!Number.isNaN(toIndex) && toIndex !== fromIndex && toIndex >= 0 && toIndex < products.length) {
+                moveProduct(fromIndex, toIndex);
+                dragIndexRef.current = toIndex;
+                setDraggingIndex(toIndex);
+            }
+        }
+    };
+
+    const handleGripPointerEnd = (e: React.PointerEvent<HTMLDivElement>) => {
+        stopAutoScroll();
+        if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+            try {
+                e.currentTarget.releasePointerCapture(e.pointerId);
+            } catch {}
+        }
+        dragIndexRef.current = null;
+        isDragActiveRef.current = false;
+        setDraggingIndex(null);
     };
 
     const saveOrder = async () => {
@@ -176,28 +286,27 @@ export default function AdminProducts() {
         }
     };
 
-
     // Only the very first load takes over the screen. Later loads (a search,
     // a refresh) keep the table and search box mounted so typing is not
     // interrupted and focus is never lost.
-    if (!hasLoaded) return <div className="p-8 flex items-center gap-2"><Loader2 className="animate-spin" /> Loading products...</div>;
+    if (!hasLoaded) return <div className="p-4 sm:p-8 flex items-center gap-2"><Loader2 className="animate-spin" /> Loading products...</div>;
 
     return (
-        <div className="p-8 space-y-6">
-            <div className="flex justify-between items-center">
-                <div className="flex items-center gap-4">
-                    <h1 className="text-3xl font-serif font-bold">Products ({products.length})</h1>
+        <div className="p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                    <h1 className="text-2xl sm:text-3xl font-serif font-bold">Products ({products.length})</h1>
                     <Button variant="outline" size="sm" onClick={() => fetchProducts()} disabled={loading}>
                         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Refresh"}
                     </Button>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                     {!isAdding && !editingProduct && !reorderMode && (
                         <Button
                             variant="outline"
                             size="sm"
                             onClick={() => { setSearch(''); setReorderMode(true); }}
-                            title="Drag rows to reorder products on the shop page"
+                            title="Drag rows or use arrows to reorder products on the shop page"
                         >
                             <ArrowUpDown className="w-4 h-4 mr-2" />
                             Reorder Products
@@ -262,23 +371,41 @@ export default function AdminProducts() {
             )}
 
             {!isAdding && !editingProduct && (
-                <div className="bg-background rounded-lg border border-border overflow-hidden shadow-sm">
+                <div
+                    ref={tableContainerRef}
+                    className="bg-background rounded-lg border border-border overflow-hidden shadow-sm"
+                >
                     {reorderMode && (
-                        <div className="px-4 py-2 bg-amber-50 border-b border-amber-200 text-xs text-amber-800 flex items-center gap-2">
-                            <GripVertical className="w-4 h-4" />
-                            Drag rows to reorder. Changes only apply when you click <strong>Save Order</strong>.
+                        <div className="px-4 py-3 bg-amber-50 border-b border-amber-200 text-xs sm:text-sm text-amber-800 flex flex-wrap items-center justify-between gap-2 select-none">
+                            <div className="flex items-center gap-2">
+                                <GripVertical className="w-4 h-4 shrink-0 text-amber-700" />
+                                <span>
+                                    Drag the handle <span className="font-semibold">⋮⋮</span> or tap <span className="font-semibold">↑ / ↓</span> to reorder.
+                                </span>
+                            </div>
+                            <span className="text-amber-900 font-medium text-[11px] sm:text-xs bg-amber-100 px-2 py-0.5 rounded">
+                                Tap &quot;Save Order&quot; to apply
+                            </span>
                         </div>
                     )}
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left min-w-[600px] md:min-w-full">
-                            <thead className="bg-muted/50 text-muted-foreground font-medium border-b border-border">
+                    <div className={reorderMode ? "overflow-x-visible" : "overflow-x-auto"}>
+                        <table className={`w-full text-sm text-left ${reorderMode ? 'min-w-full' : 'min-w-[600px] md:min-w-full'}`}>
+                            <thead className="bg-muted/50 text-muted-foreground font-medium border-b border-border select-none">
                                 <tr>
-                                    {reorderMode && <th className="px-3 py-3 w-8" />}
-                                    <th className="px-6 py-3">Product</th>
+                                    {reorderMode && (
+                                        <th className="px-2 sm:px-3 py-3 w-12 sm:w-16 text-center text-xs">
+                                            #
+                                        </th>
+                                    )}
+                                    <th className="px-3 sm:px-6 py-3">Product</th>
                                     <th className="px-6 py-3 hidden md:table-cell">Category</th>
-                                    <th className="px-6 py-3">Price</th>
+                                    <th className={`px-4 sm:px-6 py-3 ${reorderMode ? 'hidden sm:table-cell' : ''}`}>Price</th>
                                     <th className="px-6 py-3 hidden md:table-cell">Stock</th>
-                                    {!reorderMode && <th className="px-6 py-3 text-right">Actions</th>}
+                                    {reorderMode ? (
+                                        <th className="px-2 sm:px-4 py-3 text-right text-xs">Move</th>
+                                    ) : (
+                                        <th className="px-6 py-3 text-right">Actions</th>
+                                    )}
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-border">
@@ -293,30 +420,66 @@ export default function AdminProducts() {
                                     return (
                                         <tr
                                             key={product.id}
-                                            className={`hover:bg-muted/10 transition-colors ${reorderMode ? 'cursor-grab active:cursor-grabbing' : ''}`}
-                                            draggable={reorderMode}
-                                            onDragStart={reorderMode ? () => handleDragStart(index) : undefined}
-                                            onDragOver={reorderMode ? (e) => handleDragOver(e, index) : undefined}
+                                            data-reorder-index={index}
+                                            className={`transition-colors select-none ${
+                                                reorderMode && draggingIndex === index
+                                                    ? 'bg-amber-100/70 dark:bg-amber-950/40 ring-2 ring-amber-400 ring-inset shadow-md'
+                                                    : 'hover:bg-muted/10'
+                                            }`}
                                         >
                                             {reorderMode && (
-                                                <td className="px-3 py-4 text-muted-foreground">
-                                                    <GripVertical className="w-4 h-4" />
+                                                <td className="px-2 sm:px-3 py-3 text-muted-foreground text-center align-middle">
+                                                    <div className="flex items-center justify-center gap-1 select-none">
+                                                        <div
+                                                            data-drag-handle
+                                                            style={{ touchAction: 'none' }}
+                                                            className="p-2 -m-1 cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground touch-none select-none [-webkit-touch-callout:none] [-webkit-user-select:none] flex items-center justify-center rounded hover:bg-muted/50 transition-colors"
+                                                            onPointerDown={(e) => handleGripPointerDown(e, index)}
+                                                            onPointerMove={handleGripPointerMove}
+                                                            onPointerUp={handleGripPointerEnd}
+                                                            onPointerCancel={handleGripPointerEnd}
+                                                            title="Drag to reorder"
+                                                            aria-label={`Drag to reorder ${product.name}`}
+                                                        >
+                                                            <GripVertical className="w-4 h-4 pointer-events-none" />
+                                                        </div>
+                                                        <span className="text-[11px] sm:text-xs font-mono text-muted-foreground/80 w-5 text-right tabular-nums select-none">
+                                                            {index + 1}
+                                                        </span>
+                                                    </div>
                                                 </td>
                                             )}
-                                            <td className="px-6 py-4 font-medium text-foreground flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded bg-muted overflow-hidden relative border border-border shrink-0">
-                                                    {displayImage ? (
-                                                        <img src={displayImage} alt={product.name} className="w-full h-full object-cover" />
-                                                    ) : (
-                                                        <div className="w-full h-full bg-stone-200" />
-                                                    )}
-                                                </div>
-                                                <div className="flex flex-col">
-                                                    <span>{product.name}</span>
-                                                    <span className="text-xs text-muted-foreground md:hidden">Qty: {product.stock_remaining}</span>
+                                            <td className="px-3 sm:px-6 py-3 font-medium text-foreground select-none">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded bg-muted overflow-hidden relative border border-border shrink-0 select-none">
+                                                        {displayImage ? (
+                                                            <img
+                                                                src={displayImage}
+                                                                alt={product.name}
+                                                                draggable={false}
+                                                                onContextMenu={(e) => e.preventDefault()}
+                                                                className="w-full h-full object-cover select-none pointer-events-none [-webkit-touch-callout:none]"
+                                                            />
+                                                        ) : (
+                                                            <div className="w-full h-full bg-stone-200 select-none pointer-events-none" />
+                                                        )}
+                                                    </div>
+                                                    <div className="flex flex-col min-w-0 select-none">
+                                                        <span className="truncate max-w-[170px] sm:max-w-xs md:max-w-sm text-sm" title={product.name}>
+                                                            {product.name}
+                                                        </span>
+                                                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                            <span>Qty: {product.stock_remaining}</span>
+                                                            {reorderMode && (
+                                                                <span className="sm:hidden font-medium text-foreground">
+                                                                    • {formatPrice(product.discount_price && product.discount_price < product.price ? product.discount_price : product.price)}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4 hidden md:table-cell">
+                                            <td className="px-6 py-3 hidden md:table-cell select-none">
                                                 {(() => {
                                                     const names = getProductCategoryIds(product)
                                                         .map(id => categoryNames[id])
@@ -334,7 +497,7 @@ export default function AdminProducts() {
                                                     );
                                                 })()}
                                             </td>
-                                            <td className="px-6 py-4">
+                                            <td className={`px-4 sm:px-6 py-3 select-none ${reorderMode ? 'hidden sm:table-cell' : ''}`}>
                                                 <div className="flex flex-col">
                                                     {product.discount_price && product.discount_price < product.price ? (
                                                         <>
@@ -346,7 +509,7 @@ export default function AdminProducts() {
                                                     )}
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4 hidden md:table-cell">
+                                            <td className="px-6 py-3 hidden md:table-cell select-none">
                                                 <div className="flex flex-col gap-2">
                                                     <div className="flex gap-2">
                                                         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${inStock ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
@@ -361,7 +524,48 @@ export default function AdminProducts() {
                                                     )}
                                                 </div>
                                             </td>
-                                            {!reorderMode && (
+                                            {reorderMode ? (
+                                                <td className="px-2 sm:px-4 py-3 text-right whitespace-nowrap select-none">
+                                                    <div className="flex items-center justify-end gap-0.5 sm:gap-1">
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted touch-manipulation"
+                                                            onClick={() => moveToTop(index)}
+                                                            disabled={index === 0}
+                                                            title="Move to top"
+                                                            aria-label={`Move ${product.name} to top`}
+                                                        >
+                                                            <ChevronsUp className="w-4 h-4" />
+                                                        </Button>
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted touch-manipulation"
+                                                            onClick={() => moveOne(index, -1)}
+                                                            disabled={index === 0}
+                                                            title="Move up"
+                                                            aria-label={`Move ${product.name} up`}
+                                                        >
+                                                            <ArrowUp className="w-4 h-4" />
+                                                        </Button>
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted touch-manipulation"
+                                                            onClick={() => moveOne(index, 1)}
+                                                            disabled={index === products.length - 1}
+                                                            title="Move down"
+                                                            aria-label={`Move ${product.name} down`}
+                                                        >
+                                                            <ArrowDown className="w-4 h-4" />
+                                                        </Button>
+                                                    </div>
+                                                </td>
+                                            ) : (
                                                 <td className="px-6 py-4 text-right space-x-2 whitespace-nowrap">
                                                     <Button
                                                         variant="ghost"
