@@ -90,6 +90,10 @@ GRANT EXECUTE ON FUNCTION public.next_order_number() TO service_role;
 GRANT EXECUTE ON FUNCTION public.next_order_number() TO anon;
 GRANT EXECUTE ON FUNCTION public.next_order_number() TO authenticated;
 
+GRANT ALL ON TABLE public.order_number_seq TO service_role;
+GRANT SELECT, INSERT, UPDATE ON TABLE public.order_number_seq TO anon;
+GRANT SELECT, INSERT, UPDATE ON TABLE public.order_number_seq TO authenticated;
+
 -- STEP 3: Replace the INSERT trigger to use next_order_number()
 -- Only fires when the application did not supply an order_number
 -- (guards legacy routes and avoids double-incrementing).
