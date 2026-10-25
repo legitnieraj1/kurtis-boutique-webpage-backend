@@ -79,21 +79,53 @@ export async function POST(request: NextRequest) {
 
         // ── Save session so webhook can reconstruct order without browser ──
         // This is the key to never losing an order — webhook reads this table.
+        // Retry up to 3 times; a permanent failure is logged as CRITICAL so it
+        // can be caught in monitoring. Even without this row the browser verify
+        // path can still create the order, but loss of the session means a
+        // browser crash will leave the payment with no recovery path.
+        const adminDb = createSupabaseAdmin();
+        let sessionSaved = false;
+        const subtotalForSession = cartItems.reduce((sum, item) => sum + item.unit_price * item.quantity, 0);
+
+        // Resolve user_id from the server session so the webhook can attach the order correctly.
+        let sessionUserId: string | null = null;
         try {
-            const adminDb = createSupabaseAdmin();
-            const subtotalForSession = cartItems.reduce((sum, item) => sum + item.unit_price * item.quantity, 0);
-            await adminDb.from('checkout_sessions').upsert({
-                razorpay_order_id: razorpayOrder.id,
-                cart_items: cartItems,
-                shipping_address: shippingAddress,
-                customer_email: customerEmail || '',
-                shipping_cost: shippingCost,
-                subtotal: subtotalForSession,
-                total: totalAmount,
-            }, { onConflict: 'razorpay_order_id' });
-        } catch (sessionErr) {
-            // Non-fatal — verify route still works if this fails
-            console.error('[Checkout] ⚠️ Could not save checkout_session:', sessionErr);
+            const { createSupabaseServerClient } = await import('@/lib/supabase/server');
+            const serverClient = await createSupabaseServerClient();
+            const { data: { user } } = await serverClient.auth.getUser();
+            sessionUserId = user?.id ?? null;
+        } catch { /* not required — fallback paths exist in webhook */ }
+
+        for (let attempt = 1; attempt <= 3; attempt++) {
+            try {
+                const { error: sessionErr } = await adminDb.from('checkout_sessions').upsert({
+                    razorpay_order_id: razorpayOrder.id,
+                    cart_items: cartItems,
+                    shipping_address: shippingAddress,
+                    customer_email: customerEmail || '',
+                    shipping_cost: shippingCost,
+                    subtotal: subtotalForSession,
+                    total: totalAmount,
+                    ...(sessionUserId ? { user_id: sessionUserId } : {}),
+                }, { onConflict: 'razorpay_order_id' });
+
+                if (sessionErr) throw sessionErr;
+                sessionSaved = true;
+                break;
+            } catch (sessionErr) {
+                console.error(`[Checkout] ⚠️ checkout_session save attempt ${attempt}/3 failed:`, sessionErr);
+                if (attempt < 3) await new Promise(r => setTimeout(r, 200 * attempt));
+            }
+        }
+
+        if (!sessionSaved) {
+            // CRITICAL: webhook cannot recover this order if browser also fails.
+            // Log at highest severity so it appears in alerting.
+            console.error(
+                `[Checkout] 🚨 CRITICAL: checkout_session NOT saved for razorpay_order_id=${
+                    razorpayOrder.id
+                } amount=${totalAmount}. If payment completes and browser crashes, this order WILL be lost.`
+            );
         }
 
         return NextResponse.json({

@@ -123,12 +123,50 @@ export async function POST(request: NextRequest) {
             });
         }
 
-        // ── 5. Parse shipping & validate cart items ─────────────────────
-        const parsedShipping = typeof shippingAddress === 'string'
+        // ── 5. Resolve cart & shipping (browser data + session fallback) ──
+        // If the browser sent complete cartItems, use them.  Otherwise (network
+        // hiccup, crash, replay) pull from the checkout_session saved by the
+        // initiate route — this is the same path the webhook uses.
+        let parsedShipping = typeof shippingAddress === 'string'
             ? JSON.parse(shippingAddress) : shippingAddress;
 
+        let resolvedCartItems: CartItemPayload[] = (cartItems && cartItems.length > 0) ? cartItems : [];
+        let clientShippingCostResolved: number = typeof clientShippingCost === 'number' ? clientShippingCost : -1;
+        let sessionCustomerEmail = customerEmail;
+
+        if (resolvedCartItems.length === 0) {
+            // Browser did not send cart — pull from the session the initiate route saved.
+            console.warn(`[Razorpay] ⚠️ cartItems missing from verify body for ${razorpay_order_id} — falling back to checkout_session`);
+            const { data: session } = await adminDb
+                .from('checkout_sessions')
+                .select('*')
+                .eq('razorpay_order_id', razorpay_order_id)
+                .maybeSingle();
+
+            if (session) {
+                resolvedCartItems = session.cart_items || [];
+                if (!parsedShipping || Object.keys(parsedShipping).length === 0) {
+                    parsedShipping = session.shipping_address || {};
+                }
+                if (clientShippingCostResolved === -1 && session.shipping_cost != null) {
+                    clientShippingCostResolved = Number(session.shipping_cost);
+                }
+                if (!sessionCustomerEmail && session.customer_email) {
+                    sessionCustomerEmail = session.customer_email;
+                }
+                console.log(`[Razorpay] ✅ Recovered ${resolvedCartItems.length} cart items from checkout_session`);
+            } else {
+                console.error(`[Razorpay] ❌ No checkout_session found for ${razorpay_order_id} — cannot create order`);
+                return NextResponse.json({
+                    success: false,
+                    error: `Payment captured (${razorpay_payment_id}) but cart data is missing. Please contact support — your money is safe.`,
+                    paymentId: razorpay_payment_id,
+                }, { status: 500 });
+            }
+        }
+
         let subtotal = 0;
-        const orderItemsData = cartItems.map((item) => {
+        const orderItemsData = resolvedCartItems.map((item) => {
             const price = Math.max(0, Number(item.unit_price) || 0);
             const qty = Math.max(1, Number(item.quantity) || 1);
             const itemTotal = price * qty;
@@ -150,13 +188,14 @@ export async function POST(request: NextRequest) {
 
         // ── 6. Use shipping cost from initiate (exact amount charged) ───
         // Fall back to calculation only if client didn't send it.
-        let shippingCost: number = typeof clientShippingCost === 'number' ? clientShippingCost : -1;
+        let shippingCost: number = clientShippingCostResolved;
         if (shippingCost === -1) {
             const pincode = parsedShipping?.pincode;
             shippingCost = pincode ? await calculateShipping(pincode) : DEFAULT_SHIPPING_OUTSIDE;
         }
 
         const total = subtotal + shippingCost;
+
 
         // ── 7. Resolve user_id ──────────────────────────────────────────
         // user_id is NOT NULL in orders — we MUST have a real UUID.
@@ -210,11 +249,16 @@ export async function POST(request: NextRequest) {
         }
 
         // ── 8. Insert order ─────────────────────────────────────────────
-        const fallbackOrderNumber = await generateOrderNumber(adminDb);
+        // Pre-generate the sequential order number BEFORE the INSERT.
+        // Passing it explicitly in the payload means the DB trigger's guard
+        // (IF NEW.order_number IS NULL) will skip — exactly one counter
+        // increment per order, with no wasted sequence numbers.
+        const preGeneratedOrderNumber = await generateOrderNumber(adminDb);
         const phone10 = sanitizePhone(parsedShipping?.phone || '');
 
         const orderInsert: Record<string, any> = {
             user_id: userId,
+            order_number: preGeneratedOrderNumber,   // supplied explicitly → trigger skips
             status: 'pending',
             subtotal,
             shipping_cost: shippingCost,
@@ -229,7 +273,8 @@ export async function POST(request: NextRequest) {
             shipping_pincode: (parsedShipping?.pincode || '').trim(),
             // The buyer's real address. profiles.email is a synthetic
             // guest-...@checkout.kurtisboutique.in and cannot be emailed.
-            customer_email: (customerEmail || '').trim().toLowerCase() || null,
+            // sessionCustomerEmail is the browser value, falling back to checkout_session.
+            customer_email: (sessionCustomerEmail || '').trim().toLowerCase() || null,
         };
 
         // razorpay_order_id enables idempotency — duplicate verify calls return the existing order (step 4 above)
@@ -285,10 +330,14 @@ export async function POST(request: NextRequest) {
             }, { status: 500 });
         }
 
-        // ── 9. Ensure order_number ──────────────────────────────────────
-        const orderNumber: string = order.order_number || fallbackOrderNumber;
+        // ── 9. Resolve order_number ─────────────────────────────────────
+        // order_number was supplied in the INSERT payload so it should always
+        // be set.  The preGeneratedOrderNumber fallback guards against any
+        // unexpected edge case where the DB returned null.
+        const orderNumber: string = order.order_number || preGeneratedOrderNumber;
         if (!order.order_number) {
             await adminDb.from('orders').update({ order_number: orderNumber }).eq('id', order.id);
+            console.warn('[Razorpay] ⚠️ order_number was missing after insert — patched to:', orderNumber);
         }
 
         // ── 10. Insert order items ──────────────────────────────────────
@@ -299,7 +348,8 @@ export async function POST(request: NextRequest) {
 
         // ── 11. Decrement stock ─────────────────────────────────────────
         const { decrementStockForOrder } = await import('@/lib/stock');
-        await decrementStockForOrder(adminDb, cartItems, orderNumber);
+        await decrementStockForOrder(adminDb, resolvedCartItems, orderNumber);
+
 
         // ── 12. Timeline entry (parity with the webhook path) ───────────
         const { error: timelineErr } = await adminDb.from('order_timeline').insert({
@@ -319,7 +369,7 @@ export async function POST(request: NextRequest) {
                 await sendOrderPlacedEmails({
                     orderId: order.id,
                     orderNumber,
-                    customerEmail: (customerEmail || '').trim() || null,
+                    customerEmail: (sessionCustomerEmail || '').trim() || null,
                     customerName: orderInsert.shipping_name,
                     customerPhone: phone10,
                     items: orderItemsData,

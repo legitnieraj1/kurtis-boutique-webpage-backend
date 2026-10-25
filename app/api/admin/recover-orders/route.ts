@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
         // ── 5. Existing orders for duplicate detection ──────────────────
         const { data: existingOrders } = await adminDb
             .from('orders')
-            .select('id, order_number, total, razorpay_order_id, created_at');
+            .select('id, order_number, total, razorpay_order_id, created_at, customer_email, shipping_phone');
 
         const recovered: any[] = [];
         const skipped: any[] = [];
@@ -108,7 +108,26 @@ export async function POST(request: NextRequest) {
             });
 
             if (dup) {
-                skipped.push({ paymentId: payment.id, amount: amountRupees, reason: `Matches ${dup.order_number}` });
+                skipped.push({ paymentId: payment.id, amount: amountRupees, reason: `Matches ${dup.order_number} by amount and timestamp` });
+                continue;
+            }
+
+            // Deduplication Check 3: same customer email OR phone AND same amount (±₹10) on the same day
+            const paymentDay = paymentDate.toISOString().slice(0, 10);
+            const customerEmailRaw = (payment.email || '').trim().toLowerCase();
+            const customerPhoneRaw = sanitizePhone(payment.contact || '');
+            const customerMatch = existingOrders?.find((o) => {
+                const diff = Math.abs(Number(o.total) - amountRupees);
+                if (diff > 10) return false;
+                const orderDay = new Date(o.created_at).toISOString().slice(0, 10);
+                if (orderDay !== paymentDay) return false;
+                const emailMatch = customerEmailRaw && o.customer_email && o.customer_email.trim().toLowerCase() === customerEmailRaw;
+                const phoneMatch = customerPhoneRaw && o.shipping_phone && sanitizePhone(o.shipping_phone) === customerPhoneRaw;
+                return emailMatch || phoneMatch;
+            });
+
+            if (customerMatch) {
+                skipped.push({ paymentId: payment.id, amount: amountRupees, reason: `Matches ${customerMatch.order_number} by customer and amount on same date` });
                 continue;
             }
 
@@ -127,7 +146,10 @@ export async function POST(request: NextRequest) {
             let cartItemsForStock: any[] = [];
             let customerEmail = '';
 
-            const fallbackOrderNumber = await generateOrderNumber(adminDb);
+            // Pre-generate the sequential order number BEFORE the INSERT.
+            // Passing it explicitly prevents the DB trigger from calling
+            // next_order_number() again — one increment per order, no gaps.
+            const preGeneratedOrderNumber = await generateOrderNumber(adminDb);
 
             if (session) {
                 // High-fidelity recovery from checkout session
@@ -143,6 +165,7 @@ export async function POST(request: NextRequest) {
 
                 orderInsertData = {
                     user_id: resolvedUserId,
+                    order_number: preGeneratedOrderNumber,   // supplied explicitly → trigger skips
                     status: 'confirmed',
                     subtotal,
                     shipping_cost: shippingCost,
@@ -188,6 +211,7 @@ export async function POST(request: NextRequest) {
 
                 orderInsertData = {
                     user_id: adminUserId,
+                    order_number: preGeneratedOrderNumber,   // supplied explicitly → trigger skips
                     status: 'confirmed',
                     subtotal: amountRupees,
                     shipping_cost: 0,
@@ -236,9 +260,10 @@ export async function POST(request: NextRequest) {
                 continue;
             }
 
-            const orderNumber = order.order_number ?? fallbackOrderNumber;
+            const orderNumber = order.order_number ?? preGeneratedOrderNumber;
             if (!order.order_number) {
                 await adminDb.from('orders').update({ order_number: orderNumber }).eq('id', order.id);
+                console.warn(`[Recover] ⚠️ order_number missing after insert — patched to: ${orderNumber}`);
             }
 
             // Insert items

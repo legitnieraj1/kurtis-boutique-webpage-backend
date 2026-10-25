@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Eye, Search, RefreshCw, Package, CheckCircle, MessageCircle, Trash2, CloudDownload, FileSpreadsheet, Download, Loader2 } from "lucide-react";
+import { Eye, Search, RefreshCw, Package, CheckCircle, MessageCircle, Trash2, CloudDownload, FileSpreadsheet, Download, Loader2, ShieldAlert } from "lucide-react";
 import Link from "next/link";
 import { formatPrice } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -390,6 +390,18 @@ export default function AdminOrdersPage() {
                     <Button variant="outline" onClick={fetchOrders} disabled={loading}>
                         <RefreshCw className={cn("w-4 h-4 mr-2", loading && "animate-spin")} />
                         Refresh
+                    </Button>
+
+                    <Button
+                        variant="outline"
+                        onClick={recoverOrders}
+                        disabled={isRecovering}
+                        className="border-orange-300 text-orange-700 hover:bg-orange-50"
+                    >
+                        {isRecovering
+                            ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            : <ShieldAlert className="w-4 h-4 mr-2" />}
+                        {isRecovering ? "Recovering..." : "Recover Orders"}
                     </Button>
 
                     <Button variant="outline" onClick={() => setShowExport(v => !v)}>

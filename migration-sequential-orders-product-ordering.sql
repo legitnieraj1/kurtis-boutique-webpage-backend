@@ -1,6 +1,13 @@
 -- ============================================================
 -- MIGRATION: Sequential order numbers + product display_order
 -- Run once in Supabase SQL Editor
+--
+-- *** SUPERSEDED ***
+-- The next_order_number() function in this file used a PER-DATE
+-- counter (resets each day).  Run migration-global-sequential-order-
+-- numbers.sql instead, which replaces it with a GLOBAL lifetime
+-- counter (KBYYYYMMDD-NNN format, never resets).
+-- This file is kept for historical reference only.
 -- ============================================================
 
 -- ─── 1. Sequential order number counter ─────────────────────
