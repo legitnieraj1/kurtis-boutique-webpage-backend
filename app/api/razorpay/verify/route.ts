@@ -16,16 +16,6 @@ interface CartItemPayload {
     product_image?: string | null;
 }
 
-/** Generate sequential order number via DB function (KB{YYYYMMDD}-{0001}) */
-async function generateOrderNumber(adminDb: ReturnType<typeof import('@/lib/supabase/server').createSupabaseAdmin>): Promise<string> {
-    const { data, error } = await adminDb.rpc('next_order_number');
-    if (!error && data) return data as string;
-    // Fallback (should never happen): local random
-    const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    const rand = String(Math.floor(1000 + Math.random() * 9000));
-    console.error('[Verify] DB order number failed, using fallback:', error?.message);
-    return `KB${date}-${rand}`;
-}
 
 /** Sanitize phone to exactly 10 Indian digits */
 function sanitizePhone(raw: string): string {
@@ -249,16 +239,14 @@ export async function POST(request: NextRequest) {
         }
 
         // ── 8. Insert order ─────────────────────────────────────────────
-        // Pre-generate the sequential order number BEFORE the INSERT.
-        // Passing it explicitly in the payload means the DB trigger's guard
-        // (IF NEW.order_number IS NULL) will skip — exactly one counter
-        // increment per order, with no wasted sequence numbers.
-        const preGeneratedOrderNumber = await generateOrderNumber(adminDb);
+        // Omit order_number so the DB trigger (set_order_number) calls next_order_number()
+        // inside the insert transaction. If the webhook already created this order,
+        // this INSERT fails with 23505 and Postgres automatically rolls back the sequence
+        // increment so no order numbers are skipped.
         const phone10 = sanitizePhone(parsedShipping?.phone || '');
 
         const orderInsert: Record<string, any> = {
             user_id: userId,
-            order_number: preGeneratedOrderNumber,   // supplied explicitly → trigger skips
             status: 'pending',
             subtotal,
             shipping_cost: shippingCost,
@@ -331,13 +319,10 @@ export async function POST(request: NextRequest) {
         }
 
         // ── 9. Resolve order_number ─────────────────────────────────────
-        // order_number was supplied in the INSERT payload so it should always
-        // be set.  The preGeneratedOrderNumber fallback guards against any
-        // unexpected edge case where the DB returned null.
-        const orderNumber: string = order.order_number || preGeneratedOrderNumber;
-        if (!order.order_number) {
-            await adminDb.from('orders').update({ order_number: orderNumber }).eq('id', order.id);
-            console.warn('[Razorpay] ⚠️ order_number was missing after insert — patched to:', orderNumber);
+        // DB trigger set_order_number sets order_number on insert.
+        const orderNumber: string = order.order_number;
+        if (!orderNumber) {
+            console.error('[Razorpay] ❌ order_number is null after insert — DB trigger may not be installed');
         }
 
         // ── 10. Insert order items ──────────────────────────────────────

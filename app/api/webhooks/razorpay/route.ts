@@ -16,16 +16,6 @@ function sanitizePhone(raw: string): string {
     return digits.slice(-10);
 }
 
-/** Generate sequential order number via DB function (KB{YYYYMMDD}-{0001}) */
-async function generateOrderNumber(adminDb: ReturnType<typeof import('@/lib/supabase/server').createSupabaseAdmin>): Promise<string> {
-    const { data, error } = await adminDb.rpc('next_order_number');
-    if (!error && data) return data as string;
-    // Fallback (should never happen): local random
-    const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    const rand = String(Math.floor(1000 + Math.random() * 9000));
-    console.error('[Webhook] DB order number failed, using fallback:', error?.message);
-    return `KB${date}-${rand}`;
-}
 
 export async function POST(request: NextRequest) {
     const rawBody = await request.text();
@@ -168,10 +158,10 @@ export async function POST(request: NextRequest) {
                 }
 
                 if (placeholderUserId) {
-                    const placeholderNumber = await generateOrderNumber(adminDb);
+                    // Don't pre-generate order number — let the DB trigger assign it.
+                    // This avoids wasting a sequence number if insert fails.
                     const { data: placeholderOrder } = await adminDb.from('orders').insert({
                         user_id: placeholderUserId,
-                        order_number: placeholderNumber,
                         status: 'confirmed',
                         subtotal: amountRupees,
                         shipping_cost: 0,
@@ -189,6 +179,7 @@ export async function POST(request: NextRequest) {
                     }).select().single();
 
                     if (placeholderOrder) {
+                        const pNum = placeholderOrder.order_number;
                         await adminDb.from('order_items').insert({
                             order_id: placeholderOrder.id,
                             product_name: `⚠️ PLACEHOLDER — ₹${amountRupees} | Session missing | Razorpay: ${razorpayPaymentId}`,
@@ -202,8 +193,8 @@ export async function POST(request: NextRequest) {
                             status: 'confirmed',
                             description: `Auto-placeholder: checkout_session missing. Payment ${razorpayPaymentId}. Edit order to fill real items.`,
                         });
-                        console.warn(`[Webhook] 🚨 Placeholder order created: ${placeholderNumber} — admin must update with real items`);
-                        return NextResponse.json({ ok: true, placeholder: true, orderId: placeholderOrder.id, orderNumber: placeholderNumber });
+                        console.warn(`[Webhook] 🚨 Placeholder order created: ${pNum} — admin must update with real items`);
+                        return NextResponse.json({ ok: true, placeholder: true, orderId: placeholderOrder.id, orderNumber: pNum });
                     }
                 }
             } catch (placeholderErr) {
@@ -286,17 +277,15 @@ export async function POST(request: NextRequest) {
     }
 
     // ── 7. Insert order ──────────────────────────────────────────────────
-    // Pre-generate the sequential order number BEFORE the INSERT.
-    // Passing it explicitly prevents the DB trigger from calling
-    // next_order_number() again — one increment per order, no gaps.
-    const preGeneratedOrderNumber = await generateOrderNumber(adminDb);
+    // Let the DB trigger call next_order_number() — this way, if the verify
+    // route already created the order and this INSERT fails with 23505
+    // (unique constraint on razorpay_order_id), no sequence number is consumed.
     const phone10 = sanitizePhone(shippingAddress?.phone || '');
 
     const { data: order, error: orderError } = await adminDb
         .from('orders')
         .insert({
             user_id: userId,
-            order_number: preGeneratedOrderNumber,   // supplied explicitly → trigger skips
             status: 'pending',
             subtotal,
             shipping_cost: shippingCost,
@@ -331,10 +320,10 @@ export async function POST(request: NextRequest) {
     }
 
     // ── 8. Resolve order_number ───────────────────────────────────────────
-    const orderNumber: string = order.order_number || preGeneratedOrderNumber;
-    if (!order.order_number) {
-        await adminDb.from('orders').update({ order_number: orderNumber }).eq('id', order.id);
-        console.warn('[Webhook] ⚠️ order_number was missing after insert — patched to:', orderNumber);
+    // The DB trigger always sets order_number, so this should never be empty.
+    const orderNumber: string = order.order_number;
+    if (!orderNumber) {
+        console.error('[Webhook] ❌ order_number is null after insert — DB trigger may not be installed');
     }
 
     // ── 9. Insert order items ────────────────────────────────────────────

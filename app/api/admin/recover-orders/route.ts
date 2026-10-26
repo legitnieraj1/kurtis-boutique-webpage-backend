@@ -17,16 +17,6 @@ function sanitizePhone(raw: string): string {
     return digits.slice(-10);
 }
 
-/** Generate sequential order number via DB function (KB{YYYYMMDD}-{0001}) */
-async function generateOrderNumber(adminDb: ReturnType<typeof import('@/lib/supabase/server').createSupabaseAdmin>): Promise<string> {
-    const { data, error } = await adminDb.rpc('next_order_number');
-    if (!error && data) return data as string;
-    const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    const rand = String(Math.floor(1000 + Math.random() * 9000));
-    console.error('[Recover] DB order number failed, using fallback:', error?.message);
-    return `KB${date}-${rand}`;
-}
-
 /**
  * POST /api/admin/recover-orders
  *
@@ -146,10 +136,7 @@ export async function POST(request: NextRequest) {
             let cartItemsForStock: any[] = [];
             let customerEmail = '';
 
-            // Pre-generate the sequential order number BEFORE the INSERT.
-            // Passing it explicitly prevents the DB trigger from calling
-            // next_order_number() again — one increment per order, no gaps.
-            const preGeneratedOrderNumber = await generateOrderNumber(adminDb);
+            // DB trigger set_order_number handles order_number generation on insert.
 
             if (session) {
                 // High-fidelity recovery from checkout session
@@ -165,7 +152,6 @@ export async function POST(request: NextRequest) {
 
                 orderInsertData = {
                     user_id: resolvedUserId,
-                    order_number: preGeneratedOrderNumber,   // supplied explicitly → trigger skips
                     status: 'confirmed',
                     subtotal,
                     shipping_cost: shippingCost,
@@ -211,7 +197,6 @@ export async function POST(request: NextRequest) {
 
                 orderInsertData = {
                     user_id: adminUserId,
-                    order_number: preGeneratedOrderNumber,   // supplied explicitly → trigger skips
                     status: 'confirmed',
                     subtotal: amountRupees,
                     shipping_cost: 0,
@@ -260,10 +245,9 @@ export async function POST(request: NextRequest) {
                 continue;
             }
 
-            const orderNumber = order.order_number ?? preGeneratedOrderNumber;
-            if (!order.order_number) {
-                await adminDb.from('orders').update({ order_number: orderNumber }).eq('id', order.id);
-                console.warn(`[Recover] ⚠️ order_number missing after insert — patched to: ${orderNumber}`);
+            const orderNumber = order.order_number;
+            if (!orderNumber) {
+                console.error(`[Recover] ❌ order_number is null after insert for payment ${payment.id}`);
             }
 
             // Insert items
