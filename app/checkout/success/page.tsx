@@ -4,11 +4,17 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { CheckCircle, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Suspense } from 'react';
+import { Suspense, useEffect } from 'react';
+import { useStore } from '@/lib/store';
 
 function SuccessContent() {
     const searchParams = useSearchParams();
     const orderId = searchParams.get('order_id');
+    const { clearCart } = useStore();
+
+    useEffect(() => {
+        clearCart().catch(() => {});
+    }, [clearCart]);
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-green-50 to-white flex items-center justify-center px-4">

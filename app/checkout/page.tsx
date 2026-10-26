@@ -32,7 +32,9 @@ interface RazorpayOptions {
     name: string;
     description: string;
     order_id: string;
-    handler: (response: RazorpayResponse) => void;
+    callback_url?: string;
+    redirect?: boolean;
+    handler?: (response: RazorpayResponse) => void;
     prefill: { name: string; email: string; contact: string };
     notes: Record<string, string>;
     theme: { color: string };
@@ -212,6 +214,10 @@ export default function CheckoutPage() {
                 return;
             }
 
+            const callbackUrl = typeof window !== 'undefined'
+                ? `${window.location.origin}/api/razorpay/callback`
+                : 'https://kurtisboutique.in/api/razorpay/callback';
+
             const options: RazorpayOptions = {
                 key: data.razorpayKeyId,
                 amount: data.amount,
@@ -219,6 +225,8 @@ export default function CheckoutPage() {
                 name: 'Kurtis Boutique',
                 description: 'Order Payment',
                 order_id: data.razorpayOrderId,
+                callback_url: callbackUrl,
+                redirect: true,
                 handler: async function (response: RazorpayResponse) {
                     setIsProcessingPayment(true);
 
